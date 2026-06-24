@@ -19,9 +19,8 @@ for the full product scope.
 - **Nested, conditional rules** — each rule contributes folder levels; children can be
   conditional on the parent's resolved value, edited in a visual node-based designer with
   live example-path previews.
-- **Built-in providers** — Date Folders, EXIF Value, AI Tag/Subject, Color,
-  Library Classification (public-domain Dewey levels + LCC outline + custom tables),
-  Dimensions/Orientation, Image Format, Filename Convention, Alphabetical.
+- **Built-in providers** — date, EXIF, AI, color, classification, dimensions,
+  format, filename, and alphabetical rules are included.
 - **Property provisioning with consent** — providers declare the media type properties they
   need; MediaCurator detects gaps and provisions them only after granular approval.
   Uninstalling never removes schema or data.
@@ -31,6 +30,18 @@ for the full product scope.
 - **AI on your terms** — recognition runs on the [Umbraco.AI](https://www.nuget.org/packages/Umbraco.AI)
   abstractions (any configured provider), results are cached per image, and a
   metadata-only mode disables AI calls entirely (`MediaCurator:MetadataOnly`).
+
+## Built-in providers
+
+- [Date Folders](docs/providers/date-folders.md): builds nested folders from upload or update dates.
+- [EXIF Value](docs/providers/exif-value.md): reads camera metadata and can map raw values to friendly folder names.
+- [AI Tag / Subject](docs/providers/ai-tag-subject.md): uses Umbraco.AI recognition tags with confidence thresholds and optional tag mappings.
+- [Color](docs/providers/color.md): extracts dominant or average color and snaps it to a named palette.
+- [Library Classification](docs/providers/library-classification.md): resolves classification codes through built-in schemes or a custom code table.
+- [Dimensions / Orientation](docs/providers/dimensions-orientation.md): sorts images into landscape, portrait, or square folders.
+- [Image Format](docs/providers/image-format.md): groups images by extension, including JPEG, PNG, SVG, GIF, WebP, AVIF, and other formats.
+- [Filename Convention](docs/providers/filename-convention.md): extracts a folder name from the media name with a regular expression.
+- [Alphabetical](docs/providers/alphabetical.md): buckets media by the first letter of the item name.
 
 ## Quick start
 
@@ -65,7 +76,7 @@ builder.MediaCurator().AddProvider<MyProvider>();
 
 Registered providers automatically appear in the designer with a settings UI generated
 from their `SettingsSchema`, and participate in the provisioning consent flow. The
-built-in [AlphabeticalProvider](src/Umbricians.MediaCurator/Providers/AlphabeticalProvider.cs)
+built-in [Alphabetical provider](docs/providers/alphabetical.md)
 is the reference "hello world" implementation.
 
 ## Configuration
