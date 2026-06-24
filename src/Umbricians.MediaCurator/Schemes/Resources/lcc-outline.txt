@@ -1,0 +1,55 @@
+# Library of Congress Classification outline — main classes and selected subclasses.
+# The LCC outline is published by the Library of Congress and freely available.
+# Format: code|name|parentCode
+A|General Works|
+B|Philosophy, Psychology, Religion|
+C|Auxiliary Sciences of History|
+D|World History|
+E|History of the Americas (E)|
+F|History of the Americas (F)|
+G|Geography, Anthropology, Recreation|
+H|Social Sciences|
+J|Political Science|
+K|Law|
+L|Education|
+M|Music|
+N|Fine Arts|
+P|Language and Literature|
+Q|Science|
+R|Medicine|
+S|Agriculture|
+T|Technology|
+U|Military Science|
+V|Naval Science|
+Z|Bibliography, Library Science|
+BF|Psychology|B
+BL|Religions, Mythology, Rationalism|B
+GV|Recreation, Leisure|G
+HB|Economic Theory, Demography|H
+HM|Sociology|H
+KF|Law of the United States|K
+LB|Theory and Practice of Education|L
+ML|Literature on Music|M
+NA|Architecture|N
+NB|Sculpture|N
+NC|Drawing, Design, Illustration|N
+ND|Painting|N
+NE|Print Media|N
+NK|Decorative Arts|N
+PN|Literature (General)|P
+PR|English Literature|P
+PS|American Literature|P
+QA|Mathematics|Q
+QC|Physics|Q
+QD|Chemistry|Q
+QE|Geology|Q
+QH|Natural History, Biology|Q
+QK|Botany|Q
+QL|Zoology|Q
+RA|Public Aspects of Medicine|R
+SB|Plant Culture|S
+SD|Forestry|S
+TA|General Engineering|T
+TK|Electrical Engineering, Electronics|T
+TR|Photography|T
+TX|Home Economics|T

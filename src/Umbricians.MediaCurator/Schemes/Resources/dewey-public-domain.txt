@@ -1,0 +1,106 @@
+# Dewey Decimal main classes and divisions — public-domain levels only.
+# Wording follows out-of-copyright editions (pre-1929); modern DDC editions are
+# proprietary to OCLC and are not embedded. Format: code|name|parentCode
+000|General Works|
+100|Philosophy|
+200|Religion|
+300|Sociology|
+400|Philology|
+500|Natural Science|
+600|Useful Arts|
+700|Fine Arts|
+800|Literature|
+900|History|
+010|Bibliography|000
+020|Library Economy|000
+030|General Cyclopedias|000
+040|General Collections|000
+050|General Periodicals|000
+060|General Societies|000
+070|Newspapers|000
+080|Special Libraries|000
+090|Book Rarities|000
+110|Metaphysics|100
+120|Special Metaphysical Topics|100
+130|Mind and Body|100
+140|Philosophical Systems|100
+150|Mental Faculties|100
+160|Logic|100
+170|Ethics|100
+180|Ancient Philosophers|100
+190|Modern Philosophers|100
+210|Natural Theology|200
+220|Bible|200
+230|Doctrinal Theology|200
+240|Devotional and Practical|200
+250|Homiletic and Pastoral|200
+260|Church Institutions and Work|200
+270|Religious History|200
+280|Christian Churches and Sects|200
+290|Non-Christian Religions|200
+310|Statistics|300
+320|Political Science|300
+330|Political Economy|300
+340|Law|300
+350|Administration|300
+360|Associations and Institutions|300
+370|Education|300
+380|Commerce and Communication|300
+385|Railroad Transportation|380
+388|Transportation|380
+390|Customs and Costumes|300
+410|Comparative Philology|400
+420|English|400
+430|German|400
+440|French|400
+450|Italian|400
+460|Spanish|400
+470|Latin|400
+480|Greek|400
+490|Other Languages|400
+510|Mathematics|500
+520|Astronomy|500
+530|Physics|500
+540|Chemistry|500
+550|Geology|500
+560|Paleontology|500
+570|Biology|500
+580|Botany|500
+590|Zoology|500
+610|Medicine|600
+620|Engineering|600
+625|Railroad Engineering|620
+630|Agriculture|600
+640|Domestic Economy|600
+650|Communication and Commerce|600
+660|Chemical Technology|600
+670|Manufactures|600
+680|Mechanic Trades|600
+690|Building|600
+710|Landscape Gardening|700
+720|Architecture|700
+730|Sculpture|700
+740|Drawing and Decoration|700
+750|Painting|700
+760|Engraving|700
+770|Photography|700
+780|Music|700
+790|Amusements|700
+810|American Literature|800
+820|English Literature|800
+830|German Literature|800
+840|French Literature|800
+850|Italian Literature|800
+860|Spanish Literature|800
+870|Latin Literature|800
+880|Greek Literature|800
+890|Other Literatures|800
+910|Geography and Travels|900
+920|Biography|900
+930|Ancient History|900
+940|Europe|900
+950|Asia|900
+960|Africa|900
+970|North America|900
+980|South America|900
+990|Oceania and Polar Regions|900

@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Umbricians.MediaCurator.Automate/Umbricians.MediaCurator.Automate.csproj" />
+    <Project Path="src/Umbricians.MediaCurator/Umbricians.MediaCurator.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Umbricians.MediaCurator.Tests/Umbricians.MediaCurator.Tests.csproj" />
+    <Project Path="tests/Umbricians.MediaCurator.TestSite/Umbricians.MediaCurator.TestSite.csproj" />
+  </Folder>
+</Solution>

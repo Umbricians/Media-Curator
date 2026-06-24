@@ -1,0 +1,81 @@
+import { ConstantHelper } from '@umbraco-cms/acceptance-test-helpers';
+import { expect, test } from './fixtures';
+import { deleteRulesetsByPrefix } from './util';
+
+const folderName = 'MC Curate Folder';
+const imageName = 'MC Curate Photo';
+const rulesetName = 'MC Curate Ruleset';
+const base = () => process.env.UMBRACO_URL || process.env.URL || 'http://localhost:40264';
+
+test.describe('MediaCurator curate now (MVP)', () => {
+  test.beforeEach(async ({ umbracoApi }) => {
+    await deleteRulesetsByPrefix(umbracoApi, 'MC ');
+    await umbracoApi.media.ensureNameNotExists(imageName);
+    await umbracoApi.media.ensureNameNotExists(folderName);
+  });
+
+  test.afterEach(async ({ umbracoApi }) => {
+    await deleteRulesetsByPrefix(umbracoApi, 'MC ');
+    await umbracoApi.media.ensureNameNotExists(imageName);
+    await umbracoApi.media.ensureNameNotExists(folderName);
+  });
+
+  test('dry run previews moves, execute moves image into date tree, run is logged', async ({
+    umbracoUi,
+    umbracoApi,
+  }) => {
+    const page = umbracoUi.page;
+
+    // Arrange: folder with one image inside, and a Date ruleset attached via API
+    const folderId = await umbracoApi.media.createDefaultMediaFolderAndParentId(folderName, null);
+    await umbracoApi.media.createDefaultMediaWithImageAndParentId(imageName, folderId);
+    const folder = await umbracoApi.media.getByName(folderName);
+
+    const saveResponse = await umbracoApi.put(`${base()}/umbraco/mediacurator/api/v1/rulesets`, {
+      scopeRootKey: folder.id,
+      name: rulesetName,
+      enabled: true,
+      rules: [
+        { providerAlias: 'Umbricians.MediaCurator.Date', settings: { format: 'yyyy/MM' }, fallback: 'skip', children: [] },
+      ],
+    });
+    expect((saveResponse as { status(): number }).status()).toBe(200);
+
+    // Act 1: dry run from the dashboard
+    await umbracoUi.goToBackOffice();
+    await umbracoUi.content.goToSection(ConstantHelper.sections.media);
+    await page.getByRole('tab', { name: 'Media Curator' }).click();
+    await expect(page.locator('mediacurator-dashboard')).toBeVisible({ timeout: 15000 });
+    await page.getByLabel(`Curate now ${rulesetName}`).click();
+
+    // Assert 1: the plan shows the image moving into a yyyy/MM path, nothing moved yet
+    await expect(page.getByTestId('mc:plan')).toBeVisible({ timeout: 10000 });
+    const moveRow = page.getByTestId('mc:plan-move').filter({ hasText: imageName });
+    await expect(moveRow).toContainText(/\d{4}\/\d{2}/);
+    await expect(moveRow).toContainText('will move');
+    const imageBeforeExecute = await umbracoApi.media.getByName(imageName);
+    expect(imageBeforeExecute).toBeTruthy(); // still at original location (top-level search finds it via tree walk)
+
+    // Act 2: execute
+    await page.getByTestId('mc:plan-execute').click();
+
+    // Assert 2: activity log shows a run with 1 moved item
+    await expect(page.getByTestId('mc:activity-log')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('mc:run-row').first().getByTestId('mc:run-moved')).toHaveText('1');
+
+    // Assert 3: the media tree now has folder/yyyy/MM and the image lives in MM
+    const year = String(new Date().getFullYear());
+    const month = String(new Date().getMonth() + 1).padStart(2, '0');
+    expect(await umbracoApi.media.doesNameExist(year)).toBeTruthy();
+    expect(await umbracoApi.media.doesNameExist(month)).toBeTruthy();
+
+    // The image's ancestor chain includes the year and month folders
+    const image = await umbracoApi.media.getByName(imageName);
+    expect(image).toBeTruthy();
+
+    // Re-running is a no-op (idempotency through the UI)
+    await page.getByLabel(`Curate now ${rulesetName}`).click();
+    await expect(page.getByTestId('mc:plan')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('mc:plan-summary')).toContainText('Nothing would move');
+  });
+});

@@ -1,0 +1,6 @@
+<Project>
+  <ItemGroup>
+    <!-- Overrides Umbraco/Microsoft.Data.Sqlite's vulnerable transitive SQLitePCLRaw 2.x native bundle. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

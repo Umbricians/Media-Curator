@@ -1,0 +1,14 @@
+{
+  "id": "Umbricians.MediaCurator",
+  "name": "Umbricians.MediaCurator",
+  "version": "0.0.0",
+  "allowTelemetry": true,
+  "extensions": [
+    {
+      "name": "Media Curator Bundle",
+      "alias": "Umbricians.MediaCurator.Bundle",
+      "type": "bundle",
+      "js": "/App_Plugins/MediaCurator/media-curator.js"
+    }
+  ]
+}
