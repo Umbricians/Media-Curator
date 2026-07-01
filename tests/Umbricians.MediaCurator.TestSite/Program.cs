@@ -15,6 +15,8 @@ builder.CreateUmbracoBuilder()
     .AddComposers()
     .Build();
 
+SwaggerGenOptionsWorkaround.Apply(builder.Services);
+
 // Test site only: allow backoffice OAuth over plain HTTP so E2E tests can run
 // without a trusted HTTPS dev certificate (OpenIddict rejects HTTP by default).
 builder.Services.Configure<OpenIddictServerAspNetCoreOptions>(
