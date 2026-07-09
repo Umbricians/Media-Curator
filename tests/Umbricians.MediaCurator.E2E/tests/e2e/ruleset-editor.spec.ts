@@ -44,9 +44,10 @@ test.describe('MediaCurator ruleset editor', () => {
 
     // Add a rule, switch it to the Date provider, and tweak its format setting
     await page.getByTestId('mc:canvas-add').click();
-    await expect(page.getByTestId('mc:node')).toBeVisible();
-    await page.getByTestId('mc:node-provider').locator('select').selectOption('Umbricians.MediaCurator.Date');
-    await page.getByTestId('mc:setting-format').locator('input').fill('yyyy/MM/dd');
+    const rootNode = page.locator('[data-node-id="rule:0"]');
+    await expect(rootNode).toBeVisible();
+    await rootNode.getByTestId('mc:node-provider').locator('select').selectOption('Umbricians.MediaCurator.Date');
+    await rootNode.getByTestId('mc:setting-format').locator('input').fill('yyyy/MM/dd');
 
     // Save and verify it appears in the list
     await page.getByTestId('mc:save').click();

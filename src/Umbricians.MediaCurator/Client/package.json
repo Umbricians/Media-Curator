@@ -9,7 +9,15 @@
     "generate-client": "node scripts/generate-openapi.js http://localhost:40264/umbraco/swagger/mediacurator/swagger.json",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@xyflow/react": "^12.10.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
   "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
     "@hey-api/openapi-ts": "^0.85.2",
     "@umbraco-cms/backoffice": "^17.4.2",
     "chalk": "^5.6.2",

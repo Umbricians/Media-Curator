@@ -10,7 +10,7 @@ import {
 import { UmbElementMixin } from "@umbraco-cms/backoffice/element-api";
 import { UMB_NOTIFICATION_CONTEXT } from "@umbraco-cms/backoffice/notification";
 import { umbConfirmModal } from "@umbraco-cms/backoffice/modal";
-import "../designer/rule-tree.element.js";
+import "../designer/rule-flow.element.js";
 import {
   MediaCuratorService,
   type CurationPlanModel,
@@ -649,13 +649,13 @@ export class MediaCuratorDashboardElement extends UmbElementMixin(LitElement) {
         </div>
 
         <h4>Rules</h4>
-        <mc-rule-tree
+        <mc-rule-flow
           .rules=${editing.rules ?? []}
           .providers=${this._providers}
           .scopeName=${editing.name || "Scope"}
           @rules-change=${(e: CustomEvent<{ rules: RuleNodeModel[] }>) =>
             (this._editing = { ...editing, rules: e.detail.rules })}
-        ></mc-rule-tree>
+        ></mc-rule-flow>
 
         <div class="actions">
           <uui-button label="Cancel" look="secondary" @click=${() => (this._editing = undefined)}></uui-button>

@@ -1,0 +1,182 @@
+.mc-rule-flow-canvas {
+  --xy-node-border-radius: var(--uui-border-radius, 6px);
+  --xy-edge-stroke: var(--uui-color-border, #d8d7d9);
+  --xy-edge-stroke-selected: var(--uui-color-selected, #1b264f);
+  --xy-edge-label-background-color: var(--uui-color-surface, #fff);
+  --xy-background-color: var(--uui-color-surface, #fff);
+}
+
+.mc-rule-flow-viewport {
+  width: 100%;
+  height: 560px;
+  border: 1px solid var(--uui-color-border, #d8d7d9);
+  border-radius: var(--uui-border-radius, 6px);
+  overflow: hidden;
+}
+
+.mc-rule-flow-viewport .react-flow {
+  width: 100%;
+  height: 100%;
+}
+
+.mc-rule-flow-viewport .react-flow__node {
+  width: 320px !important;
+}
+
+.mc-rule-flow-viewport .react-flow__node-scope,
+.mc-rule-flow-viewport .react-flow__node-rule {
+  width: 320px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.mc-rule-flow-viewport .react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background: var(--uui-color-border-emphasis, #a1a1a1);
+  border: 2px solid var(--uui-color-surface, #fff);
+}
+
+.mc-rule-flow-canvas .react-flow__panel {
+  margin: 0;
+}
+
+.mc-rule-flow-canvas .react-flow__edge-text {
+  font-size: 0.8rem;
+}
+
+.mc-rule-flow-canvas .react-flow__edge-textbg {
+  fill: var(--uui-color-surface-alt, #f6f4f4);
+}
+
+.mc-rule-flow-scope,
+.mc-rule-flow-node {
+  background: var(--uui-color-surface, #fff);
+  border: 1px solid var(--uui-color-border, #d8d7d9);
+  border-radius: var(--uui-border-radius, 6px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  width: 320px;
+  box-sizing: border-box;
+  font-family: var(--uui-font-family, inherit);
+  color: var(--uui-color-text, #1b264f);
+}
+
+.mc-rule-flow-scope {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--uui-color-surface-alt, #f6f4f4);
+}
+
+.mc-rule-flow-scope small {
+  color: var(--uui-color-text-alt, #6e6e6e);
+}
+
+.mc-rule-flow-node-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--uui-color-border, #d8d7d9);
+}
+
+.mc-rule-flow-node-header select {
+  flex: 1;
+  min-width: 0;
+}
+
+.mc-rule-flow-node-actions {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 1rem 0.5rem;
+}
+
+.mc-rule-flow-node-actions button {
+  cursor: pointer;
+  border: 1px solid var(--uui-color-border, #d8d7d9);
+  background: var(--uui-color-surface, #fff);
+  border-radius: 4px;
+  padding: 0.15rem 0.45rem;
+}
+
+.mc-rule-flow-node-actions button.danger {
+  color: var(--uui-color-danger, #d42054);
+}
+
+.mc-rule-flow-node-body {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 0.35rem 0.75rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+}
+
+.mc-rule-flow-node-body label {
+  font-size: 0.85rem;
+  color: var(--uui-color-text-alt, #6e6e6e);
+}
+
+.mc-rule-flow-node-body input,
+.mc-rule-flow-node-body select,
+.mc-rule-flow-node-body textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mc-rule-flow-node-body textarea {
+  min-height: 4rem;
+  resize: vertical;
+}
+
+.mc-rule-flow-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 1rem;
+  background: var(--uui-color-warning, #f5c1bc);
+}
+
+.mc-rule-flow-example {
+  margin: 0 1rem 0.75rem;
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--uui-color-positive, #2bc37c);
+}
+
+.mc-rule-flow-add-child {
+  margin: 0 1rem 0.75rem;
+}
+
+.mc-rule-flow-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.mc-rule-flow-toolbar button,
+.mc-rule-flow-add-child button {
+  cursor: pointer;
+  border: 1px solid var(--uui-color-border, #d8d7d9);
+  background: var(--uui-color-surface-alt, #f6f4f4);
+  border-radius: 4px;
+  padding: 0.4rem 0.75rem;
+}
+
+.mc-rule-flow-empty {
+  margin: 0.75rem 0 0;
+  color: var(--uui-color-text-alt, #6e6e6e);
+}
+
+.mc-rule-flow-edge-label {
+  font-size: 0.8rem;
+  background: var(--uui-color-surface-alt, #f6f4f4);
+  border-radius: 1em;
+  padding: 0 0.5rem;
+}
+
+.mc-rule-flow-edge-label--condition {
+  background: var(--uui-color-warning, #f5c1bc);
+}

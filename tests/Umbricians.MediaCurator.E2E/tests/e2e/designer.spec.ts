@@ -45,13 +45,13 @@ test.describe('MediaCurator visual designer (nesting + conditions)', () => {
 
     // Canvas: root Date rule (yyyy)
     await page.getByTestId('mc:canvas-add').click();
-    const rootNode = page.getByTestId('mc:node').first();
+    const rootNode = page.locator('[data-node-id="rule:0"]');
     await rootNode.getByTestId('mc:node-provider').locator('select').selectOption('Umbricians.MediaCurator.Date');
     await rootNode.getByTestId('mc:setting-format').locator('input').fill('yyyy');
 
     // Child Alphabetical rule, conditional on the year value
     await rootNode.getByTestId('mc:node-add-child').click();
-    const childNode = page.getByTestId('mc:node').nth(1);
+    const childNode = page.locator('[data-node-id="rule:0.0"]');
     await childNode.getByTestId('mc:node-provider').locator('select').selectOption('Umbricians.MediaCurator.Alphabetical');
     await childNode.getByTestId('mc:node-condition').locator('input').fill(year);
 

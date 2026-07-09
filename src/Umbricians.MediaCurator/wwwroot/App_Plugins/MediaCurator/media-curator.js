@@ -3,14 +3,14 @@ const a = [
     name: "Media Curator Entrypoint",
     alias: "Umbricians.MediaCurator.Entrypoint",
     type: "backofficeEntryPoint",
-    js: () => import("./entrypoint-D75ZjfYm.js")
+    js: () => import("./entrypoint-BXDH0O8K.js")
   }
-], t = [
+], i = [
   {
     name: "Media Curator Dashboard",
     alias: "Umbricians.MediaCurator.Dashboard",
     type: "dashboard",
-    js: () => import("./mediacurator-dashboard.element-DOGcgT3H.js"),
+    js: () => import("./mediacurator-dashboard.element-CWgddJ-1.js"),
     weight: -10,
     meta: {
       label: "Media Curator",
@@ -23,7 +23,7 @@ const a = [
       }
     ]
   }
-], i = [
+], t = [
   {
     name: "MediaCurator Pizza Original Test Target Repository",
     alias: "Uai.Repository.TestFeatureEntity.media-curator-pizza-original",
@@ -44,8 +44,8 @@ const a = [
   }
 ], e = [
   ...a,
-  ...t,
-  ...i
+  ...i,
+  ...t
 ];
 export {
   e as manifests

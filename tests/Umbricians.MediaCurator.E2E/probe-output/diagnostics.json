@@ -1,0 +1,86 @@
+{
+  "mcRuleFlowExists": 1,
+  "ruleFlowHasShadow": true,
+  "adoptedStyleSheets": 2,
+  "flowNodeCount": 4,
+  "scope": {
+    "selector": ".mc-rule-flow-scope",
+    "width": 240,
+    "height": 35.25,
+    "top": 508.71875,
+    "left": 697,
+    "display": "flex",
+    "heightComputed": "47px",
+    "overflow": "visible",
+    "transform": "none"
+  },
+  "node": {
+    "selector": ".mc-rule-flow-node",
+    "width": 240,
+    "height": 121.921875,
+    "top": 571.71875,
+    "left": 733,
+    "display": "block",
+    "heightComputed": "162.562px",
+    "overflow": "visible",
+    "transform": "none"
+  },
+  "viewport": {
+    "selector": ".mc-rule-flow-viewport",
+    "width": 1058,
+    "height": 562,
+    "top": 508.21875,
+    "left": 342,
+    "display": "block",
+    "heightComputed": "560px",
+    "overflow": "hidden",
+    "transform": "none"
+  },
+  "reactFlow": {
+    "selector": ".react-flow",
+    "width": 1056,
+    "height": 560,
+    "top": 509.21875,
+    "left": 343,
+    "display": "block",
+    "heightComputed": "560px",
+    "overflow": "hidden",
+    "transform": "none"
+  },
+  "flowNodes": [
+    {
+      "className": "react-flow__node react-flow__node-scope",
+      "width": 240,
+      "height": 39,
+      "text": "Datesscope"
+    },
+    {
+      "className": "react-flow__node react-flow__node-rule",
+      "width": 240,
+      "height": 126,
+      "text": "AI Tag / SubjectAlphabeticalColorDate FoldersDimensions / Or"
+    },
+    {
+      "className": "react-flow__node react-flow__node-rule",
+      "width": 240,
+      "height": 151.5,
+      "text": "AI Tag / SubjectAlphabeticalColorDate FoldersDimensions / Or"
+    },
+    {
+      "className": "react-flow__node react-flow__node-rule",
+      "width": 240,
+      "height": 172.5,
+      "text": "AI Tag / SubjectAlphabeticalColorDate FoldersDimensions / Or"
+    }
+  ],
+  "nodeText": "Dates",
+  "providerOptions": 27,
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "[UmbAuthClient] Token request failed: 400 Bad Request",
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "[UmbAuthClient] Token request failed: 400 Bad Request",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ]
+}
