@@ -1,0 +1,79 @@
+{
+  "clickResult": {
+    "ok": true
+  },
+  "before": {
+    "rules": [
+      {
+        "alias": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "alias": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "alias": "Umbricians.MediaCurator.Date",
+        "format": "yyyy/MM"
+      }
+    ],
+    "ui": [
+      {
+        "id": "rule:0",
+        "transform": "translate(48px, 96px)"
+      },
+      {
+        "id": "rule:1",
+        "transform": "translate(48px, 406px)"
+      },
+      {
+        "id": "rule:2",
+        "format": "yyyy/MM/dd",
+        "transform": "translate(48px, 716px)"
+      }
+    ]
+  },
+  "after": {
+    "rules": [
+      {
+        "alias": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "alias": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "alias": "Umbricians.MediaCurator.Date",
+        "format": "yyyy/MM"
+      }
+    ],
+    "ui": [
+      {
+        "id": "rule:0",
+        "transform": "translate(48px, 96px)"
+      },
+      {
+        "id": "rule:1",
+        "transform": "translate(48px, 406px)"
+      },
+      {
+        "id": "rule:2",
+        "format": "yyyy/MM",
+        "transform": "translate(48px, 716px)"
+      }
+    ]
+  },
+  "afterNative": {
+    "rules": [
+      {
+        "alias": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "alias": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "alias": "Umbricians.MediaCurator.Date",
+        "format": "yyyy/MM"
+      }
+    ]
+  },
+  "dataChanged": false,
+  "uiFormatOrderChanged": true
+}

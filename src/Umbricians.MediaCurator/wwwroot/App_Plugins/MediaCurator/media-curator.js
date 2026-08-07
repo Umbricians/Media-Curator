@@ -10,7 +10,7 @@ const a = [
     name: "Media Curator Dashboard",
     alias: "Umbricians.MediaCurator.Dashboard",
     type: "dashboard",
-    js: () => import("./mediacurator-dashboard.element-CWgddJ-1.js"),
+    js: () => import("./mediacurator-dashboard.element-DTalp_Nf.js"),
     weight: -10,
     meta: {
       label: "Media Curator",

@@ -6,8 +6,8 @@ export const SCOPE_NODE_ID = "scope";
 
 const NODE_WIDTH = 320;
 const X_INDENT = 48;
-const Y_GAP = 32;
-const SCOPE_HEIGHT = 52;
+const Y_GAP = 48;
+const SCOPE_HEIGHT = 48;
 
 export type RuleFlowNodeKind = "scope" | "rule";
 
@@ -61,11 +61,12 @@ export function estimateNodeHeight(
   const multilineFields = settingsFields.filter((field) => field.alias === "mappings" || field.alias === "palette").length;
   const regularFields = settingsFields.length - multilineFields;
 
-  let height = 168;
-  height += regularFields * 34;
-  height += multilineFields * 72;
-  if (isChild) height += 34;
-  if (isLeaf) height += 28;
+  // Calibrated against rendered node heights in the backoffice designer.
+  let height = 118;
+  height += regularFields * 28;
+  height += multilineFields * 64;
+  if (isChild) height += 30;
+  if (isLeaf) height += 24;
   return height;
 }
 
@@ -85,6 +86,7 @@ export function rulesToFlow(
     data: { kind: "scope", scopeName, providers },
     width: NODE_WIDTH,
     height: SCOPE_HEIGHT,
+    draggable: false,
   });
   nextY += SCOPE_HEIGHT + Y_GAP;
 
@@ -120,6 +122,8 @@ export function rulesToFlow(
         },
         width: NODE_WIDTH,
         height,
+        draggable: true,
+        dragHandle: ".mc-rule-flow-drag-handle",
       });
 
       edges.push({
@@ -147,4 +151,97 @@ export function rulesToFlow(
   layoutRules(rules, 1, SCOPE_NODE_ID, [], []);
 
   return { nodes, edges };
+}
+
+/** Stable key for tree shape — add/remove/reorder only, not field edits. */
+export function rulesStructureKey(rules: RuleNodeModel[]): string {
+  const parts: string[] = [];
+  const walk = (nodes: RuleNodeModel[], prefix: number[]) => {
+    nodes.forEach((node, index) => {
+      const path = [...prefix, index];
+      parts.push(`${path.join(".")}:${node.providerAlias}`);
+      walk(node.children ?? [], path);
+    });
+  };
+  walk(rules, []);
+  return parts.join(",");
+}
+
+type LayoutNode = Pick<Node, "id" | "position"> & {
+  height?: number;
+  measured?: { height?: number };
+};
+
+export function flowNodeHeight(node: LayoutNode): number {
+  return node.height ?? node.measured?.height ?? 150;
+}
+
+export function flowNodeCenterY(node: LayoutNode): number {
+  return node.position.y + flowNodeHeight(node) / 2;
+}
+
+export function siblingFlowNodes(path: number[], nodes: LayoutNode[]): LayoutNode[] {
+  return nodes.filter((node) => {
+    const nodePath = idToPath(node.id);
+    if (!nodePath || nodePath.length !== path.length) return false;
+    return nodePath.slice(0, -1).every((value, index) => value === path[index]);
+  });
+}
+
+export function subtreeBottom(nodeId: string, nodes: LayoutNode[]): number {
+  const node = nodes.find((item) => item.id === nodeId);
+  if (!node) return 0;
+
+  let bottom = node.position.y + flowNodeHeight(node);
+  const parentPath = idToPath(nodeId);
+  if (!parentPath) return bottom;
+
+  for (const candidate of nodes) {
+    const candidatePath = idToPath(candidate.id);
+    if (!candidatePath) continue;
+    if (
+      candidatePath.length === parentPath.length + 1 &&
+      candidatePath.slice(0, -1).every((value, index) => value === parentPath[index])
+    ) {
+      bottom = Math.max(bottom, subtreeBottom(candidate.id, nodes));
+    }
+  }
+
+  return bottom;
+}
+
+/**
+ * Resolve the sibling index a dragged node should occupy.
+ * Boundaries use layout positions so gaps between sibling subtrees count as valid drop zones.
+ */
+export function resolveSiblingDropIndex(
+  dragged: LayoutNode,
+  layoutNodes: LayoutNode[],
+): number {
+  const path = idToPath(dragged.id);
+  if (!path) return 0;
+
+  let index = path[path.length - 1];
+  const siblings = siblingFlowNodes(path, layoutNodes).sort(
+    (a, b) => idToPath(a.id)![idToPath(a.id)!.length - 1] - idToPath(b.id)![idToPath(b.id)!.length - 1],
+  );
+  const layoutById = new Map(layoutNodes.map((node) => [node.id, node]));
+  const dragCenter = flowNodeCenterY(dragged);
+  const originalTop = layoutById.get(dragged.id)?.position.y ?? dragged.position.y;
+
+  while (index > 0) {
+    const previous = siblings[index - 1];
+    const boundary = (subtreeBottom(previous.id, layoutNodes) + originalTop) / 2;
+    if (dragCenter >= boundary) break;
+    index -= 1;
+  }
+
+  while (index < siblings.length - 1) {
+    const next = siblings[index + 1];
+    const boundary = (subtreeBottom(dragged.id, layoutNodes) + layoutById.get(next.id)!.position.y) / 2;
+    if (dragCenter <= boundary) break;
+    index += 1;
+  }
+
+  return index;
 }

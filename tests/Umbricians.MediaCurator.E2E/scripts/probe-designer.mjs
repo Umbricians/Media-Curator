@@ -88,8 +88,56 @@ try {
   });
 
   writeFileSync(join(outDir, "diagnostics.json"), JSON.stringify({ ...diagnostics, consoleErrors }, null, 2));
+
+  const firstNode = page.locator('[data-node-id="rule:0"]').first();
+  await firstNode.waitFor({ timeout: 10000 });
+
+  const providerSelect = firstNode.locator('[data-mark="mc:node-provider"]');
+  const beforeProvider = await providerSelect.inputValue();
+  const options = await providerSelect.locator("option").allTextContents();
+  const dateOption = options.find((text) => text.includes("Date")) ? "Umbricians.MediaCurator.Date" : await providerSelect.locator("option").first().getAttribute("value");
+  await providerSelect.selectOption(dateOption ?? { index: 0 });
+  await page.waitForTimeout(300);
+
+  const formatInput = firstNode.locator('[data-mark="mc:setting-format"]');
+  await formatInput.waitFor({ timeout: 5000 });
+  await formatInput.click();
+  await formatInput.fill("yyyy");
+  await page.waitForTimeout(500);
+
+  const afterEdit = await formatInput.inputValue();
+  const dragHandles = await page.locator(".mc-rule-flow-drag-handle").count();
+
+  writeFileSync(
+    join(outDir, "interaction.json"),
+    JSON.stringify(
+      {
+        beforeProvider,
+        selectedProvider: await providerSelect.inputValue(),
+        formatValue: afterEdit,
+        dragHandleCount: dragHandles,
+      },
+      null,
+      2,
+    ),
+  );
+
   await page.screenshot({ path: join(outDir, "designer.png"), fullPage: true });
-  console.log(JSON.stringify(diagnostics, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        ...diagnostics,
+        interaction: {
+          beforeProvider,
+          selectedProvider: await providerSelect.inputValue(),
+          formatValue: afterEdit,
+          dragHandleCount: dragHandles,
+        },
+      },
+      null,
+      2,
+    ),
+  );
 } finally {
   await browser.close();
 }

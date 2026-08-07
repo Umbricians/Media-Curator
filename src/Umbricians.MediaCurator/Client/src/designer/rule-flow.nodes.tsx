@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, type ReactNode, type SyntheticEvent } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { ProviderModel, RuleNodeModel, SettingFieldModel } from "../api/index.js";
 import {
@@ -11,9 +11,16 @@ import {
 } from "./rule-tree.logic.js";
 import type { RuleFlowNodeData } from "./rule-flow.mapping.js";
 
+export type RulesChangeOptions = {
+  /** Force auto-layout even when provider aliases at each path look unchanged. */
+  relayout?: boolean;
+};
+
+export type RulesChangeHandler = (rules: RuleNodeModel[], options?: RulesChangeOptions) => void;
+
 export type RuleFlowCallbacks = {
   rules: RuleNodeModel[];
-  onRulesChange: (rules: RuleNodeModel[]) => void;
+  onRulesChange: RulesChangeHandler;
 };
 
 type ScopeNodeProps = NodeProps & {
@@ -39,6 +46,8 @@ export function newRule(providers: ProviderModel[]): RuleNodeModel | undefined {
   };
 }
 
+const INTERACTIVE = "nodrag nopan nowheel";
+
 function SettingField({
   field,
   value,
@@ -49,12 +58,13 @@ function SettingField({
   onChange: (value: unknown) => void;
 }) {
   const current = value ?? field.defaultValue ?? "";
-  let control: React.ReactNode;
+  let control: ReactNode;
 
   switch (field.type) {
     case "select":
       control = (
         <select
+          className={INTERACTIVE}
           data-mark={`mc:setting-${field.alias}`}
           aria-label={field.label}
           value={String(current)}
@@ -71,6 +81,7 @@ function SettingField({
     case "toggle":
       control = (
         <input
+          className={INTERACTIVE}
           data-mark={`mc:setting-${field.alias}`}
           type="checkbox"
           aria-label={field.label}
@@ -82,6 +93,7 @@ function SettingField({
     case "number":
       control = (
         <input
+          className={INTERACTIVE}
           data-mark={`mc:setting-${field.alias}`}
           type="number"
           aria-label={field.label}
@@ -94,6 +106,7 @@ function SettingField({
       const multiline = field.alias === "mappings" || field.alias === "palette";
       control = multiline ? (
         <textarea
+          className={INTERACTIVE}
           data-mark={`mc:setting-${field.alias}`}
           aria-label={field.label}
           value={String(current)}
@@ -101,6 +114,7 @@ function SettingField({
         />
       ) : (
         <input
+          className={INTERACTIVE}
           data-mark={`mc:setting-${field.alias}`}
           aria-label={field.label}
           value={String(current)}
@@ -129,8 +143,13 @@ export const ScopeFlowNode = memo(function ScopeFlowNode({ data }: ScopeNodeProp
   );
 });
 
-export const RuleFlowNode = memo(function RuleFlowNode({ data, id }: RuleNodeProps) {
-  const callbacks = (data as RuleFlowNodeData & RuleFlowCallbacks);
+function stopNodePointer(event: SyntheticEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+export const RuleFlowNode = function RuleFlowNode({ data, id }: RuleNodeProps) {
+  const callbacks = data as RuleFlowNodeData & RuleFlowCallbacks;
   const { rules, onRulesChange, providers, scopeName, path = [], prefix = [], isChild, isLeaf, node } = callbacks;
 
   if (!node) return null;
@@ -138,10 +157,17 @@ export const RuleFlowNode = memo(function RuleFlowNode({ data, id }: RuleNodePro
   const provider = providerFor(providers, node.providerAlias);
   const hasRequirements = (provider?.requirements ?? []).length > 0;
 
-  const emit = (next: RuleNodeModel[]) => onRulesChange(next);
+  const emit = (next: RuleNodeModel[], relayout = false) =>
+    onRulesChange(next, relayout ? { relayout: true } : undefined);
 
   const updateNode = (update: (current: RuleNodeModel) => RuleNodeModel) => {
     emit(updateAt(rules, path, update));
+  };
+
+  const move = (delta: number) => {
+    const next = moveSibling(rules, path, delta);
+    // Always request relayout — identical-provider swaps are invisible to structure keys.
+    if (next !== rules) emit(next, true);
   };
 
   const examplePath = [scopeName, ...prefix, sampleSegment(node, providers)].join("/");
@@ -150,7 +176,11 @@ export const RuleFlowNode = memo(function RuleFlowNode({ data, id }: RuleNodePro
     <div className="mc-rule-flow-node" data-mark="mc:node" data-node-id={id}>
       <Handle type="target" position={Position.Top} />
       <div className="mc-rule-flow-node-header">
+        <div className="mc-rule-flow-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">
+          ⋮⋮
+        </div>
         <select
+          className={INTERACTIVE}
           data-mark="mc:node-provider"
           aria-label="Provider"
           value={node.providerAlias}
@@ -177,23 +207,60 @@ export const RuleFlowNode = memo(function RuleFlowNode({ data, id }: RuleNodePro
         ) : null}
       </div>
 
-      <div className="mc-rule-flow-node-actions">
-        <button type="button" title="Move up" onClick={() => emit(moveSibling(rules, path, -1))}>
+      <div className={`mc-rule-flow-node-actions ${INTERACTIVE}`}>
+        <button
+          type="button"
+          className={INTERACTIVE}
+          data-mark="mc:node-move-up"
+          title="Move up"
+          aria-label="Move up"
+          onPointerDown={stopNodePointer}
+          onMouseDown={stopNodePointer}
+          onClick={(event) => {
+            stopNodePointer(event);
+            move(-1);
+          }}
+        >
           ↑
         </button>
-        <button type="button" title="Move down" onClick={() => emit(moveSibling(rules, path, 1))}>
+        <button
+          type="button"
+          className={INTERACTIVE}
+          data-mark="mc:node-move-down"
+          title="Move down"
+          aria-label="Move down"
+          onPointerDown={stopNodePointer}
+          onMouseDown={stopNodePointer}
+          onClick={(event) => {
+            stopNodePointer(event);
+            move(1);
+          }}
+        >
           ↓
         </button>
-        <button type="button" className="danger" title="Remove" onClick={() => emit(removeAt(rules, path))}>
+        <button
+          type="button"
+          className={`danger ${INTERACTIVE}`}
+          data-mark="mc:node-remove"
+          title="Remove"
+          aria-label="Remove"
+          onPointerDown={stopNodePointer}
+          onMouseDown={stopNodePointer}
+          onClick={(event) => {
+            stopNodePointer(event);
+            emit(removeAt(rules, path), true);
+          }}
+        >
           ✕
         </button>
       </div>
 
-      <div className="mc-rule-flow-node-body">
+      <div className={`mc-rule-flow-node-body ${INTERACTIVE}`}>
         {isChild ? (
           <>
             <label htmlFor={`${id}-condition`}>Condition (parent value)</label>
             <input
+              className={INTERACTIVE}
               id={`${id}-condition`}
               data-mark="mc:node-condition"
               aria-label="Condition"
@@ -231,6 +298,7 @@ export const RuleFlowNode = memo(function RuleFlowNode({ data, id }: RuleNodePro
 
         <label htmlFor={`${id}-fallback`}>If unresolved</label>
         <select
+          className={INTERACTIVE}
           id={`${id}-fallback`}
           data-mark="mc:node-fallback"
           aria-label="If unresolved"
@@ -252,10 +320,11 @@ export const RuleFlowNode = memo(function RuleFlowNode({ data, id }: RuleNodePro
       <div className="mc-rule-flow-add-child">
         <button
           type="button"
+          className={INTERACTIVE}
           data-mark="mc:node-add-child"
           onClick={() => {
             const child = newRule(providers);
-            if (child) emit(addChildAt(rules, path, child));
+            if (child) emit(addChildAt(rules, path, child), true);
           }}
         >
           Add child rule
@@ -265,7 +334,7 @@ export const RuleFlowNode = memo(function RuleFlowNode({ data, id }: RuleNodePro
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
-});
+};
 
 export const ruleFlowNodeTypes = {
   scope: ScopeFlowNode,

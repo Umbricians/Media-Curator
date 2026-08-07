@@ -1,0 +1,237 @@
+{
+  "arrowChangedOrder": true,
+  "beforeRules": [
+    "MediaCurator.Date",
+    "Umbricians.MediaCurator.Alphabetical"
+  ],
+  "afterArrowRules": [
+    "Umbricians.MediaCurator.Alphabetical",
+    "MediaCurator.Date"
+  ],
+  "smallDragKeptOffset": true,
+  "smallDragY": {
+    "before": 96,
+    "mid": 160.706,
+    "after": 160.706
+  },
+  "before": {
+    "label": "before",
+    "rules": [
+      "MediaCurator.Date",
+      "Umbricians.MediaCurator.Alphabetical"
+    ],
+    "nodes": [
+      {
+        "id": "scope",
+        "transform": "translate(0px, 0px)",
+        "height": 41,
+        "top": 521,
+        "provider": null
+      },
+      {
+        "id": "rule:0",
+        "transform": "translate(48px, 96px)",
+        "height": 100,
+        "top": 603,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:0.0",
+        "transform": "translate(96px, 262px)",
+        "height": 126,
+        "top": 744,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:0.0.0",
+        "transform": "translate(144px, 458px)",
+        "height": 146,
+        "top": 911,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:1",
+        "transform": "translate(48px, 678px)",
+        "height": 145,
+        "top": 1098,
+        "provider": "Umbricians.MediaCurator.Alphabetical"
+      }
+    ]
+  },
+  "afterArrow": {
+    "label": "after-arrow",
+    "rules": [
+      "Umbricians.MediaCurator.Alphabetical",
+      "MediaCurator.Date"
+    ],
+    "nodes": [
+      {
+        "id": "scope",
+        "transform": "translate(0px, 0px)",
+        "height": 41,
+        "top": 521,
+        "provider": null
+      },
+      {
+        "id": "rule:0",
+        "transform": "translate(48px, 96px)",
+        "height": 145,
+        "top": 603,
+        "provider": "Umbricians.MediaCurator.Alphabetical"
+      },
+      {
+        "id": "rule:1",
+        "transform": "translate(48px, 314px)",
+        "height": 100,
+        "top": 788,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:1.0",
+        "transform": "translate(96px, 480px)",
+        "height": 126,
+        "top": 929,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:1.0.0",
+        "transform": "translate(144px, 676px)",
+        "height": 146,
+        "top": 1096,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      }
+    ]
+  },
+  "midSmall": {
+    "label": "mid-small-drag",
+    "rules": [
+      "Umbricians.MediaCurator.Alphabetical",
+      "MediaCurator.Date"
+    ],
+    "nodes": [
+      {
+        "id": "scope",
+        "transform": "translate(0px, 0px)",
+        "height": 41,
+        "top": 521,
+        "provider": null
+      },
+      {
+        "id": "rule:0",
+        "transform": "translate(155.059px, 160.706px)",
+        "height": 145,
+        "top": 658,
+        "provider": "Umbricians.MediaCurator.Alphabetical"
+      },
+      {
+        "id": "rule:1",
+        "transform": "translate(48px, 314px)",
+        "height": 100,
+        "top": 788,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:1.0",
+        "transform": "translate(96px, 480px)",
+        "height": 126,
+        "top": 929,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:1.0.0",
+        "transform": "translate(144px, 676px)",
+        "height": 146,
+        "top": 1096,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      }
+    ]
+  },
+  "afterSmallDrag": {
+    "label": "after-small-drag",
+    "rules": [
+      "Umbricians.MediaCurator.Alphabetical",
+      "MediaCurator.Date"
+    ],
+    "nodes": [
+      {
+        "id": "scope",
+        "transform": "translate(0px, 0px)",
+        "height": 41,
+        "top": 521,
+        "provider": null
+      },
+      {
+        "id": "rule:0",
+        "transform": "translate(155.059px, 160.706px)",
+        "height": 145,
+        "top": 658,
+        "provider": "Umbricians.MediaCurator.Alphabetical"
+      },
+      {
+        "id": "rule:1",
+        "transform": "translate(48px, 314px)",
+        "height": 100,
+        "top": 788,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:1.0",
+        "transform": "translate(96px, 480px)",
+        "height": 126,
+        "top": 929,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:1.0.0",
+        "transform": "translate(144px, 676px)",
+        "height": 146,
+        "top": 1096,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      }
+    ]
+  },
+  "afterReorderDrag": {
+    "label": "after-reorder-drag",
+    "rules": [
+      "MediaCurator.Date",
+      "Umbricians.MediaCurator.Alphabetical"
+    ],
+    "nodes": [
+      {
+        "id": "scope",
+        "transform": "translate(0px, 0px)",
+        "height": 41,
+        "top": 568,
+        "provider": null
+      },
+      {
+        "id": "rule:0",
+        "transform": "translate(48px, 96px)",
+        "height": 100,
+        "top": 650,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:0.0",
+        "transform": "translate(96px, 262px)",
+        "height": 126,
+        "top": 791,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:0.0.0",
+        "transform": "translate(144px, 458px)",
+        "height": 146,
+        "top": 957,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:1",
+        "transform": "translate(48px, 678px)",
+        "height": 145,
+        "top": 1144,
+        "provider": "Umbricians.MediaCurator.Alphabetical"
+      }
+    ]
+  }
+}

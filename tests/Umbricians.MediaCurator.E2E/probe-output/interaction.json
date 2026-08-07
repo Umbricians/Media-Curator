@@ -1,0 +1,6 @@
+{
+  "beforeProvider": "Umbricians.MediaCurator.AiTag",
+  "selectedProvider": "Umbricians.MediaCurator.Date",
+  "formatValue": "yyyy",
+  "dragHandleCount": 3
+}

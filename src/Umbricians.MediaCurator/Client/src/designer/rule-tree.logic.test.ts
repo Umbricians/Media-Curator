@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProviderModel, RuleNodeModel } from "../api/index.js";
-import { addChildAt, defaultSettings, examplePath, moveSibling, removeAt, updateAt } from "./rule-tree.logic.js";
+import { addChildAt, defaultSettings, examplePath, moveSibling, removeAt, reorderSibling, updateAt } from "./rule-tree.logic.js";
 
 const node = (alias: string, children: RuleNodeModel[] = [], extra: Partial<RuleNodeModel> = {}): RuleNodeModel => ({
   providerAlias: alias,
@@ -72,6 +72,23 @@ describe("moveSibling", () => {
     const updated = moveSibling(rules, [0, 0], 1);
 
     expect(updated[0].children!.map((c) => c.providerAlias)).toEqual(["y", "x"]);
+  });
+});
+
+describe("reorderSibling", () => {
+  it("moves a root rule to a new index", () => {
+    const rules = [node("a"), node("b"), node("c")];
+
+    const updated = reorderSibling(rules, [2], 0);
+
+    expect(updated.map((r) => r.providerAlias)).toEqual(["c", "a", "b"]);
+  });
+
+  it("ignores invalid target indices", () => {
+    const rules = [node("a"), node("b")];
+
+    expect(reorderSibling(rules, [0], 0).map((r) => r.providerAlias)).toEqual(["a", "b"]);
+    expect(reorderSibling(rules, [0], 5).map((r) => r.providerAlias)).toEqual(["a", "b"]);
   });
 });
 

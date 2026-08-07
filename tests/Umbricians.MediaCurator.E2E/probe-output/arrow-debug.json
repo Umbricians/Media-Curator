@@ -1,0 +1,86 @@
+{
+  "setup": {
+    "rulesBefore": [
+      {
+        "alias": "MediaCurator.Date",
+        "children": 1
+      },
+      {
+        "alias": "Umbricians.MediaCurator.Alphabetical",
+        "children": 0
+      }
+    ],
+    "providers": [
+      {
+        "id": "rule:0",
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:1",
+        "provider": "Umbricians.MediaCurator.Alphabetical"
+      }
+    ]
+  },
+  "arrowResult": {
+    "before": [
+      "MediaCurator.Date",
+      "Umbricians.MediaCurator.Alphabetical"
+    ],
+    "afterClick": [
+      "Umbricians.MediaCurator.Alphabetical",
+      "MediaCurator.Date"
+    ],
+    "afterDispatch": [
+      "MediaCurator.Date",
+      "Umbricians.MediaCurator.Alphabetical"
+    ],
+    "btnExists": true,
+    "btnClass": "nodrag nopan nowheel",
+    "rulesProp": [
+      {
+        "alias": "MediaCurator.Date",
+        "children": 1
+      },
+      {
+        "alias": "Umbricians.MediaCurator.Alphabetical",
+        "children": 0
+      }
+    ],
+    "reactKeys": [
+      "__reactFiber$qu8sw7sj25",
+      "__reactProps$qu8sw7sj25"
+    ]
+  },
+  "layout": [
+    {
+      "id": "scope",
+      "transform": "translate(0px, 0px)",
+      "screenH": 39,
+      "screenTop": 410
+    },
+    {
+      "id": "rule:0",
+      "transform": "translate(48px, 84px)",
+      "screenH": 126,
+      "screenTop": 473
+    },
+    {
+      "id": "rule:0.0",
+      "transform": "translate(96px, 284px)",
+      "screenH": 152,
+      "screenTop": 623
+    },
+    {
+      "id": "rule:0.0.0",
+      "transform": "translate(144px, 518px)",
+      "screenH": 173,
+      "screenTop": 799
+    },
+    {
+      "id": "rule:1",
+      "transform": "translate(48px, 780px)",
+      "screenH": 173,
+      "screenTop": 995
+    }
+  ]
+}

@@ -25,6 +25,8 @@ export class McRuleFlowElement extends UmbElementMixin(LitElement) {
 
   #mount?: HTMLDivElement;
   #root?: Root;
+  /** Bumped on structural edits so React always re-layouts, even for identical-provider swaps. */
+  #layoutGeneration = 0;
 
   override connectedCallback() {
     super.connectedCallback();
@@ -67,8 +69,14 @@ export class McRuleFlowElement extends UmbElementMixin(LitElement) {
     super.disconnectedCallback();
   }
 
-  #emitChange(rules: RuleNodeModel[]) {
+  #emitChange(rules: RuleNodeModel[], relayout = false) {
+    if (relayout) {
+      this.#layoutGeneration += 1;
+    }
+    // Keep the host property in sync, then push into React immediately so we do
+    // not depend on Lit's async update cycle to reflect arrow/drag reorders.
     this.rules = rules;
+    this.#renderReact();
     this.dispatchEvent(new CustomEvent("rules-change", { detail: { rules }, bubbles: false }));
   }
 
@@ -80,7 +88,9 @@ export class McRuleFlowElement extends UmbElementMixin(LitElement) {
         rules: this.rules,
         providers: this.providers,
         scopeName: this.scopeName,
-        onRulesChange: (rules: RuleNodeModel[]) => this.#emitChange(rules),
+        layoutGeneration: this.#layoutGeneration,
+        onRulesChange: (rules: RuleNodeModel[], options?: { relayout?: boolean }) =>
+          this.#emitChange(rules, options?.relayout === true),
       }),
     );
   }
@@ -89,9 +99,14 @@ export class McRuleFlowElement extends UmbElementMixin(LitElement) {
     css`
       :host {
         display: block;
+        position: relative;
+        isolation: isolate;
+        z-index: 1;
       }
       .react-root {
         width: 100%;
+        position: relative;
+        z-index: 1;
       }
     `,
   ];

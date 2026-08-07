@@ -1,0 +1,194 @@
+{
+  "beforeAliases": [
+    "MediaCurator.Date",
+    "Umbricians.MediaCurator.Alphabetical"
+  ],
+  "afterDownAliases": [
+    "Umbricians.MediaCurator.Alphabetical",
+    "MediaCurator.Date"
+  ],
+  "afterUpAliases": [
+    "MediaCurator.Date",
+    "Umbricians.MediaCurator.Alphabetical"
+  ],
+  "downWorked": true,
+  "upWorked": true,
+  "sameBeforeFallbacks": [
+    "skip",
+    "stop"
+  ],
+  "sameAfterFallbacks": [
+    "stop",
+    "skip"
+  ],
+  "sameProviderWorked": true,
+  "scripts": [],
+  "uiAfterDown": [
+    {
+      "id": "rule:0",
+      "provider": "Umbricians.MediaCurator.Alphabetical",
+      "fallback": "skip",
+      "transform": "translate(48px, 96px)"
+    },
+    {
+      "id": "rule:1",
+      "provider": "Umbricians.MediaCurator.AiTag",
+      "fallback": "skip",
+      "transform": "translate(48px, 314px)"
+    }
+  ],
+  "uiSameAfter": [
+    {
+      "id": "rule:0",
+      "provider": "Umbricians.MediaCurator.Alphabetical",
+      "fallback": "stop",
+      "transform": "translate(48px, 96px)"
+    },
+    {
+      "id": "rule:1",
+      "provider": "Umbricians.MediaCurator.AiTag",
+      "fallback": "skip",
+      "transform": "translate(48px, 314px)"
+    }
+  ],
+  "before": {
+    "label": "before",
+    "scripts": [],
+    "rules": [
+      {
+        "alias": "MediaCurator.Date",
+        "fallback": "skip"
+      },
+      {
+        "alias": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "skip"
+      }
+    ],
+    "ui": [
+      {
+        "id": "rule:0",
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "fallback": "skip",
+        "transform": "translate(48px, 96px)"
+      },
+      {
+        "id": "rule:1",
+        "provider": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "skip",
+        "transform": "translate(48px, 678px)"
+      }
+    ]
+  },
+  "afterDown": {
+    "label": "after-down",
+    "scripts": [],
+    "rules": [
+      {
+        "alias": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "skip"
+      },
+      {
+        "alias": "MediaCurator.Date",
+        "fallback": "skip"
+      }
+    ],
+    "ui": [
+      {
+        "id": "rule:0",
+        "provider": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "skip",
+        "transform": "translate(48px, 96px)"
+      },
+      {
+        "id": "rule:1",
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "fallback": "skip",
+        "transform": "translate(48px, 314px)"
+      }
+    ]
+  },
+  "afterUp": {
+    "label": "after-up",
+    "scripts": [],
+    "rules": [
+      {
+        "alias": "MediaCurator.Date",
+        "fallback": "skip"
+      },
+      {
+        "alias": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "skip"
+      }
+    ],
+    "ui": [
+      {
+        "id": "rule:0",
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "fallback": "skip",
+        "transform": "translate(48px, 96px)"
+      },
+      {
+        "id": "rule:1",
+        "provider": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "skip",
+        "transform": "translate(48px, 678px)"
+      }
+    ]
+  },
+  "sameBefore": {
+    "label": "same-before",
+    "scripts": [],
+    "rules": [
+      {
+        "alias": "MediaCurator.Date",
+        "fallback": "skip"
+      },
+      {
+        "alias": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "stop"
+      }
+    ],
+    "ui": [
+      {
+        "id": "rule:0",
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "fallback": "skip",
+        "transform": "translate(48px, 96px)"
+      },
+      {
+        "id": "rule:1",
+        "provider": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "stop",
+        "transform": "translate(48px, 678px)"
+      }
+    ]
+  },
+  "sameAfter": {
+    "label": "same-after",
+    "scripts": [],
+    "rules": [
+      {
+        "alias": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "stop"
+      },
+      {
+        "alias": "MediaCurator.Date",
+        "fallback": "skip"
+      }
+    ],
+    "ui": [
+      {
+        "id": "rule:0",
+        "provider": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "stop",
+        "transform": "translate(48px, 96px)"
+      },
+      {
+        "id": "rule:1",
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "fallback": "skip",
+        "transform": "translate(48px, 314px)"
+      }
+    ]
+  }
+}

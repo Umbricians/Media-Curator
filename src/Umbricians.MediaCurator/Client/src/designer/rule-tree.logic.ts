@@ -34,12 +34,32 @@ export function moveSibling(rules: RuleNodeModel[], path: number[], delta: numbe
     const target = index + delta;
     if (target < 0 || target >= siblings.length) return siblings;
     const copy = [...siblings];
-    [copy[index], copy[target]] = [copy[target], copy[index]];
+    const current = copy[index];
+    const swapWith = copy[target];
+    if (!current || !swapWith) return siblings;
+    copy[index] = swapWith;
+    copy[target] = current;
     return copy;
   };
   return parentPath.length === 0
     ? moveIn(rules)
     : updateAt(rules, parentPath, (node) => ({ ...node, children: moveIn(node.children ?? []) }));
+}
+
+export function reorderSibling(rules: RuleNodeModel[], path: number[], newIndex: number): RuleNodeModel[] {
+  const parentPath = path.slice(0, -1);
+  const oldIndex = path[path.length - 1];
+  const reorderIn = (siblings: RuleNodeModel[]): RuleNodeModel[] => {
+    if (newIndex < 0 || newIndex >= siblings.length || newIndex === oldIndex) return siblings;
+    const copy = [...siblings];
+    const [item] = copy.splice(oldIndex, 1);
+    if (!item) return siblings;
+    copy.splice(newIndex, 0, item);
+    return copy;
+  };
+  return parentPath.length === 0
+    ? reorderIn(rules)
+    : updateAt(rules, parentPath, (node) => ({ ...node, children: reorderIn(node.children ?? []) }));
 }
 
 export function defaultSettings(provider: ProviderModel): NonNullable<RuleNodeModel["settings"]> {

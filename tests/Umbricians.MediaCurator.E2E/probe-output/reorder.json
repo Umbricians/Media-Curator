@@ -1,0 +1,337 @@
+{
+  "firstProviderBefore": "Umbricians.MediaCurator.AiTag",
+  "firstProviderAfterArrow": "Umbricians.MediaCurator.AiTag",
+  "providersBefore": [
+    {
+      "id": "rule:0",
+      "provider": "Umbricians.MediaCurator.AiTag",
+      "top": 129,
+      "height": 122
+    },
+    {
+      "id": "rule:1",
+      "provider": "Umbricians.MediaCurator.AiTag",
+      "top": 651,
+      "height": 243
+    }
+  ],
+  "providersAfterArrow": [
+    {
+      "id": "rule:0",
+      "provider": "Umbricians.MediaCurator.AiTag",
+      "top": 129,
+      "height": 122
+    },
+    {
+      "id": "rule:1",
+      "provider": "Umbricians.MediaCurator.AiTag",
+      "top": 651,
+      "height": 243
+    }
+  ],
+  "arrowChangedOrder": false,
+  "before": {
+    "label": "before",
+    "nodes": [
+      {
+        "id": "scope",
+        "className": "react-flow__node react-flow__node-scope",
+        "top": 509,
+        "left": 697,
+        "width": 240,
+        "height": 39,
+        "provider": null,
+        "transform": "translate(0px, 0px)"
+      },
+      {
+        "id": "rule:0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 572,
+        "left": 733,
+        "width": 240,
+        "height": 126,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(48px, 84px)"
+      },
+      {
+        "id": "rule:0.0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 722,
+        "left": 769,
+        "width": 240,
+        "height": 152,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(96px, 284px)"
+      },
+      {
+        "id": "rule:0.0.0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 897,
+        "left": 805,
+        "width": 240,
+        "height": 173,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(144px, 518px)"
+      }
+    ]
+  },
+  "ready": {
+    "label": "ready",
+    "nodes": [
+      {
+        "id": "scope",
+        "className": "react-flow__node react-flow__node-scope",
+        "top": 66,
+        "left": 697,
+        "width": 240,
+        "height": 39,
+        "provider": null,
+        "transform": "translate(0px, 0px)"
+      },
+      {
+        "id": "rule:0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 129,
+        "left": 733,
+        "width": 240,
+        "height": 126,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(48px, 84px)"
+      },
+      {
+        "id": "rule:0.0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 279,
+        "left": 769,
+        "width": 240,
+        "height": 152,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(96px, 284px)"
+      },
+      {
+        "id": "rule:0.0.0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 454,
+        "left": 805,
+        "width": 240,
+        "height": 173,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(144px, 518px)"
+      },
+      {
+        "id": "rule:1",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 651,
+        "left": 733,
+        "width": 240,
+        "height": 252,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(48px, 780px)"
+      }
+    ]
+  },
+  "afterArrow": {
+    "label": "after-arrow-down",
+    "nodes": [
+      {
+        "id": "scope",
+        "className": "react-flow__node react-flow__node-scope",
+        "top": 66,
+        "left": 697,
+        "width": 240,
+        "height": 39,
+        "provider": null,
+        "transform": "translate(0px, 0px)"
+      },
+      {
+        "id": "rule:0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 129,
+        "left": 733,
+        "width": 240,
+        "height": 126,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(48px, 84px)"
+      },
+      {
+        "id": "rule:0.0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 279,
+        "left": 769,
+        "width": 240,
+        "height": 152,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(96px, 284px)"
+      },
+      {
+        "id": "rule:0.0.0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 454,
+        "left": 805,
+        "width": 240,
+        "height": 173,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(144px, 518px)"
+      },
+      {
+        "id": "rule:1",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 651,
+        "left": 733,
+        "width": 240,
+        "height": 252,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(48px, 780px)"
+      }
+    ]
+  },
+  "midDrag": {
+    "x": 754.2578125,
+    "y": 549.5390625,
+    "providers": [
+      {
+        "id": "scope",
+        "top": 66,
+        "provider": null
+      },
+      {
+        "id": "rule:0",
+        "top": 129,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:0.0",
+        "top": 279,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:0.0.0",
+        "top": 454,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      },
+      {
+        "id": "rule:1",
+        "top": 541,
+        "provider": "Umbricians.MediaCurator.AiTag"
+      }
+    ]
+  },
+  "afterDrag": {
+    "label": "after-drag",
+    "nodes": [
+      {
+        "id": "scope",
+        "className": "react-flow__node react-flow__node-scope",
+        "top": 66,
+        "left": 697,
+        "width": 240,
+        "height": 39,
+        "provider": null,
+        "transform": "translate(0px, 0px)"
+      },
+      {
+        "id": "rule:0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 129,
+        "left": 733,
+        "width": 240,
+        "height": 252,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(48px, 84px)"
+      },
+      {
+        "id": "rule:1",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 405,
+        "left": 733,
+        "width": 240,
+        "height": 126,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(48px, 452px)"
+      },
+      {
+        "id": "rule:1.0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 555,
+        "left": 769,
+        "width": 240,
+        "height": 152,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(96px, 652px)"
+      },
+      {
+        "id": "rule:1.0.0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 730,
+        "left": 805,
+        "width": 240,
+        "height": 173,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(144px, 886px)"
+      }
+    ]
+  },
+  "afterSmallDrag": {
+    "label": "after-small-drag",
+    "nodes": [
+      {
+        "id": "scope",
+        "className": "react-flow__node react-flow__node-scope",
+        "top": 66,
+        "left": 697,
+        "width": 240,
+        "height": 39,
+        "provider": null,
+        "transform": "translate(0px, 0px)"
+      },
+      {
+        "id": "rule:0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 129,
+        "left": 733,
+        "width": 240,
+        "height": 252,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(48px, 84px)"
+      },
+      {
+        "id": "rule:1",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 405,
+        "left": 733,
+        "width": 240,
+        "height": 126,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(48px, 452px)"
+      },
+      {
+        "id": "rule:1.0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 555,
+        "left": 769,
+        "width": 240,
+        "height": 152,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(96px, 652px)"
+      },
+      {
+        "id": "rule:1.0.0",
+        "className": "react-flow__node react-flow__node-rule nopan draggable",
+        "top": 730,
+        "left": 805,
+        "width": 240,
+        "height": 173,
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "transform": "translate(144px, 886px)"
+      }
+    ]
+  },
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "[UmbAuthClient] Token request failed: 400 Bad Request",
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "[UmbAuthClient] Token request failed: 400 Bad Request",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "before": {
+    "rules": [
+      "Umbricians.MediaCurator.Date",
+      "Umbricians.MediaCurator.Alphabetical"
+    ],
+    "uiProviders": [
+      "Umbricians.MediaCurator.Date",
+      "Umbricians.MediaCurator.Alphabetical"
+    ],
+    "uiLabels": [
+      "Date Folders",
+      "Alphabetical"
+    ],
+    "transforms": [
+      "translate(48px, 96px)",
+      "translate(48px, 406px)"
+    ]
+  },
+  "afterDown": {
+    "rules": [
+      "Umbricians.MediaCurator.Alphabetical",
+      "Umbricians.MediaCurator.Date"
+    ],
+    "uiProviders": [
+      "Umbricians.MediaCurator.Alphabetical",
+      "Umbricians.MediaCurator.Date"
+    ],
+    "uiLabels": [
+      "Alphabetical",
+      "Date Folders"
+    ],
+    "transforms": [
+      "translate(48px, 96px)",
+      "translate(48px, 314px)"
+    ]
+  },
+  "afterUp": {
+    "rules": [
+      "Umbricians.MediaCurator.Date",
+      "Umbricians.MediaCurator.Alphabetical"
+    ],
+    "uiProviders": [
+      "Umbricians.MediaCurator.Date",
+      "Umbricians.MediaCurator.Alphabetical"
+    ],
+    "uiLabels": [
+      "Date Folders",
+      "Alphabetical"
+    ],
+    "transforms": [
+      "translate(48px, 96px)",
+      "translate(48px, 342px)"
+    ]
+  },
+  "downDataOk": true,
+  "downUiOk": true,
+  "downUiMatchesData": true,
+  "upDataOk": true,
+  "upUiOk": true,
+  "upUiMatchesData": true
+}

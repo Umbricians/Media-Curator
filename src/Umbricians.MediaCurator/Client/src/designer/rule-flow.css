@@ -4,14 +4,20 @@
   --xy-edge-stroke-selected: var(--uui-color-selected, #1b264f);
   --xy-edge-label-background-color: var(--uui-color-surface, #fff);
   --xy-background-color: var(--uui-color-surface, #fff);
+  position: relative;
+  isolation: isolate;
+  z-index: 1;
 }
 
 .mc-rule-flow-viewport {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 560px;
   border: 1px solid var(--uui-color-border, #d8d7d9);
   border-radius: var(--uui-border-radius, 6px);
   overflow: hidden;
+  pointer-events: auto;
 }
 
 .mc-rule-flow-viewport .react-flow {
@@ -83,6 +89,19 @@
   border-bottom: 1px solid var(--uui-color-border, #d8d7d9);
 }
 
+.mc-rule-flow-drag-handle {
+  cursor: grab;
+  padding: 0.15rem 0.35rem;
+  color: var(--uui-color-text-alt, #6e6e6e);
+  user-select: none;
+  line-height: 1;
+  border-radius: 4px;
+}
+
+.mc-rule-flow-drag-handle:active {
+  cursor: grabbing;
+}
+
 .mc-rule-flow-node-header select {
   flex: 1;
   min-width: 0;
@@ -92,6 +111,9 @@
   display: flex;
   gap: 0.25rem;
   padding: 0 1rem 0.5rem;
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
 }
 
 .mc-rule-flow-node-actions button {
@@ -100,6 +122,9 @@
   background: var(--uui-color-surface, #fff);
   border-radius: 4px;
   padding: 0.15rem 0.45rem;
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
 }
 
 .mc-rule-flow-node-actions button.danger {

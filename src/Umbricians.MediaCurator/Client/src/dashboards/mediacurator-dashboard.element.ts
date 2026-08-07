@@ -648,14 +648,19 @@ export class MediaCuratorDashboardElement extends UmbElementMixin(LitElement) {
           ></uui-toggle>
         </div>
 
-        <h4>Rules</h4>
-        <mc-rule-flow
-          .rules=${editing.rules ?? []}
-          .providers=${this._providers}
-          .scopeName=${editing.name || "Scope"}
-          @rules-change=${(e: CustomEvent<{ rules: RuleNodeModel[] }>) =>
-            (this._editing = { ...editing, rules: e.detail.rules })}
-        ></mc-rule-flow>
+        <h4 class="rules-heading">Rules</h4>
+        <div class="rules-editor">
+          <mc-rule-flow
+            .rules=${editing.rules ?? []}
+            .providers=${this._providers}
+            .scopeName=${editing.name || "Scope"}
+            @rules-change=${(e: CustomEvent<{ rules: RuleNodeModel[] }>) => {
+              const current = this._editing;
+              if (!current) return;
+              this._editing = { ...current, rules: e.detail.rules };
+            }}
+          ></mc-rule-flow>
+        </div>
 
         <div class="actions">
           <uui-button label="Cancel" look="secondary" @click=${() => (this._editing = undefined)}></uui-button>
@@ -686,6 +691,16 @@ export class MediaCuratorDashboardElement extends UmbElementMixin(LitElement) {
         gap: var(--uui-size-space-3);
         justify-content: flex-end;
         margin-top: var(--uui-size-space-5);
+      }
+      .rules-heading {
+        position: relative;
+        z-index: 0;
+        pointer-events: none;
+      }
+      .rules-editor {
+        position: relative;
+        z-index: 1;
+        isolation: isolate;
       }
     `,
   ];

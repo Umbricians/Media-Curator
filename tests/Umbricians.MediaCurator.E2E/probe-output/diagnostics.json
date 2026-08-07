@@ -55,22 +55,22 @@
       "text": "Datesscope"
     },
     {
-      "className": "react-flow__node react-flow__node-rule",
+      "className": "react-flow__node react-flow__node-rule nopan draggable",
       "width": 240,
       "height": 126,
-      "text": "AI Tag / SubjectAlphabeticalColorDate FoldersDimensions / Or"
+      "text": "⋮⋮AI Tag / SubjectAlphabeticalColorDate FoldersDimensions / "
     },
     {
-      "className": "react-flow__node react-flow__node-rule",
+      "className": "react-flow__node react-flow__node-rule nopan draggable",
       "width": 240,
       "height": 151.5,
-      "text": "AI Tag / SubjectAlphabeticalColorDate FoldersDimensions / Or"
+      "text": "⋮⋮AI Tag / SubjectAlphabeticalColorDate FoldersDimensions / "
     },
     {
-      "className": "react-flow__node react-flow__node-rule",
+      "className": "react-flow__node react-flow__node-rule nopan draggable",
       "width": 240,
       "height": 172.5,
-      "text": "AI Tag / SubjectAlphabeticalColorDate FoldersDimensions / Or"
+      "text": "⋮⋮AI Tag / SubjectAlphabeticalColorDate FoldersDimensions / "
     }
   ],
   "nodeText": "Dates",

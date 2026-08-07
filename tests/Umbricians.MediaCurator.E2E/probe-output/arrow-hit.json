@@ -1,0 +1,99 @@
+{
+  "before": {
+    "rules": [
+      "MediaCurator.Date",
+      "Umbricians.MediaCurator.Alphabetical"
+    ],
+    "dashboardRules": [
+      "MediaCurator.Date",
+      "Umbricians.MediaCurator.Alphabetical"
+    ],
+    "bundleHint": 0,
+    "moveDownCount": 4
+  },
+  "hit": {
+    "x": 761.834716796875,
+    "y": 650.5757751464844,
+    "btnRect": {
+      "top": 641.3187255859375,
+      "left": 752.039794921875,
+      "width": 19.58984375,
+      "height": 18.51409912109375
+    },
+    "topTag": "UMB-APP",
+    "topMark": null,
+    "topClass": "",
+    "path": [
+      {
+        "tag": "UMB-APP",
+        "id": null,
+        "className": "",
+        "mark": null
+      },
+      {
+        "tag": "BODY",
+        "id": null,
+        "className": "uui-font uui-text",
+        "mark": null
+      },
+      {
+        "tag": "HTML",
+        "id": null,
+        "className": "",
+        "mark": null
+      }
+    ],
+    "btnDisabled": false,
+    "btnPointerEvents": "all"
+  },
+  "afterMouse": {
+    "flowRules": [
+      "Umbricians.MediaCurator.Alphabetical",
+      "MediaCurator.Date"
+    ],
+    "dashboardRules": [
+      "Umbricians.MediaCurator.Alphabetical",
+      "MediaCurator.Date"
+    ],
+    "providersOnNodes": [
+      {
+        "id": "rule:0",
+        "provider": "Umbricians.MediaCurator.Alphabetical"
+      },
+      {
+        "id": "rule:1",
+        "provider": "Umbricians.MediaCurator.AiTag"
+      }
+    ]
+  },
+  "afterLocator": {
+    "flowRules": [
+      "Umbricians.MediaCurator.Alphabetical",
+      "MediaCurator.Date"
+    ],
+    "dashboardRules": [
+      "Umbricians.MediaCurator.Alphabetical",
+      "MediaCurator.Date"
+    ]
+  },
+  "direct": {
+    "beforeRules": [
+      "Umbricians.MediaCurator.Alphabetical",
+      "MediaCurator.Date"
+    ],
+    "afterRules": [
+      "MediaCurator.Date",
+      "Umbricians.MediaCurator.Alphabetical"
+    ]
+  },
+  "afterDirect": {
+    "flowRules": [
+      "MediaCurator.Date",
+      "Umbricians.MediaCurator.Alphabetical"
+    ],
+    "dashboardRules": [
+      "MediaCurator.Date",
+      "Umbricians.MediaCurator.Alphabetical"
+    ]
+  }
+}

@@ -1,0 +1,200 @@
+{
+  "beforeFallbacks": [
+    "skip",
+    "stop"
+  ],
+  "afterDownFallbacks": [
+    "stop",
+    "skip"
+  ],
+  "afterUpFallbacks": [
+    "stop",
+    "skip"
+  ],
+  "afterDragThenArrowFallbacks": [
+    "skip",
+    "stop"
+  ],
+  "downWorked": true,
+  "upWorked": false,
+  "afterDragWorked": true,
+  "uiAfterDown": [
+    {
+      "id": "rule:0",
+      "fallback": "stop",
+      "transform": "translate(48px, 96px)"
+    },
+    {
+      "id": "rule:1",
+      "fallback": "skip",
+      "transform": "translate(48px, 314px)"
+    }
+  ],
+  "uiAfterDragThenArrow": [
+    {
+      "id": "rule:0",
+      "fallback": "skip",
+      "transform": "translate(48px, 96px)"
+    },
+    {
+      "id": "rule:1",
+      "fallback": "stop",
+      "transform": "translate(48px, 678px)"
+    }
+  ],
+  "before": {
+    "rules": [
+      {
+        "i": 0,
+        "alias": "MediaCurator.Date",
+        "fallback": "skip",
+        "format": "yyyy",
+        "children": 1
+      },
+      {
+        "i": 1,
+        "alias": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "stop",
+        "children": 0
+      }
+    ],
+    "ui": [
+      {
+        "id": "rule:0",
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "fallback": "skip",
+        "transform": "translate(48px, 96px)"
+      },
+      {
+        "id": "rule:1",
+        "provider": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "stop",
+        "transform": "translate(48px, 678px)"
+      }
+    ]
+  },
+  "afterDown": {
+    "rules": [
+      {
+        "i": 0,
+        "alias": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "stop",
+        "children": 0
+      },
+      {
+        "i": 1,
+        "alias": "MediaCurator.Date",
+        "fallback": "skip",
+        "format": "yyyy",
+        "children": 1
+      }
+    ],
+    "ui": [
+      {
+        "id": "rule:0",
+        "provider": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "stop",
+        "transform": "translate(48px, 96px)"
+      },
+      {
+        "id": "rule:1",
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "fallback": "skip",
+        "transform": "translate(48px, 314px)"
+      }
+    ]
+  },
+  "afterUp": {
+    "rules": [
+      {
+        "i": 0,
+        "alias": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "stop",
+        "children": 0
+      },
+      {
+        "i": 1,
+        "alias": "MediaCurator.Date",
+        "fallback": "skip",
+        "format": "yyyy",
+        "children": 1
+      }
+    ],
+    "ui": [
+      {
+        "id": "rule:0",
+        "provider": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "stop",
+        "transform": "translate(48px, 96px)"
+      },
+      {
+        "id": "rule:1",
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "fallback": "skip",
+        "transform": "translate(48px, 314px)"
+      }
+    ]
+  },
+  "afterDrag": {
+    "rules": [
+      {
+        "i": 0,
+        "alias": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "stop",
+        "children": 0
+      },
+      {
+        "i": 1,
+        "alias": "MediaCurator.Date",
+        "fallback": "skip",
+        "format": "yyyy",
+        "children": 1
+      }
+    ],
+    "ui": [
+      {
+        "id": "rule:0",
+        "provider": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "stop",
+        "transform": "translate(48px, 96px)"
+      },
+      {
+        "id": "rule:1",
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "fallback": "skip",
+        "transform": "translate(89.1765px, 272.824px)"
+      }
+    ]
+  },
+  "afterDragThenArrow": {
+    "rules": [
+      {
+        "i": 0,
+        "alias": "MediaCurator.Date",
+        "fallback": "skip",
+        "format": "yyyy",
+        "children": 1
+      },
+      {
+        "i": 1,
+        "alias": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "stop",
+        "children": 0
+      }
+    ],
+    "ui": [
+      {
+        "id": "rule:0",
+        "provider": "Umbricians.MediaCurator.AiTag",
+        "fallback": "skip",
+        "transform": "translate(48px, 96px)"
+      },
+      {
+        "id": "rule:1",
+        "provider": "Umbricians.MediaCurator.Alphabetical",
+        "fallback": "stop",
+        "transform": "translate(48px, 678px)"
+      }
+    ]
+  }
+}
