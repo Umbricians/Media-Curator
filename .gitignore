@@ -41,3 +41,6 @@ appsettings.Development.json
 
 # Local tool settings
 .claude/settings.local.json
+
+# Jev decision logs (contain prompt text)
+tools/jev/.log/

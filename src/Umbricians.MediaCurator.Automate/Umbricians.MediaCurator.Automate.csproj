@@ -15,7 +15,7 @@
     <ProjectReference Include="..\Umbricians.MediaCurator\Umbricians.MediaCurator.csproj" />
     <!-- Override WorkflowCore 3.9.0's vulnerable transitive OpenTelemetry.Api dependency. -->
     <PackageReference Include="OpenTelemetry.Api" Version="1.15.3" />
-    <PackageReference Include="Umbraco.Automate.Core" Version="17.0.0-beta" />
+    <PackageReference Include="Umbraco.Automate.Core" Version="17.4.0" />
   </ItemGroup>
 
   <ItemGroup>

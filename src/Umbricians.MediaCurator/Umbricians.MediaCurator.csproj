@@ -34,11 +34,11 @@
   <ItemGroup>
     <PackageReference Include="MetadataExtractor" Version="2.9.3" />
     <!-- Override Umbraco CMS' vulnerable transitive MessagePack dependency. -->
-    <PackageReference Include="MessagePack" Version="3.1.7" />
+    <PackageReference Include="MessagePack" Version="3.1.8" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
-    <PackageReference Include="Umbraco.AI" Version="1.14.0" />
-    <PackageReference Include="Umbraco.Cms.Api.Common" Version="17.4.2" />
-    <PackageReference Include="Umbraco.Cms.Api.Management" Version="17.4.2" />
+    <PackageReference Include="Umbraco.AI" Version="17.4.0" />
+    <PackageReference Include="Umbraco.Cms.Api.Common" Version="17.7.0" />
+    <PackageReference Include="Umbraco.Cms.Api.Management" Version="17.7.0" />
 
     <!--
       Swashbuckle is available transitively from the Umbraco packages above, but we take a direct
@@ -51,9 +51,9 @@
       Most other transitive dependencies don't have this problem because extension code doesn't
       use their types directly - only Swashbuckle/OpenApi types are referenced in the composer.
     -->
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
-    <PackageReference Include="Umbraco.Cms.Web.Common" Version="17.4.2" />
-    <PackageReference Include="Umbraco.Cms.Web.Website" Version="17.4.2" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+    <PackageReference Include="Umbraco.Cms.Web.Common" Version="17.7.0" />
+    <PackageReference Include="Umbraco.Cms.Web.Website" Version="17.7.0" />
   </ItemGroup>
 
   <ItemGroup>

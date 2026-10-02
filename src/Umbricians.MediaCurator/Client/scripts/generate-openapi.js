@@ -34,11 +34,18 @@ fetch(swaggerUrl).then(async (response) => {
   await createClient({
     input: swaggerUrl,
     output: 'src/api',
+    parser: {
+      transforms: {
+        // Keep one model type per schema; the dashboard sends fetched models straight back.
+        readWrite: false,
+      },
+    },
     plugins: [
       ...defaultPlugins,
       {
         name: '@hey-api/client-fetch',
-        runtimeConfigPath: '../hey-api',
+        // Resolved from the working directory (this Client folder) since openapi-ts 0.99.
+        runtimeConfigPath: './src/hey-api',
       },
       {
         name: '@hey-api/sdk',
