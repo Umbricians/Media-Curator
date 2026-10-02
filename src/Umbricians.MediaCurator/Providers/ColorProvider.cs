@@ -117,6 +117,14 @@ public sealed class ColorProvider : ICurationProvider
         return entries;
     }
 
+    // A pixel this dark or this colourless is a neutral (black/gray/white) rather than a hue.
+    private const float NeutralMaxValue = 0.12f;
+    private const float NeutralMaxSaturation = 0.2f;
+
+    // Coloured pixels covering at least this share of the image decide its colour, so a
+    // coloured subject wins over a larger black, white or gray background.
+    private const float ChromaticShareThreshold = 0.2f;
+
     private static Rgb24? Extract(Stream stream, string mode, List<PaletteEntry> palette)
     {
         using var image = Image.Load<Rgb24>(stream);
@@ -139,8 +147,11 @@ public sealed class ColorProvider : ICurationProvider
             return n == 0 ? null : new Rgb24((byte)(r / n), (byte)(g / n), (byte)(b / n));
         }
 
-        // Dominant: snap every pixel to the palette and pick the most frequent entry's color.
+        // Dominant: classify every pixel, then prefer the most frequent coloured entry when
+        // coloured pixels are a meaningful share of the image.
         var counts = new int[palette.Count];
+        var chromaticPixels = 0;
+        var totalPixels = 0;
         image.ProcessPixelRows(accessor =>
         {
             for (var y = 0; y < accessor.Height; y++)
@@ -148,18 +159,96 @@ public sealed class ColorProvider : ICurationProvider
                 foreach (var px in accessor.GetRowSpan(y))
                 {
                     counts[SnapIndex(px, palette)]++;
+                    totalPixels++;
+                    if (!IsNeutral(Hsv.From(px)))
+                    {
+                        chromaticPixels++;
+                    }
                 }
             }
         });
 
-        var best = Array.IndexOf(counts, counts.Max());
-        return best < 0 ? null : palette[best].Color;
+        if (totalPixels == 0)
+        {
+            return null;
+        }
+
+        var preferChromatic = chromaticPixels >= totalPixels * ChromaticShareThreshold;
+        var best = -1;
+        for (var i = 0; i < palette.Count; i++)
+        {
+            if (counts[i] == 0 || (preferChromatic && IsNeutral(Hsv.From(palette[i].Color))))
+            {
+                continue;
+            }
+
+            if (best < 0 || counts[i] > counts[best])
+            {
+                best = i;
+            }
+        }
+
+        // A palette of only neutrals (or a stray tally) falls back to the overall winner.
+        if (best < 0)
+        {
+            best = Array.IndexOf(counts, counts.Max());
+        }
+
+        return palette[best].Color;
     }
 
     internal static PaletteEntry Snap(Rgb24 color, List<PaletteEntry> palette)
         => palette[SnapIndex(color, palette)];
 
+    /// <summary>Neutral pixels match neutral palette entries by brightness; coloured pixels
+    /// match coloured entries mainly by hue. Plain RGB distance is dominated by brightness,
+    /// which filed dark navies under Black and teal-blues under Gray.</summary>
     private static int SnapIndex(Rgb24 color, List<PaletteEntry> palette)
+    {
+        var pixel = Hsv.From(color);
+        var pixelIsNeutral = IsNeutral(pixel);
+
+        var bestIndex = -1;
+        var bestDistance = double.MaxValue;
+        for (var i = 0; i < palette.Count; i++)
+        {
+            var entry = Hsv.From(palette[i].Color);
+            if (IsNeutral(entry) != pixelIsNeutral)
+            {
+                continue;
+            }
+
+            var distance = pixelIsNeutral ? NeutralDistance(pixel, entry) : ChromaticDistance(pixel, entry);
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                bestIndex = i;
+            }
+        }
+
+        // The palette has no entry of the pixel's kind (e.g. a brand palette with no black):
+        // fall back to the nearest entry of any kind.
+        return bestIndex >= 0 ? bestIndex : NearestByRgb(color, palette);
+    }
+
+    private static bool IsNeutral(Hsv color)
+        => color.Value < NeutralMaxValue || color.Saturation < NeutralMaxSaturation;
+
+    private static double NeutralDistance(Hsv pixel, Hsv entry)
+        => Math.Abs(pixel.Value - entry.Value);
+
+    private static double ChromaticDistance(Hsv pixel, Hsv entry)
+    {
+        // Hue difference as a fraction of the colour wheel (0–0.5), weighted to dominate;
+        // saturation and value separate pairs that share a hue (Brown/Orange, Pink/Red).
+        var hue = Math.Abs(pixel.Hue - entry.Hue);
+        hue = Math.Min(hue, 1 - hue) * 4;
+        var saturation = pixel.Saturation - entry.Saturation;
+        var value = pixel.Value - entry.Value;
+        return (hue * hue) + (0.5 * saturation * saturation) + (0.5 * value * value);
+    }
+
+    private static int NearestByRgb(Rgb24 color, List<PaletteEntry> palette)
     {
         var bestIndex = 0;
         var bestDistance = int.MaxValue;
@@ -179,5 +268,34 @@ public sealed class ColorProvider : ICurationProvider
         }
 
         return bestIndex;
+    }
+
+    /// <summary>Hue, saturation and value, each 0–1.</summary>
+    private readonly record struct Hsv(double Hue, double Saturation, double Value)
+    {
+        public static Hsv From(Rgb24 color)
+        {
+            var r = color.R / 255d;
+            var g = color.G / 255d;
+            var b = color.B / 255d;
+            var max = Math.Max(r, Math.Max(g, b));
+            var min = Math.Min(r, Math.Min(g, b));
+            var delta = max - min;
+
+            double hue = 0;
+            if (delta > 0)
+            {
+                hue = max == r ? ((g - b) / delta) % 6
+                    : max == g ? ((b - r) / delta) + 2
+                    : ((r - g) / delta) + 4;
+                hue /= 6;
+                if (hue < 0)
+                {
+                    hue += 1;
+                }
+            }
+
+            return new Hsv(hue, max == 0 ? 0 : delta / max, max);
+        }
     }
 }

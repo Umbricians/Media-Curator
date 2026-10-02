@@ -312,6 +312,121 @@ public class CurationEngineTests
         Assert.DoesNotContain(plan.Moves, m => m.MediaKey == pinned || m.MediaKey == inExcludedFolder);
     }
 
+    [Fact]
+    public async Task Media_plan_for_a_folder_inside_a_scope_is_relative_to_the_scope_root()
+    {
+        var (engine, media, _, _, scope, _) = Setup();
+        var inner = media.AddFolder("2026", scope);
+        var clicked = media.AddFolder("10", inner);
+        media.AddImage("in.jpg", clicked, new DateTime(2026, 10, 3));
+        media.AddImage("out.jpg", scope, new DateTime(2026, 6, 10));
+
+        var fromRoot = await engine.PlanAsync(scope, recursive: true);
+        var plan = await engine.PlanForMediaAsync(clicked);
+
+        var scoped = Assert.Single(plan.Plans);
+        Assert.Equal(scope, scoped.ScopeFolderKey);
+        var move = Assert.Single(scoped.Moves);
+        Assert.Equal("in.jpg", move.MediaName);
+        Assert.Equal(fromRoot.Moves.Single(m => m.MediaName == "in.jpg").TargetSegments, move.TargetSegments);
+        Assert.Equal("2026/10", move.TargetPath);
+        Assert.True(move.AlreadyInPlace);
+        Assert.Empty(plan.Skipped);
+    }
+
+    [Fact]
+    public async Task Media_plan_for_a_folder_above_two_scopes_has_a_plan_per_ruleset()
+    {
+        var (engine, media, rulesets, _, scope, _) = Setup();
+        var other = media.AddFolder("Blog", Guid.Empty);
+        rulesets.ByScope[other] = new Ruleset
+        {
+            ScopeRootKey = other,
+            Name = "Year rules",
+            CultureName = "en-US",
+            Rules = [new RuleNode { ProviderAlias = DateFolderProvider.ProviderAlias, Settings = TestContext.Settings(("format", "yyyy")) }],
+        };
+        var parent = media.AddFolder("Library", Guid.Empty);
+        media.Items[scope] = media.Items[scope] with { ParentKey = parent };
+        media.Items[other] = media.Items[other] with { ParentKey = parent };
+        media.Children[parent] = [scope, other];
+        media.AddImage("a.jpg", scope, new DateTime(2026, 6, 10));
+        media.AddImage("b.jpg", other, new DateTime(2025, 2, 1));
+
+        var plan = await engine.PlanForMediaAsync(parent);
+
+        Assert.Equal(2, plan.Plans.Count);
+        var products = plan.Plans.Single(p => p.ScopeFolderKey == scope);
+        var blog = plan.Plans.Single(p => p.ScopeFolderKey == other);
+        Assert.Equal("2026/06", Assert.Single(products.Moves).TargetPath);
+        Assert.Equal("2025", Assert.Single(blog.Moves).TargetPath);
+        Assert.Empty(plan.Skipped);
+    }
+
+    [Fact]
+    public async Task Media_plan_skips_images_no_ruleset_governs()
+    {
+        var (engine, media, _, _, _, _) = Setup();
+        var loose = media.AddFolder("Loose", Guid.Empty);
+        media.AddImage("orphan.jpg", loose);
+
+        var plan = await engine.PlanForMediaAsync(loose);
+
+        Assert.Empty(plan.Plans);
+        Assert.Contains("orphan.jpg: no ruleset applies", plan.Skipped);
+    }
+
+    [Fact]
+    public async Task Media_plan_for_a_single_image_plans_only_that_image()
+    {
+        var (engine, media, _, _, scope, _) = Setup();
+        var img = media.AddImage("one.jpg", scope, new DateTime(2026, 6, 10));
+        media.AddImage("two.jpg", scope, new DateTime(2026, 6, 10));
+
+        var plan = await engine.PlanForMediaAsync(img);
+
+        var move = Assert.Single(Assert.Single(plan.Plans).Moves);
+        Assert.Equal(img, move.MediaKey);
+    }
+
+    [Fact]
+    public async Task Media_plan_skips_excluded_items_and_folders()
+    {
+        var (engine, media, _, _, scope, exclusions) = Setup();
+        var pinned = media.AddImage("pinned.jpg", scope);
+        var sub = media.AddFolder("Sub", scope);
+        media.AddImage("inside.jpg", sub);
+        media.AddImage("normal.jpg", scope);
+        exclusions.Excluded.Add(pinned);
+        exclusions.Excluded.Add(sub);
+
+        var plan = await engine.PlanForMediaAsync(scope);
+
+        Assert.Equal("normal.jpg", Assert.Single(Assert.Single(plan.Plans).Moves).MediaName);
+        Assert.Equal(2, plan.Skipped.Count(s => s.Contains("excluded")));
+    }
+
+    [Fact]
+    public async Task Media_plan_ignores_disabled_rulesets()
+    {
+        var (engine, media, rulesets, _, scope, _) = Setup();
+        rulesets.ByScope[scope].Enabled = false;
+        media.AddImage("a.jpg", scope);
+
+        var plan = await engine.PlanForMediaAsync(scope);
+
+        Assert.Empty(plan.Plans);
+        Assert.Contains(plan.Skipped, s => s.Contains("no ruleset applies"));
+    }
+
+    [Fact]
+    public async Task Media_plan_throws_not_found_for_an_unknown_key()
+    {
+        var (engine, _, _, _, _, _) = Setup();
+
+        await Assert.ThrowsAsync<MediaNotFoundException>(() => engine.PlanForMediaAsync(Guid.NewGuid()));
+    }
+
     [Theory]
     [InlineData("juni 2026", "juni 2026")]
     [InlineData("a/b", "ab")]

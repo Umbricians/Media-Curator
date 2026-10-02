@@ -17,6 +17,9 @@ namespace Umbricians.MediaCurator.Controllers;
 [ApiExplorerSettings(GroupName = "MediaCurator")]
 public class RecognitionController : MediaCuratorApiControllerBase
 {
+    /// <summary>Most images one folder re-analysis will process (each is an AI request).</summary>
+    public const int MaxReanalyzeImages = 200;
+
     private const string PizzaTestImagePath = "tests/images/test-pizza.jpg";
     private const string OriginalPizzaTestAlias = "media-curator-pizza-original-test";
     private const string PreparedPizzaTestAlias = "media-curator-pizza-prepared-test";
@@ -52,80 +55,147 @@ public class RecognitionController : MediaCuratorApiControllerBase
             return BadRequest("Select at least one media item.");
         }
 
-        var scheme = string.IsNullOrWhiteSpace(request.ClassificationSchemeAlias)
-            ? _options.CurrentValue.ClassificationSchemeAlias
-            : request.ClassificationSchemeAlias.Trim();
+        var scheme = ResolveScheme(request.ClassificationSchemeAlias);
 
         var results = new List<ReanalyzeImageResultModel>(request.MediaKeys.Count);
         foreach (var mediaKey in request.MediaKeys.Distinct())
         {
-            var item = _media.GetItem(mediaKey);
-            if (item is null)
-            {
-                results.Add(new ReanalyzeImageResultModel
-                {
-                    MediaKey = mediaKey,
-                    Analyzed = false,
-                    Error = "Media item not found.",
-                });
-                continue;
-            }
-
-            if (item.IsFolder)
-            {
-                results.Add(new ReanalyzeImageResultModel
-                {
-                    MediaKey = mediaKey,
-                    MediaName = item.Name,
-                    Analyzed = false,
-                    Error = "Folders cannot be analyzed. Choose image files.",
-                });
-                continue;
-            }
-
-            try
-            {
-                var result = await _recognition.AnalyzeAsync(
-                    mediaKey,
-                    force: true,
-                    string.IsNullOrWhiteSpace(scheme) ? null : scheme,
-                    cancellationToken);
-
-                if (result is null)
-                {
-                    results.Add(new ReanalyzeImageResultModel
-                    {
-                        MediaKey = mediaKey,
-                        MediaName = item.Name,
-                        Analyzed = false,
-                        Error = "Recognition unavailable or the item has no readable image file.",
-                    });
-                    continue;
-                }
-
-                results.Add(new ReanalyzeImageResultModel
-                {
-                    MediaKey = mediaKey,
-                    MediaName = item.Name,
-                    Analyzed = true,
-                    Description = result.Description,
-                    Tags = result.Tags.Select(t => t.Name).ToList(),
-                    ClassificationCode = result.ClassificationCode,
-                });
-            }
-            catch (Exception ex)
-            {
-                results.Add(new ReanalyzeImageResultModel
-                {
-                    MediaKey = mediaKey,
-                    MediaName = item.Name,
-                    Analyzed = false,
-                    Error = ex.Message,
-                });
-            }
+            results.Add(await ReanalyzeOneAsync(mediaKey, scheme, cancellationToken));
         }
 
         return Ok(new ReanalyzeImagesResponseModel { Results = results });
+    }
+
+    /// <summary>Re-runs AI recognition (ignoring cached results) for one image, or for every image
+    /// under a folder and its subfolders.</summary>
+    [HttpPost("recognition/media/{mediaKey:guid}/reanalyze")]
+    [ProducesResponseType<ReanalyzeImagesResponseModel>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReanalyzeMediaImages(Guid mediaKey, CancellationToken cancellationToken)
+    {
+        var images = CollectImages(mediaKey);
+        if (images is null)
+        {
+            return NotFound(Error("Media item not found."));
+        }
+
+        if (images.Count > MaxReanalyzeImages)
+        {
+            return BadRequest(Error(
+                $"This folder contains {images.Count} images; re-analyze at most {MaxReanalyzeImages} at a time."));
+        }
+
+        var scheme = ResolveScheme(null);
+        var results = new List<ReanalyzeImageResultModel>(images.Count);
+        foreach (var image in images)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            results.Add(await ReanalyzeOneAsync(image.Key, scheme, cancellationToken));
+        }
+
+        return Ok(new ReanalyzeImagesResponseModel { Results = results });
+    }
+
+    /// <summary>Counts the images a re-analysis of this media item would process.</summary>
+    [HttpGet("recognition/media/{mediaKey:guid}/images/count")]
+    [ProducesResponseType<MediaImageCountModel>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public IActionResult CountMediaImages(Guid mediaKey)
+    {
+        var images = CollectImages(mediaKey);
+        return images is null
+            ? NotFound(Error("Media item not found."))
+            : Ok(new MediaImageCountModel { Count = images.Count });
+    }
+
+    // The backoffice shows a problem's title in its error notification, so the reason goes there.
+    // It only treats the body as problem details when "type" is present.
+    private static ProblemDetails Error(string message) => new() { Title = message, Type = "Error" };
+
+    private string? ResolveScheme(string? requested)
+    {
+        var scheme = string.IsNullOrWhiteSpace(requested)
+            ? _options.CurrentValue.ClassificationSchemeAlias
+            : requested.Trim();
+        return string.IsNullOrWhiteSpace(scheme) ? null : scheme;
+    }
+
+    /// <summary>The images under a folder (recursively), or the item itself when it is an image.
+    /// Null when the media item does not exist.</summary>
+    private List<MediaItemInfo>? CollectImages(Guid mediaKey)
+    {
+        var clicked = _media.GetItem(mediaKey);
+        if (clicked is null)
+        {
+            return null;
+        }
+
+        IEnumerable<MediaItemInfo> items = clicked.IsFolder ? _media.GetItems(mediaKey, recursive: true) : [clicked];
+        return items
+            .Where(i => !i.IsFolder
+                && CurationEngine.ImageMediaTypes.Contains(i.ContentTypeAlias, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private async Task<ReanalyzeImageResultModel> ReanalyzeOneAsync(
+        Guid mediaKey, string? scheme, CancellationToken cancellationToken)
+    {
+        var item = _media.GetItem(mediaKey);
+        if (item is null)
+        {
+            return new ReanalyzeImageResultModel { MediaKey = mediaKey, Analyzed = false, Error = "Media item not found." };
+        }
+
+        if (item.IsFolder)
+        {
+            return new ReanalyzeImageResultModel
+            {
+                MediaKey = mediaKey,
+                MediaName = item.Name,
+                Analyzed = false,
+                Error = "Folders cannot be analyzed. Choose image files.",
+            };
+        }
+
+        try
+        {
+            var result = await _recognition.AnalyzeAsync(mediaKey, force: true, scheme, cancellationToken);
+            if (result is null)
+            {
+                return new ReanalyzeImageResultModel
+                {
+                    MediaKey = mediaKey,
+                    MediaName = item.Name,
+                    Analyzed = false,
+                    Error = "Recognition unavailable or the item has no readable image file.",
+                };
+            }
+
+            return new ReanalyzeImageResultModel
+            {
+                MediaKey = mediaKey,
+                MediaName = item.Name,
+                Analyzed = true,
+                Description = result.Description,
+                Tags = result.Tags.Select(t => t.Name).ToList(),
+                ClassificationCode = result.ClassificationCode,
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return new ReanalyzeImageResultModel
+            {
+                MediaKey = mediaKey,
+                MediaName = item.Name,
+                Analyzed = false,
+                Error = ex.Message,
+            };
+        }
     }
 
     /// <summary>Runs the bundled pizza test image through Umbraco.AI without resizing.</summary>

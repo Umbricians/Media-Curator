@@ -83,8 +83,16 @@ internal static class RecognitionImagePreparer
             x.BackgroundColor(Color.White);
         });
 
+        // Pin the encoding: left unset, ImageSharp reuses the source's JPEG settings, and a
+        // progressive source re-encodes as a non-interleaved baseline JPEG (one scan per channel)
+        // that many decoders, including AI providers', render as green stripes.
         using var output = new MemoryStream();
-        image.SaveAsJpeg(output, new JpegEncoder { Quality = JpegQuality });
+        image.SaveAsJpeg(output, new JpegEncoder
+        {
+            Quality = JpegQuality,
+            Interleaved = true,
+            ColorType = JpegEncodingColor.YCbCrRatio420,
+        });
         return output.ToArray();
     }
 

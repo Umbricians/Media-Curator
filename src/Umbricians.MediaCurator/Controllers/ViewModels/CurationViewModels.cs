@@ -42,6 +42,32 @@ public class CurationPlanModel
     };
 }
 
+public class MediaCurationPlanModel
+{
+    public required Guid MediaKey { get; init; }
+    public required int MoveCount { get; init; }
+    public required int AlreadyInPlaceCount { get; init; }
+    public List<CurationPlanModel> Plans { get; init; } = [];
+    public List<string> SkippedItems { get; init; } = [];
+
+    public static MediaCurationPlanModel From(MediaCurationPlan plan) => new()
+    {
+        MediaKey = plan.MediaKey,
+        MoveCount = plan.Plans.Sum(p => p.MoveCount),
+        AlreadyInPlaceCount = plan.Plans.Sum(p => p.Moves.Count(m => m.AlreadyInPlace)),
+        Plans = plan.Plans.Select(CurationPlanModel.From).ToList(),
+        SkippedItems = plan.Skipped.Concat(plan.Plans.SelectMany(p => p.SkippedItems)).ToList(),
+    };
+}
+
+public class MediaCurationSummaryModel
+{
+    public required int Moved { get; init; }
+    public required int AlreadyInPlace { get; init; }
+    public required int Failed { get; init; }
+    public List<Guid> RunKeys { get; init; } = [];
+}
+
 public class CurationRunSummaryModel
 {
     public required Guid RunKey { get; init; }

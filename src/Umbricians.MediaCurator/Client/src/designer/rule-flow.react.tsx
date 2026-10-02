@@ -6,25 +6,28 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
+  useNodesInitialized,
   useNodesState,
   useReactFlow,
+  useStore,
   type Node,
   type OnNodeDrag,
+  type XYPosition,
 } from "@xyflow/react";
 import type { ProviderModel, RuleNodeModel } from "../api/index.js";
-import { ruleFlowEdgeTypes } from "./rule-flow.edges.js";
 import {
   idToPath,
   isValidTreeConnection,
   resolveSiblingDropIndex,
+  rulesStructureKey,
   rulesToFlow,
   SCOPE_NODE_ID,
   type RuleFlowNodeData,
 } from "./rule-flow.mapping.js";
-import { newRule, ruleFlowNodeTypes, type RulesChangeHandler } from "./rule-flow.nodes.js";
+import { ruleFlowNodeTypes, type RuleFlowActions, type RulesChangeHandler } from "./rule-flow.nodes.js";
 import { reorderSibling } from "./rule-tree.logic.js";
 
-export type RuleFlowCanvasProps = {
+export type RuleFlowCanvasProps = RuleFlowActions & {
   rules: RuleNodeModel[];
   providers: ProviderModel[];
   scopeName: string;
@@ -33,46 +36,52 @@ export type RuleFlowCanvasProps = {
   onRulesChange: (rules: RuleNodeModel[], options?: { relayout?: boolean }) => void;
 };
 
-type FlowNode = Node<
-  RuleFlowNodeData & {
-    rules: RuleNodeModel[];
-    onRulesChange: RulesChangeHandler;
-  }
->;
+type FlowNode = Node<RuleFlowNodeData & RuleFlowActions>;
+
+const FIT_MIN_ZOOM = 0.85;
+const FIT_MAX_ZOOM = 1;
+const FIT_PADDING = 24;
 
 function FitViewOnce() {
-  const { fitView } = useReactFlow();
+  const { getNodes, getNodesBounds, setViewport } = useReactFlow();
+  const nodesInitialized = useNodesInitialized();
+  const width = useStore((state) => state.width);
+  const height = useStore((state) => state.height);
   const didFit = useRef(false);
 
   useEffect(() => {
-    if (didFit.current) return;
+    // Wait for real card sizes so the first fit matches the measured layout.
+    if (!nodesInitialized || !width || !height || didFit.current) return;
     didFit.current = true;
     const frame = requestAnimationFrame(() => {
-      void fitView({ padding: 0.2, duration: 150, minZoom: 0.85, maxZoom: 1 });
+      const bounds = getNodesBounds(getNodes());
+      const fitZoom = Math.min(
+        (width - FIT_PADDING * 2) / bounds.width,
+        (height - FIT_PADDING * 2) / bounds.height,
+      );
+      const zoom = Math.min(FIT_MAX_ZOOM, Math.max(FIT_MIN_ZOOM, fitZoom));
+      const x = (width - bounds.width * zoom) / 2 - bounds.x * zoom;
+      // Centre trees that fit; otherwise pin the scope to the top so the tree reads top-down.
+      const contentHeight = bounds.height * zoom;
+      const top = contentHeight <= height - FIT_PADDING * 2 ? (height - contentHeight) / 2 : FIT_PADDING;
+      void setViewport({ x, y: top - bounds.y * zoom, zoom }, { duration: 150 });
     });
     return () => cancelAnimationFrame(frame);
-  }, [fitView]);
+  }, [getNodes, getNodesBounds, setViewport, nodesInitialized, width, height]);
 
   return null;
 }
 
-function applyStoredPositions(
-  layoutNodes: FlowNode[],
-  stored: Map<string, { x: number; y: number }>,
-  structureChanged: boolean,
-): FlowNode[] {
-  if (structureChanged) {
-    stored.clear();
-    for (const node of layoutNodes) {
-      stored.set(node.id, node.position);
+/** Rendered card heights by node id; the key only changes when a height does. */
+function useMeasuredHeights(nodes: FlowNode[]): ReadonlyMap<string, number> {
+  const key = nodes.map((node) => `${node.id}:${node.measured?.height ?? ""}`).join("|");
+  return useMemo(() => {
+    const heights = new Map<string, number>();
+    for (const node of nodes) {
+      if (node.measured?.height) heights.set(node.id, node.measured.height);
     }
-    return layoutNodes;
-  }
-
-  return layoutNodes.map((node) => {
-    const position = stored.get(node.id);
-    return position ? { ...node, position } : node;
-  });
+    return heights;
+  }, [key]);
 }
 
 function RuleFlowCanvasInner({
@@ -81,10 +90,18 @@ function RuleFlowCanvasInner({
   scopeName,
   layoutGeneration = 0,
   onRulesChange,
+  onEditRule,
+  onDeleteRule,
+  onAddRule,
 }: RuleFlowCanvasProps) {
   const isDragging = useRef(false);
-  const positionsRef = useRef(new Map<string, { x: number; y: number }>());
+  /** Positions of cards the user free-dragged; everything else follows auto-layout. */
+  const draggedPositionsRef = useRef(new Map<string, XYPosition>());
   const layoutGenerationRef = useRef(layoutGeneration);
+  const structureKey = rulesStructureKey(rules);
+  const structureKeyRef = useRef(structureKey);
+  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>([]);
+  const measuredHeights = useMeasuredHeights(nodes);
 
   const handleRulesChange = useCallback<RulesChangeHandler>(
     (next, options) => {
@@ -97,8 +114,8 @@ function RuleFlowCanvasInner({
   );
 
   const { nodes: layoutNodes, edges: layoutEdges } = useMemo(
-    () => rulesToFlow(rules, providers, scopeName),
-    [rules, providers, scopeName],
+    () => rulesToFlow(rules, providers, scopeName, measuredHeights),
+    [rules, providers, scopeName, measuredHeights],
   );
 
   const enrichedNodes = useMemo(
@@ -107,31 +124,22 @@ function RuleFlowCanvasInner({
         (node) =>
           ({
             ...node,
-            data: {
-              ...node.data,
-              rules,
-              onRulesChange: handleRulesChange,
-            },
+            data: { ...node.data, onEditRule, onDeleteRule, onAddRule },
           }) satisfies FlowNode,
       ),
-    [layoutNodes, rules, handleRulesChange],
+    [layoutNodes, onEditRule, onDeleteRule, onAddRule],
   );
 
-  const enrichedEdges = useMemo(
-    () =>
-      layoutEdges.map((edge) => ({
-        ...edge,
-        type: edge.label ? "conditional" : undefined,
-      })),
-    [layoutEdges],
-  );
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(enrichedNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(enrichedEdges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(layoutEdges);
 
   useEffect(() => {
-    const structureChanged = layoutGenerationRef.current !== layoutGeneration;
+    const structureChanged =
+      layoutGenerationRef.current !== layoutGeneration || structureKeyRef.current !== structureKey;
     layoutGenerationRef.current = layoutGeneration;
+    structureKeyRef.current = structureKey;
+    if (structureChanged) {
+      draggedPositionsRef.current.clear();
+    }
 
     // While dragging, ignore data-only refreshes so the node can move freely.
     // Explicit layoutGeneration bumps (arrow/reorder/add/remove) still win.
@@ -140,12 +148,21 @@ function RuleFlowCanvasInner({
     }
 
     isDragging.current = false;
-    setNodes(applyStoredPositions(enrichedNodes, positionsRef.current, structureChanged));
-  }, [enrichedNodes, layoutGeneration, setNodes]);
+    const dragged = draggedPositionsRef.current;
+    setNodes((current) => {
+      // Carry over React Flow's measurements so cards are not hidden and re-measured on every edit.
+      const measuredById = new Map(current.map((node) => [node.id, node.measured]));
+      return enrichedNodes.map((node) => ({
+        ...node,
+        position: dragged.get(node.id) ?? node.position,
+        measured: measuredById.get(node.id),
+      }));
+    });
+  }, [enrichedNodes, layoutGeneration, structureKey, setNodes]);
 
   useEffect(() => {
-    setEdges(enrichedEdges);
-  }, [enrichedEdges, setEdges]);
+    setEdges(layoutEdges);
+  }, [layoutEdges, setEdges]);
 
   const onNodeDragStart = useCallback(() => {
     isDragging.current = true;
@@ -153,7 +170,7 @@ function RuleFlowCanvasInner({
 
   const onNodeDragStop = useCallback<OnNodeDrag>(
     (_, dragged) => {
-      positionsRef.current.set(dragged.id, { ...dragged.position });
+      draggedPositionsRef.current.set(dragged.id, { ...dragged.position });
 
       if (dragged.id === SCOPE_NODE_ID) {
         isDragging.current = false;
@@ -167,7 +184,7 @@ function RuleFlowCanvasInner({
       }
 
       const layoutForDrop = enrichedNodes.map((node) => {
-        const stored = positionsRef.current.get(node.id);
+        const stored = draggedPositionsRef.current.get(node.id);
         return stored ? { ...node, position: stored } : node;
       });
       const newIndex = resolveSiblingDropIndex(dragged, layoutForDrop);
@@ -184,11 +201,6 @@ function RuleFlowCanvasInner({
     [rules, handleRulesChange, enrichedNodes],
   );
 
-  const addRoot = () => {
-    const rule = newRule(providers);
-    if (rule) handleRulesChange([...rules, rule], { relayout: true });
-  };
-
   return (
     <div className="mc-rule-flow-canvas" data-mark="mc:canvas">
       <div className="mc-rule-flow-viewport">
@@ -200,7 +212,6 @@ function RuleFlowCanvasInner({
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={ruleFlowNodeTypes}
-          edgeTypes={ruleFlowEdgeTypes}
           defaultViewport={{ x: 24, y: 24, zoom: 1 }}
           isValidConnection={(connection) =>
             isValidTreeConnection(connection.source ?? "", connection.target ?? "")
@@ -223,7 +234,7 @@ function RuleFlowCanvasInner({
         <p className="mc-rule-flow-empty">No rules yet. Each rule node contributes folder levels beneath the scope.</p>
       ) : null}
       <div className="mc-rule-flow-toolbar">
-        <button type="button" className="nodrag nopan" data-mark="mc:canvas-add" onClick={addRoot}>
+        <button type="button" className="nodrag nopan" data-mark="mc:canvas-add" onClick={() => onAddRule(null)}>
           Add rule
         </button>
       </div>

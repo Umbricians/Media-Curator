@@ -1,6 +1,14 @@
 import { ConstantHelper } from '@umbraco-cms/acceptance-test-helpers';
 import { expect, test } from './fixtures';
-import { deleteRulesetsByPrefix } from './util';
+import {
+  deleteRulesetsByPrefix,
+  executePlan,
+  expandMediaCuratorTree,
+  openMediaCuratorRoot,
+  openRulesetTab,
+  rulesetTreeItem,
+  runDryRun,
+} from './util';
 
 const folderName = 'Demo Media Folder';
 const imageName = 'Demo Photo';
@@ -40,28 +48,31 @@ test.describe('MediaCurator demo walkthrough', () => {
     await umbracoUi.goToBackOffice();
     await pause(2000);
 
-    await umbracoUi.content.goToSection(ConstantHelper.sections.media);
+    await umbracoUi.content.goToSection(ConstantHelper.sections.settings);
     await pause(1500);
 
-    await page.getByRole('tab', { name: 'Media Curator' }).click();
-    await expect(page.locator('mediacurator-dashboard')).toBeVisible({ timeout: 15000 });
+    // Settings section > Media Curator root workspace
+    await openMediaCuratorRoot(page);
     await pause(2500);
 
-    await page.getByLabel(`Edit ${rulesetName}`).click();
+    // Open the ruleset from the tree: the Design tab shows its rule canvas
+    await expandMediaCuratorTree(page);
+    await rulesetTreeItem(page, rulesetName).locator('#label-button').first().click();
     await expect(page.getByTestId('mc:node')).toBeVisible({ timeout: 10000 });
     await pause(3000);
 
-    await page.getByRole('button', { name: 'Cancel' }).click();
-    await expect(page.locator('mediacurator-dashboard')).toBeVisible({ timeout: 10000 });
+    // Curate tab: dry run, then execute
+    await openRulesetTab(page, 'curate');
     await pause(1500);
-
-    await page.getByLabel(`Curate now ${rulesetName}`).click();
-    await expect(page.getByTestId('mc:plan')).toBeVisible({ timeout: 10000 });
+    await runDryRun(page);
     await pause(3000);
 
-    await page.getByTestId('mc:plan-execute').click();
-    await expect(page.getByTestId('mc:activity-log')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('mc:run-row').first().getByTestId('mc:run-moved')).toHaveText('1');
+    await executePlan(page);
+    await openMediaCuratorRoot(page, 'activity');
+    // The log lists every folder's runs (Automate may log its own), so find this ruleset's latest run.
+    await expect(
+      page.getByTestId('mc:run-row').filter({ hasText: rulesetName }).first().getByTestId('mc:run-moved'),
+    ).toHaveText('1');
     await pause(4000);
   });
 });

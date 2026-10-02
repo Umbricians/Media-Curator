@@ -1,6 +1,11 @@
-import { ConstantHelper } from '@umbraco-cms/acceptance-test-helpers';
 import { expect, test } from './fixtures';
-import { deleteRulesetsByPrefix } from './util';
+import {
+  deleteRulesetsByPrefix,
+  executePlan,
+  openMediaCuratorRoot,
+  openRulesetFromTree,
+  runDryRun,
+} from './util';
 
 const folderName = 'MC Classify Folder';
 const imageName = 'NA modern building'; // leading LCC code "NA" = Fine Arts / Architecture
@@ -45,16 +50,14 @@ test.describe('MediaCurator library classification', () => {
     });
 
     await umbracoUi.goToBackOffice();
-    await umbracoUi.content.goToSection(ConstantHelper.sections.media);
-    await page.getByRole('tab', { name: 'Media Curator' }).click();
-    await page.getByLabel(`Curate now ${rulesetName}`).click();
+    await openRulesetFromTree(page, rulesetName, 'curate');
+    await runDryRun(page);
 
-    await expect(page.getByTestId('mc:plan')).toBeVisible({ timeout: 10000 });
     const moveRow = page.getByTestId('mc:plan-move').filter({ hasText: imageName });
     await expect(moveRow).toContainText('Fine Arts/Architecture');
 
-    await page.getByTestId('mc:plan-execute').click();
-    await expect(page.getByTestId('mc:activity-log')).toBeVisible({ timeout: 15000 });
+    await executePlan(page);
+    await openMediaCuratorRoot(page, 'activity');
 
     expect(await umbracoApi.media.doesNameExist('Fine Arts')).toBeTruthy();
     expect(await umbracoApi.media.doesNameExist('Architecture')).toBeTruthy();

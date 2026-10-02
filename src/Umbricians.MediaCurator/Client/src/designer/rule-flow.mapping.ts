@@ -1,12 +1,13 @@
 import type { Edge, Node } from "@xyflow/react";
 import type { ProviderModel, RuleNodeModel } from "../api/index.js";
 import { sampleSegment } from "./rule-tree.logic.js";
+import { ruleSummaryChips } from "./rule-flow.summary.js";
 
 export const SCOPE_NODE_ID = "scope";
 
-const NODE_WIDTH = 320;
+const NODE_WIDTH = 280;
 const X_INDENT = 48;
-const Y_GAP = 48;
+export const Y_GAP = 64;
 const SCOPE_HEIGHT = 48;
 
 export type RuleFlowNodeKind = "scope" | "rule";
@@ -33,10 +34,6 @@ export function idToPath(id: string): number[] | null {
   return parts.some((n) => Number.isNaN(n)) ? null : parts;
 }
 
-export function edgeConditionLabel(condition?: string | null): string {
-  return condition?.trim() ? condition : "always";
-}
-
 export function isValidTreeConnection(sourceId: string, targetId: string): boolean {
   if (sourceId === targetId) return false;
   if (targetId === SCOPE_NODE_ID) return false;
@@ -49,46 +46,43 @@ export function isValidTreeConnection(sourceId: string, targetId: string): boole
   return sourcePath.every((value, index) => targetPath[index] === value);
 }
 
-/** Estimate card height from provider settings so vertical spacing avoids overlap. */
+/** Estimate card height from provider settings; used until React Flow has measured the card. */
 export function estimateNodeHeight(
   rule: RuleNodeModel,
   providers: ProviderModel[],
-  isChild: boolean,
-  isLeaf: boolean,
 ): number {
   const provider = providers.find((item) => item.alias === rule.providerAlias);
-  const settingsFields = provider?.settingsFields ?? [];
-  const multilineFields = settingsFields.filter((field) => field.alias === "mappings" || field.alias === "palette").length;
-  const regularFields = settingsFields.length - multilineFields;
-
-  // Calibrated against rendered node heights in the backoffice designer.
-  let height = 118;
-  height += regularFields * 28;
-  height += multilineFields * 64;
-  if (isChild) height += 30;
-  if (isLeaf) height += 24;
-  return height;
+  // Read-only blocks: a header, plus a chip row when there is anything to summarise.
+  const hasBody = !provider || (provider.requirements ?? []).length > 0 || ruleSummaryChips(rule, provider).length > 0;
+  return hasBody ? 76 : 42;
 }
 
+/**
+ * Auto-layout the rule tree top-to-bottom. Heights come from `measuredHeights` when the card
+ * has rendered, otherwise from an estimate. Heights are passed as `initialHeight` (not
+ * `height`) so React Flow never pins a card smaller than its content.
+ */
 export function rulesToFlow(
   rules: RuleNodeModel[],
   providers: ProviderModel[],
   scopeName: string,
+  measuredHeights?: ReadonlyMap<string, number>,
 ): { nodes: Node<RuleFlowNodeData>[]; edges: Edge[] } {
   const nodes: Node<RuleFlowNodeData>[] = [];
   const edges: Edge[] = [];
   let nextY = 0;
 
+  const scopeHeight = measuredHeights?.get(SCOPE_NODE_ID) ?? SCOPE_HEIGHT;
   nodes.push({
     id: SCOPE_NODE_ID,
     type: "scope",
     position: { x: 0, y: nextY },
     data: { kind: "scope", scopeName, providers },
     width: NODE_WIDTH,
-    height: SCOPE_HEIGHT,
+    initialHeight: scopeHeight,
     draggable: false,
   });
-  nextY += SCOPE_HEIGHT + Y_GAP;
+  nextY += scopeHeight + Y_GAP;
 
   const layoutRules = (
     ruleNodes: RuleNodeModel[],
@@ -104,7 +98,7 @@ export function rulesToFlow(
       const children = rule.children ?? [];
       const isChild = path.length > 1;
       const isLeaf = children.length === 0;
-      const height = estimateNodeHeight(rule, providers, isChild, isLeaf);
+      const height = measuredHeights?.get(id) ?? estimateNodeHeight(rule, providers);
 
       nodes.push({
         id,
@@ -121,16 +115,16 @@ export function rulesToFlow(
           isLeaf,
         },
         width: NODE_WIDTH,
-        height,
+        initialHeight: height,
         draggable: true,
-        dragHandle: ".mc-rule-flow-drag-handle",
       });
 
       edges.push({
         id: `e-${parentId}-${id}`,
         source: parentId,
         target: id,
-        label: isChild ? edgeConditionLabel(rule.condition) : undefined,
+        type: "smoothstep",
+        animated: true,
         data: { condition: rule.condition, mark: "mc:edge" },
       });
 
@@ -169,11 +163,12 @@ export function rulesStructureKey(rules: RuleNodeModel[]): string {
 
 type LayoutNode = Pick<Node, "id" | "position"> & {
   height?: number;
+  initialHeight?: number;
   measured?: { height?: number };
 };
 
 export function flowNodeHeight(node: LayoutNode): number {
-  return node.height ?? node.measured?.height ?? 150;
+  return node.measured?.height ?? node.height ?? node.initialHeight ?? 150;
 }
 
 export function flowNodeCenterY(node: LayoutNode): number {

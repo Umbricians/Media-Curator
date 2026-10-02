@@ -1,4 +1,5 @@
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.PixelFormats;
 using Umbricians.MediaCurator.Recognition;
 
@@ -117,6 +118,64 @@ public class RecognitionImagePreparerTests
 
         Assert.Same(original, bytes);
         Assert.Equal("image/png", mediaType);
+    }
+
+    private static byte[] CreateNonInterleavedJpeg(int width, int height)
+    {
+        using var image = new Image<Rgb24>(width, height, new Rgb24(30, 90, 200));
+        using var stream = new MemoryStream();
+        image.SaveAsJpeg(stream, new JpegEncoder { Interleaved = false });
+        return stream.ToArray();
+    }
+
+    /// <summary>Component count of each start-of-scan segment. Stuffed 0xFF00 bytes mean
+    /// FF DA can only appear in entropy-coded data as a real marker.</summary>
+    private static List<int> ScanComponentCounts(byte[] jpeg)
+    {
+        var counts = new List<int>();
+        for (var i = 0; i < jpeg.Length - 4; i++)
+        {
+            if (jpeg[i] == 0xFF && jpeg[i + 1] == 0xDA)
+            {
+                counts.Add(jpeg[i + 4]);
+            }
+        }
+
+        return counts;
+    }
+
+    private static bool IsBaseline(byte[] jpeg)
+    {
+        for (var i = 0; i < jpeg.Length - 1; i++)
+        {
+            if (jpeg[i] == 0xFF && jpeg[i + 1] == 0xDA)
+            {
+                return false;
+            }
+
+            if (jpeg[i] == 0xFF && jpeg[i + 1] == 0xC0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Progressive and non-interleaved sources decode as non-interleaved; ImageSharp re-encodes
+    // with the source's setting unless told otherwise, and many decoders (including the AI
+    // provider's) render a one-scan-per-component baseline JPEG as green stripes.
+    [Fact]
+    public void Prepare_encodes_an_interleaved_baseline_jpeg_even_from_a_non_interleaved_source()
+    {
+        var original = CreateNonInterleavedJpeg(2400, 1200);
+        Assert.Equal([1, 1, 1], ScanComponentCounts(original));
+
+        var (bytes, mediaType) = RecognitionImagePreparer.Prepare(original, "image/jpeg", maxEdgePixels: 1024);
+
+        Assert.Equal("image/jpeg", mediaType);
+        Assert.True(IsBaseline(bytes));
+        Assert.Equal([3], ScanComponentCounts(bytes));
     }
 
     [Fact]

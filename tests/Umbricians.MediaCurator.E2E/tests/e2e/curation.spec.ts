@@ -1,6 +1,11 @@
-import { ConstantHelper } from '@umbraco-cms/acceptance-test-helpers';
 import { expect, test } from './fixtures';
-import { deleteRulesetsByPrefix } from './util';
+import {
+  deleteRulesetsByPrefix,
+  executePlan,
+  openMediaCuratorRoot,
+  openRulesetFromTree,
+  runDryRun,
+} from './util';
 
 const folderName = 'MC Curate Folder';
 const imageName = 'MC Curate Photo';
@@ -41,15 +46,12 @@ test.describe('MediaCurator curate now (MVP)', () => {
     });
     expect((saveResponse as { status(): number }).status()).toBe(200);
 
-    // Act 1: dry run from the dashboard
+    // Act 1: dry run from the ruleset's Curate tab (Settings section > Media Curator)
     await umbracoUi.goToBackOffice();
-    await umbracoUi.content.goToSection(ConstantHelper.sections.media);
-    await page.getByRole('tab', { name: 'Media Curator' }).click();
-    await expect(page.locator('mediacurator-dashboard')).toBeVisible({ timeout: 15000 });
-    await page.getByLabel(`Curate now ${rulesetName}`).click();
+    await openRulesetFromTree(page, rulesetName, 'curate');
+    await runDryRun(page);
 
     // Assert 1: the plan shows the image moving into a yyyy/MM path, nothing moved yet
-    await expect(page.getByTestId('mc:plan')).toBeVisible({ timeout: 10000 });
     const moveRow = page.getByTestId('mc:plan-move').filter({ hasText: imageName });
     await expect(moveRow).toContainText(/\d{4}\/\d{2}/);
     await expect(moveRow).toContainText('will move');
@@ -57,11 +59,14 @@ test.describe('MediaCurator curate now (MVP)', () => {
     expect(imageBeforeExecute).toBeTruthy(); // still at original location (top-level search finds it via tree walk)
 
     // Act 2: execute
-    await page.getByTestId('mc:plan-execute').click();
+    await executePlan(page);
 
     // Assert 2: activity log shows a run with 1 moved item
-    await expect(page.getByTestId('mc:activity-log')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('mc:run-row').first().getByTestId('mc:run-moved')).toHaveText('1');
+    await openMediaCuratorRoot(page, 'activity');
+    // The log lists every folder's runs (Automate may log its own), so find this ruleset's latest run.
+    await expect(
+      page.getByTestId('mc:run-row').filter({ hasText: rulesetName }).first().getByTestId('mc:run-moved'),
+    ).toHaveText('1');
 
     // Assert 3: the media tree now has folder/yyyy/MM and the image lives in MM
     const year = String(new Date().getFullYear());
@@ -74,8 +79,8 @@ test.describe('MediaCurator curate now (MVP)', () => {
     expect(image).toBeTruthy();
 
     // Re-running is a no-op (idempotency through the UI)
-    await page.getByLabel(`Curate now ${rulesetName}`).click();
-    await expect(page.getByTestId('mc:plan')).toBeVisible({ timeout: 10000 });
+    await openRulesetFromTree(page, rulesetName, 'curate');
+    await runDryRun(page);
     await expect(page.getByTestId('mc:plan-summary')).toContainText('Nothing would move');
   });
 });

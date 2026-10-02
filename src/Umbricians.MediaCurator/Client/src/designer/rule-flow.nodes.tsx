@@ -1,15 +1,9 @@
-import { memo, type ReactNode, type SyntheticEvent } from "react";
+import { memo, type MouseEvent } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import type { ProviderModel, RuleNodeModel, SettingFieldModel } from "../api/index.js";
-import {
-  addChildAt,
-  defaultSettings,
-  moveSibling,
-  removeAt,
-  sampleSegment,
-  updateAt,
-} from "./rule-tree.logic.js";
+import type { ProviderModel, RuleNodeModel } from "../api/index.js";
+import { defaultSettings } from "./rule-tree.logic.js";
 import type { RuleFlowNodeData } from "./rule-flow.mapping.js";
+import { ruleSummaryChips } from "./rule-flow.summary.js";
 
 export type RulesChangeOptions = {
   /** Force auto-layout even when provider aliases at each path look unchanged. */
@@ -18,17 +12,16 @@ export type RulesChangeOptions = {
 
 export type RulesChangeHandler = (rules: RuleNodeModel[], options?: RulesChangeOptions) => void;
 
-export type RuleFlowCallbacks = {
-  rules: RuleNodeModel[];
-  onRulesChange: RulesChangeHandler;
+/** Block actions handled by the Lit host, which owns the settings panel and confirm dialog. */
+export type RuleFlowActions = {
+  onEditRule: (path: number[]) => void;
+  onDeleteRule: (path: number[]) => void;
+  /** `parentPath` null adds a root rule. */
+  onAddRule: (parentPath: number[] | null) => void;
 };
 
-type ScopeNodeProps = NodeProps & {
-  data: RuleFlowNodeData;
-};
-
-type RuleNodeProps = NodeProps & {
-  data: RuleFlowNodeData;
+type FlowNodeProps = NodeProps & {
+  data: RuleFlowNodeData & Partial<RuleFlowActions>;
 };
 
 function providerFor(providers: ProviderModel[], alias: string) {
@@ -46,295 +39,118 @@ export function newRule(providers: ProviderModel[]): RuleNodeModel | undefined {
   };
 }
 
-const INTERACTIVE = "nodrag nopan nowheel";
+/** Run a block action without starting a drag or pan on the canvas. */
+function blockAction(action: () => void) {
+  return (event: MouseEvent) => {
+    event.stopPropagation();
+    action();
+  };
+}
 
-function SettingField({
-  field,
-  value,
-  onChange,
-}: {
-  field: SettingFieldModel;
-  value: unknown;
-  onChange: (value: unknown) => void;
-}) {
-  const current = value ?? field.defaultValue ?? "";
-  let control: ReactNode;
-
-  switch (field.type) {
-    case "select":
-      control = (
-        <select
-          className={INTERACTIVE}
-          data-mark={`mc:setting-${field.alias}`}
-          aria-label={field.label}
-          value={String(current)}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          {(field.options ?? []).map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      );
-      break;
-    case "toggle":
-      control = (
-        <input
-          className={INTERACTIVE}
-          data-mark={`mc:setting-${field.alias}`}
-          type="checkbox"
-          aria-label={field.label}
-          checked={current === true || current === "true"}
-          onChange={(e) => onChange(e.target.checked)}
-        />
-      );
-      break;
-    case "number":
-      control = (
-        <input
-          className={INTERACTIVE}
-          data-mark={`mc:setting-${field.alias}`}
-          type="number"
-          aria-label={field.label}
-          value={String(current)}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      );
-      break;
-    default: {
-      const multiline = field.alias === "mappings" || field.alias === "palette";
-      control = multiline ? (
-        <textarea
-          className={INTERACTIVE}
-          data-mark={`mc:setting-${field.alias}`}
-          aria-label={field.label}
-          value={String(current)}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      ) : (
-        <input
-          className={INTERACTIVE}
-          data-mark={`mc:setting-${field.alias}`}
-          aria-label={field.label}
-          value={String(current)}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      );
-      break;
-    }
-  }
-
+function AddRuleButton({ title, onClick }: { title: string; onClick: () => void }) {
   return (
-    <>
-      <label title={field.description ?? ""}>{field.label}</label>
-      {control}
-    </>
+    <button
+      type="button"
+      className="mc-rule-flow-add nodrag nopan"
+      data-mark="mc:node-add-child"
+      title={title}
+      aria-label={title}
+      onClick={blockAction(onClick)}
+    >
+      <uui-icon name="icon-add"></uui-icon>
+    </button>
   );
 }
 
-export const ScopeFlowNode = memo(function ScopeFlowNode({ data }: ScopeNodeProps) {
+export const ScopeFlowNode = memo(function ScopeFlowNode({ data }: FlowNodeProps) {
   return (
-    <div className="mc-rule-flow-scope" data-mark="mc:canvas-scope">
+    <div className="mc-rule-flow-block mc-rule-flow-block--scope" data-mark="mc:canvas-scope">
+      <div className="mc-rule-flow-block__header">
+        <span className="mc-rule-flow-block__icon">
+          <uui-icon name="icon-folder"></uui-icon>
+        </span>
+        <div className="mc-rule-flow-block__title">
+          <uui-tag className="mc-rule-flow-block__kind" look="secondary">
+            Scope
+          </uui-tag>
+          <span className="mc-rule-flow-block__name">{data.scopeName}</span>
+        </div>
+      </div>
       <Handle type="source" position={Position.Bottom} />
-      <strong>{data.scopeName}</strong>
-      <small>scope</small>
+      {data.onAddRule ? <AddRuleButton title="Add rule" onClick={() => data.onAddRule?.(null)} /> : null}
     </div>
   );
 });
 
-function stopNodePointer(event: SyntheticEvent) {
-  event.preventDefault();
-  event.stopPropagation();
-}
-
-export const RuleFlowNode = function RuleFlowNode({ data, id }: RuleNodeProps) {
-  const callbacks = data as RuleFlowNodeData & RuleFlowCallbacks;
-  const { rules, onRulesChange, providers, scopeName, path = [], prefix = [], isChild, isLeaf, node } = callbacks;
-
+export const RuleFlowNode = memo(function RuleFlowNode({ data, id }: FlowNodeProps) {
+  const { providers, path = [], node, onEditRule, onDeleteRule, onAddRule } = data;
   if (!node) return null;
 
   const provider = providerFor(providers, node.providerAlias);
+  const chips = ruleSummaryChips(node, provider);
   const hasRequirements = (provider?.requirements ?? []).length > 0;
-
-  const emit = (next: RuleNodeModel[], relayout = false) =>
-    onRulesChange(next, relayout ? { relayout: true } : undefined);
-
-  const updateNode = (update: (current: RuleNodeModel) => RuleNodeModel) => {
-    emit(updateAt(rules, path, update));
-  };
-
-  const move = (delta: number) => {
-    const next = moveSibling(rules, path, delta);
-    // Always request relayout — identical-provider swaps are invisible to structure keys.
-    if (next !== rules) emit(next, true);
-  };
-
-  const examplePath = [scopeName, ...prefix, sampleSegment(node, providers)].join("/");
+  const edit = () => onEditRule?.(path);
 
   return (
-    <div className="mc-rule-flow-node" data-mark="mc:node" data-node-id={id}>
+    <div
+      className={`mc-rule-flow-block mc-rule-flow-block--rule${provider ? "" : " mc-rule-flow-block--unknown"}`}
+      data-mark="mc:node"
+      data-node-id={id}
+      onDoubleClick={blockAction(edit)}
+    >
       <Handle type="target" position={Position.Top} />
-      <div className="mc-rule-flow-node-header">
-        <div className="mc-rule-flow-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">
-          ⋮⋮
+      <div className="mc-rule-flow-block__header">
+        <span className="mc-rule-flow-block__icon">
+          <uui-icon name={provider?.icon ?? "icon-alert"}></uui-icon>
+        </span>
+        <span className="mc-rule-flow-block__name" data-mark="mc:node-provider" title={provider?.name ?? node.providerAlias}>
+          {provider?.name ?? "Unknown provider"}
+        </span>
+        <div className="mc-rule-flow-block__actions mc-rule-flow-action-bar nodrag nopan">
+          <button type="button" className="mc-rule-flow-action-bar__btn" data-mark="mc:node-edit" title="Settings" aria-label="Settings" onClick={blockAction(edit)}>
+            <uui-icon name="icon-edit"></uui-icon>
+          </button>
+          <button
+            type="button"
+            className="mc-rule-flow-action-bar__btn mc-rule-flow-action-bar__btn--danger"
+            data-mark="mc:node-remove"
+            title="Delete"
+            aria-label="Delete"
+            onClick={blockAction(() => onDeleteRule?.(path))}
+          >
+            <uui-icon name="icon-trash"></uui-icon>
+          </button>
         </div>
-        <select
-          className={INTERACTIVE}
-          data-mark="mc:node-provider"
-          aria-label="Provider"
-          value={node.providerAlias}
-          onChange={(e) => {
-            const alias = e.target.value;
-            const nextProvider = providerFor(providers, alias);
-            updateNode((current) => ({
-              ...current,
-              providerAlias: alias,
-              settings: nextProvider ? defaultSettings(nextProvider) : {},
-            }));
-          }}
-        >
-          {providers.map((item) => (
-            <option key={item.alias} value={item.alias}>
-              {item.name}
-            </option>
+      </div>
+      {chips.length > 0 || hasRequirements || !provider ? (
+        <div className="mc-rule-flow-block__body">
+          {chips.map((chip) => (
+            <code
+              key={`${chip.kind ?? "setting"}:${chip.title}`}
+              className={`mc-rule-flow-block__chip${chip.kind ? ` mc-rule-flow-block__chip--${chip.kind}` : ""}`}
+              data-mark={chip.kind === "condition" ? "mc:node-condition" : "mc:node-summary"}
+              title={chip.title}
+            >
+              {chip.text}
+            </code>
           ))}
-        </select>
-        {hasRequirements ? (
-          <span className="mc-rule-flow-tag" data-mark="mc:node-requirements" title="This provider declares media type property requirements.">
-            needs properties
-          </span>
-        ) : null}
-      </div>
-
-      <div className={`mc-rule-flow-node-actions ${INTERACTIVE}`}>
-        <button
-          type="button"
-          className={INTERACTIVE}
-          data-mark="mc:node-move-up"
-          title="Move up"
-          aria-label="Move up"
-          onPointerDown={stopNodePointer}
-          onMouseDown={stopNodePointer}
-          onClick={(event) => {
-            stopNodePointer(event);
-            move(-1);
-          }}
-        >
-          ↑
-        </button>
-        <button
-          type="button"
-          className={INTERACTIVE}
-          data-mark="mc:node-move-down"
-          title="Move down"
-          aria-label="Move down"
-          onPointerDown={stopNodePointer}
-          onMouseDown={stopNodePointer}
-          onClick={(event) => {
-            stopNodePointer(event);
-            move(1);
-          }}
-        >
-          ↓
-        </button>
-        <button
-          type="button"
-          className={`danger ${INTERACTIVE}`}
-          data-mark="mc:node-remove"
-          title="Remove"
-          aria-label="Remove"
-          onPointerDown={stopNodePointer}
-          onMouseDown={stopNodePointer}
-          onClick={(event) => {
-            stopNodePointer(event);
-            emit(removeAt(rules, path), true);
-          }}
-        >
-          ✕
-        </button>
-      </div>
-
-      <div className={`mc-rule-flow-node-body ${INTERACTIVE}`}>
-        {isChild ? (
-          <>
-            <label htmlFor={`${id}-condition`}>Condition (parent value)</label>
-            <input
-              className={INTERACTIVE}
-              id={`${id}-condition`}
-              data-mark="mc:node-condition"
-              aria-label="Condition"
-              placeholder="leave empty for always"
-              value={node.condition ?? ""}
-              onChange={(e) =>
-                updateNode((current) => ({
-                  ...current,
-                  condition: e.target.value || undefined,
-                }))
-              }
-            />
-          </>
-        ) : null}
-
-        {(provider?.settingsFields ?? []).map((field) => {
-          const settings = (node.settings ?? {}) as Record<string, unknown>;
-          return (
-            <SettingField
-              key={field.alias}
-              field={field}
-              value={settings[field.alias]}
-              onChange={(value) =>
-                updateNode((current) => ({
-                  ...current,
-                  settings: {
-                    ...(current.settings ?? {}),
-                    [field.alias]: value,
-                  } as NonNullable<RuleNodeModel["settings"]>,
-                }))
-              }
-            />
-          );
-        })}
-
-        <label htmlFor={`${id}-fallback`}>If unresolved</label>
-        <select
-          className={INTERACTIVE}
-          id={`${id}-fallback`}
-          data-mark="mc:node-fallback"
-          aria-label="If unresolved"
-          value={node.fallback}
-          onChange={(e) => updateNode((current) => ({ ...current, fallback: e.target.value }))}
-        >
-          <option value="skip">Skip this level</option>
-          <option value="unsorted">Use &apos;Unsorted&apos; folder</option>
-          <option value="stop">Leave item in place</option>
-        </select>
-      </div>
-
-      {isLeaf ? (
-        <div className="mc-rule-flow-example" data-mark="mc:node-example" title="Example resulting folder path">
-          {examplePath}
+          {!provider ? (
+            <span className="mc-rule-flow-block__tag" data-mark="mc:node-unknown-provider" title={`No provider is registered with the alias "${node.providerAlias}".`}>
+              unknown provider
+            </span>
+          ) : null}
+          {hasRequirements ? (
+            <span className="mc-rule-flow-block__tag" data-mark="mc:node-requirements" title="This provider declares media type property requirements.">
+              needs properties
+            </span>
+          ) : null}
         </div>
       ) : null}
-
-      <div className="mc-rule-flow-add-child">
-        <button
-          type="button"
-          className={INTERACTIVE}
-          data-mark="mc:node-add-child"
-          onClick={() => {
-            const child = newRule(providers);
-            if (child) emit(addChildAt(rules, path, child), true);
-          }}
-        >
-          Add child rule
-        </button>
-      </div>
-
       <Handle type="source" position={Position.Bottom} />
+      {onAddRule ? <AddRuleButton title="Add child rule" onClick={() => onAddRule(path)} /> : null}
     </div>
   );
-};
+});
 
 export const ruleFlowNodeTypes = {
   scope: ScopeFlowNode,

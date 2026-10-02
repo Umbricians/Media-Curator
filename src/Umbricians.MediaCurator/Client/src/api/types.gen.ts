@@ -66,6 +66,51 @@ export type JsonNodeOptions = {
     propertyNameCaseInsensitive: boolean;
 };
 
+export type MediaCurationPlanModel = {
+    mediaKey: string;
+    moveCount: number;
+    alreadyInPlaceCount: number;
+    plans: Array<CurationPlanModel>;
+    skippedItems: Array<string>;
+};
+
+export type MediaCurationSummaryModel = {
+    moved: number;
+    alreadyInPlace: number;
+    failed: number;
+    runKeys: Array<string>;
+};
+
+export type MediaCuratorSiteSettingsModel = {
+    persistImageDescription: boolean;
+};
+
+export type MediaImageCountModel = {
+    count: number;
+};
+
+export type PizzaRecognitionTestRequestModel = {
+    profileAliases: Array<string>;
+    maxEdgePixels?: number | null;
+};
+
+export type PizzaRecognitionTestResponseModel = {
+    results: Array<PizzaRecognitionTestResultModel>;
+};
+
+export type PizzaRecognitionTestResultModel = {
+    variant: string;
+    profileAlias?: string | null;
+    mediaType: string;
+    width: number;
+    height: number;
+    byteLength: number;
+    rawResponse?: string | null;
+    description?: string | null;
+    tags: Array<string>;
+    error?: string | null;
+};
+
 export type PlannedMoveModel = {
     mediaKey: string;
     mediaName: string;
@@ -73,27 +118,13 @@ export type PlannedMoveModel = {
     alreadyInPlace: boolean;
 };
 
-export type MediaCuratorSiteSettingsModel = {
-    persistImageDescription: boolean;
-};
-
-export type ReanalyzeImagesRequestModel = {
-    mediaKeys: Array<string>;
-    classificationSchemeAlias?: string | null;
-};
-
-export type ReanalyzeImageResultModel = {
-    mediaKey: string;
-    mediaName?: string | null;
-    analyzed: boolean;
-    description?: string | null;
-    tags?: Array<string>;
-    classificationCode?: string | null;
-    error?: string | null;
-};
-
-export type ReanalyzeImagesResponseModel = {
-    results?: Array<ReanalyzeImageResultModel>;
+export type ProblemDetails = {
+    type?: string | null;
+    title?: string | null;
+    status?: number | null;
+    detail?: string | null;
+    instance?: string | null;
+    [key: string]: unknown;
 };
 
 export type PropertyRequirementModel = {
@@ -123,6 +154,25 @@ export type ProvisioningResultModel = {
     createdProperties: Array<string>;
     mappedProperties: Array<string>;
     errors: Array<string>;
+};
+
+export type ReanalyzeImageResultModel = {
+    mediaKey: string;
+    mediaName?: string | null;
+    analyzed: boolean;
+    description?: string | null;
+    tags: Array<string>;
+    classificationCode?: string | null;
+    error?: string | null;
+};
+
+export type ReanalyzeImagesRequestModel = {
+    mediaKeys: Array<string>;
+    classificationSchemeAlias?: string | null;
+};
+
+export type ReanalyzeImagesResponseModel = {
+    results: Array<ReanalyzeImageResultModel>;
 };
 
 export type RequirementReportModel = {
@@ -174,10 +224,6 @@ export type SettingFieldModel = {
 export type SettingFieldOptionModel = {
     value: string;
     label: string;
-};
-
-export type JsonNodeWritable = {
-    [key: string]: never;
 };
 
 export type GetExclusionsData = {
@@ -254,6 +300,68 @@ export type ExecuteCurationResponses = {
 };
 
 export type ExecuteCurationResponse = ExecuteCurationResponses[keyof ExecuteCurationResponses];
+
+export type ExecuteMediaCurationData = {
+    body?: never;
+    path: {
+        mediaKey: string;
+    };
+    query?: never;
+    url: '/umbraco/mediacurator/api/v1/curation/media/{mediaKey}/execute';
+};
+
+export type ExecuteMediaCurationErrors = {
+    /**
+     * The resource is protected and requires an authentication token
+     */
+    401: unknown;
+    /**
+     * Not Found
+     */
+    404: ProblemDetails;
+};
+
+export type ExecuteMediaCurationError = ExecuteMediaCurationErrors[keyof ExecuteMediaCurationErrors];
+
+export type ExecuteMediaCurationResponses = {
+    /**
+     * OK
+     */
+    200: MediaCurationSummaryModel;
+};
+
+export type ExecuteMediaCurationResponse = ExecuteMediaCurationResponses[keyof ExecuteMediaCurationResponses];
+
+export type PlanMediaCurationData = {
+    body?: never;
+    path: {
+        mediaKey: string;
+    };
+    query?: never;
+    url: '/umbraco/mediacurator/api/v1/curation/media/{mediaKey}/plan';
+};
+
+export type PlanMediaCurationErrors = {
+    /**
+     * The resource is protected and requires an authentication token
+     */
+    401: unknown;
+    /**
+     * Not Found
+     */
+    404: ProblemDetails;
+};
+
+export type PlanMediaCurationError = PlanMediaCurationErrors[keyof PlanMediaCurationErrors];
+
+export type PlanMediaCurationResponses = {
+    /**
+     * OK
+     */
+    200: MediaCurationPlanModel;
+};
+
+export type PlanMediaCurationResponse = PlanMediaCurationResponses[keyof PlanMediaCurationResponses];
 
 export type PlanCurationData = {
     body?: CurationRequestModel;
@@ -426,6 +534,153 @@ export type GetProvidersResponses = {
 
 export type GetProvidersResponse = GetProvidersResponses[keyof GetProvidersResponses];
 
+export type CountMediaImagesData = {
+    body?: never;
+    path: {
+        mediaKey: string;
+    };
+    query?: never;
+    url: '/umbraco/mediacurator/api/v1/recognition/media/{mediaKey}/images/count';
+};
+
+export type CountMediaImagesErrors = {
+    /**
+     * The resource is protected and requires an authentication token
+     */
+    401: unknown;
+    /**
+     * Not Found
+     */
+    404: ProblemDetails;
+};
+
+export type CountMediaImagesError = CountMediaImagesErrors[keyof CountMediaImagesErrors];
+
+export type CountMediaImagesResponses = {
+    /**
+     * OK
+     */
+    200: MediaImageCountModel;
+};
+
+export type CountMediaImagesResponse = CountMediaImagesResponses[keyof CountMediaImagesResponses];
+
+export type ReanalyzeMediaImagesData = {
+    body?: never;
+    path: {
+        mediaKey: string;
+    };
+    query?: never;
+    url: '/umbraco/mediacurator/api/v1/recognition/media/{mediaKey}/reanalyze';
+};
+
+export type ReanalyzeMediaImagesErrors = {
+    /**
+     * Bad Request
+     */
+    400: ProblemDetails;
+    /**
+     * The resource is protected and requires an authentication token
+     */
+    401: unknown;
+    /**
+     * Not Found
+     */
+    404: ProblemDetails;
+};
+
+export type ReanalyzeMediaImagesError = ReanalyzeMediaImagesErrors[keyof ReanalyzeMediaImagesErrors];
+
+export type ReanalyzeMediaImagesResponses = {
+    /**
+     * OK
+     */
+    200: ReanalyzeImagesResponseModel;
+};
+
+export type ReanalyzeMediaImagesResponse = ReanalyzeMediaImagesResponses[keyof ReanalyzeMediaImagesResponses];
+
+export type ReanalyzeImagesData = {
+    body?: ReanalyzeImagesRequestModel;
+    path?: never;
+    query?: never;
+    url: '/umbraco/mediacurator/api/v1/recognition/reanalyze';
+};
+
+export type ReanalyzeImagesErrors = {
+    /**
+     * Bad Request
+     */
+    400: unknown;
+    /**
+     * The resource is protected and requires an authentication token
+     */
+    401: unknown;
+};
+
+export type ReanalyzeImagesResponses = {
+    /**
+     * OK
+     */
+    200: ReanalyzeImagesResponseModel;
+};
+
+export type ReanalyzeImagesResponse = ReanalyzeImagesResponses[keyof ReanalyzeImagesResponses];
+
+export type TestPizzaOriginalData = {
+    body?: PizzaRecognitionTestRequestModel;
+    path?: never;
+    query?: never;
+    url: '/umbraco/mediacurator/api/v1/recognition/test-pizza/original';
+};
+
+export type TestPizzaOriginalErrors = {
+    /**
+     * The resource is protected and requires an authentication token
+     */
+    401: unknown;
+    /**
+     * Not Found
+     */
+    404: unknown;
+};
+
+export type TestPizzaOriginalResponses = {
+    /**
+     * OK
+     */
+    200: PizzaRecognitionTestResponseModel;
+};
+
+export type TestPizzaOriginalResponse = TestPizzaOriginalResponses[keyof TestPizzaOriginalResponses];
+
+export type TestPizzaPreparedData = {
+    body?: PizzaRecognitionTestRequestModel;
+    path?: never;
+    query?: never;
+    url: '/umbraco/mediacurator/api/v1/recognition/test-pizza/prepared';
+};
+
+export type TestPizzaPreparedErrors = {
+    /**
+     * The resource is protected and requires an authentication token
+     */
+    401: unknown;
+    /**
+     * Not Found
+     */
+    404: unknown;
+};
+
+export type TestPizzaPreparedResponses = {
+    /**
+     * OK
+     */
+    200: PizzaRecognitionTestResponseModel;
+};
+
+export type TestPizzaPreparedResponse = TestPizzaPreparedResponses[keyof TestPizzaPreparedResponses];
+
 export type ApplyRequirementsData = {
     body?: Array<ProvisioningApprovalModel>;
     path?: never;
@@ -508,12 +763,18 @@ export type SaveRulesetErrors = {
     /**
      * Bad Request
      */
-    400: unknown;
+    400: ProblemDetails;
     /**
      * The resource is protected and requires an authentication token
      */
     401: unknown;
+    /**
+     * Conflict
+     */
+    409: ProblemDetails;
 };
+
+export type SaveRulesetError = SaveRulesetErrors[keyof SaveRulesetErrors];
 
 export type SaveRulesetResponses = {
     /**
@@ -546,6 +807,35 @@ export type DeleteRulesetResponses = {
      */
     200: unknown;
 };
+
+export type GetRulesetData = {
+    body?: never;
+    path: {
+        key: string;
+    };
+    query?: never;
+    url: '/umbraco/mediacurator/api/v1/rulesets/{key}';
+};
+
+export type GetRulesetErrors = {
+    /**
+     * The resource is protected and requires an authentication token
+     */
+    401: unknown;
+    /**
+     * Not Found
+     */
+    404: unknown;
+};
+
+export type GetRulesetResponses = {
+    /**
+     * OK
+     */
+    200: RulesetModel;
+};
+
+export type GetRulesetResponse = GetRulesetResponses[keyof GetRulesetResponses];
 
 export type GetRulesetByScopeData = {
     body?: never;
@@ -634,10 +924,16 @@ export type GetSettingsData = {
 };
 
 export type GetSettingsErrors = {
+    /**
+     * The resource is protected and requires an authentication token
+     */
     401: unknown;
 };
 
 export type GetSettingsResponses = {
+    /**
+     * OK
+     */
     200: MediaCuratorSiteSettingsModel;
 };
 
@@ -651,29 +947,17 @@ export type SaveSettingsData = {
 };
 
 export type SaveSettingsErrors = {
+    /**
+     * The resource is protected and requires an authentication token
+     */
     401: unknown;
 };
 
 export type SaveSettingsResponses = {
+    /**
+     * OK
+     */
     200: MediaCuratorSiteSettingsModel;
 };
 
 export type SaveSettingsResponse = SaveSettingsResponses[keyof SaveSettingsResponses];
-
-export type ReanalyzeImagesData = {
-    body?: ReanalyzeImagesRequestModel;
-    path?: never;
-    query?: never;
-    url: '/umbraco/mediacurator/api/v1/recognition/reanalyze';
-};
-
-export type ReanalyzeImagesErrors = {
-    400: unknown;
-    401: unknown;
-};
-
-export type ReanalyzeImagesResponses = {
-    200: ReanalyzeImagesResponseModel;
-};
-
-export type ReanalyzeImagesResponse = ReanalyzeImagesResponses[keyof ReanalyzeImagesResponses];

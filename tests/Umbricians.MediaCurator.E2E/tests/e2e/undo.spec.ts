@@ -1,6 +1,11 @@
-import { ConstantHelper } from '@umbraco-cms/acceptance-test-helpers';
 import { expect, test } from './fixtures';
-import { deleteRulesetsByPrefix } from './util';
+import {
+  deleteRulesetsByPrefix,
+  executePlan,
+  openMediaCuratorRoot,
+  openRulesetFromTree,
+  runDryRun,
+} from './util';
 
 const folderName = 'MC Undo Folder';
 const imageName = 'MC Undo Photo';
@@ -36,14 +41,12 @@ test.describe('MediaCurator undo', () => {
       ],
     });
 
-    // Curate
+    // Curate from the ruleset's Curate tab (Settings section > Media Curator)
     await umbracoUi.goToBackOffice();
-    await umbracoUi.content.goToSection(ConstantHelper.sections.media);
-    await page.getByRole('tab', { name: 'Media Curator' }).click();
-    await page.getByLabel(`Curate now ${rulesetName}`).click();
-    await expect(page.getByTestId('mc:plan')).toBeVisible({ timeout: 10000 });
-    await page.getByTestId('mc:plan-execute').click();
-    await expect(page.getByTestId('mc:activity-log')).toBeVisible({ timeout: 15000 });
+    await openRulesetFromTree(page, rulesetName, 'curate');
+    await runDryRun(page);
+    await executePlan(page);
+    await openMediaCuratorRoot(page, 'activity');
 
     // The image moved into the date tree
     const imageAfterCurate = await umbracoApi.media.getByName(imageName);
@@ -57,8 +60,8 @@ test.describe('MediaCurator undo', () => {
       page.getByTestId('mc:run-row').filter({ hasText: 'undo:' }).first().getByTestId('mc:run-moved'),
     ).toHaveText('1', { timeout: 15000 });
 
-    await page.getByLabel(`Curate now ${rulesetName}`).click();
-    await expect(page.getByTestId('mc:plan')).toBeVisible({ timeout: 10000 });
+    await openRulesetFromTree(page, rulesetName, 'curate');
+    await runDryRun(page);
     const moveRow = page.getByTestId('mc:plan-move').filter({ hasText: imageName });
     await expect(moveRow).toContainText('will move'); // back at original location ⇒ would move again
   });

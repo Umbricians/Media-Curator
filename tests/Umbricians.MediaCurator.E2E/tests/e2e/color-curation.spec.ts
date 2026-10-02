@@ -1,6 +1,11 @@
-import { ConstantHelper } from '@umbraco-cms/acceptance-test-helpers';
 import { expect, test } from './fixtures';
-import { deleteRulesetsByPrefix } from './util';
+import {
+  deleteRulesetsByPrefix,
+  executePlan,
+  openMediaCuratorRoot,
+  openRulesetFromTree,
+  runDryRun,
+} from './util';
 
 const folderName = 'MC Color Folder';
 const imageName = 'MC Color Photo';
@@ -35,19 +40,17 @@ test.describe('MediaCurator color provider (deterministic)', () => {
       rules: [{ providerAlias: 'Umbricians.MediaCurator.Color', settings: {}, fallback: 'skip', children: [] }],
     });
 
-    // Act: curate via dashboard
+    // Act: curate from the ruleset's Curate tab (Settings section > Media Curator)
     await umbracoUi.goToBackOffice();
-    await umbracoUi.content.goToSection(ConstantHelper.sections.media);
-    await page.getByRole('tab', { name: 'Media Curator' }).click();
-    await page.getByLabel(`Curate now ${rulesetName}`).click();
+    await openRulesetFromTree(page, rulesetName, 'curate');
+    await runDryRun(page);
 
     // Assert: plan resolves the red pixel image into "Red"
-    await expect(page.getByTestId('mc:plan')).toBeVisible({ timeout: 10000 });
     const moveRow = page.getByTestId('mc:plan-move').filter({ hasText: imageName });
     await expect(moveRow).toContainText('Red');
 
-    await page.getByTestId('mc:plan-execute').click();
-    await expect(page.getByTestId('mc:activity-log')).toBeVisible({ timeout: 15000 });
+    await executePlan(page);
+    await openMediaCuratorRoot(page, 'activity');
 
     // The Red folder exists in the media tree
     expect(await umbracoApi.media.doesNameExist('Red')).toBeTruthy();

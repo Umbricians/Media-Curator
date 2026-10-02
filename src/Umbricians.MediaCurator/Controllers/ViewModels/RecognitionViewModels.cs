@@ -24,6 +24,11 @@ public class ReanalyzeImagesResponseModel
     public List<ReanalyzeImageResultModel> Results { get; init; } = [];
 }
 
+public class MediaImageCountModel
+{
+    public required int Count { get; init; }
+}
+
 public class PizzaRecognitionTestRequestModel
 {
     /// <summary>Optional Umbraco.AI profile aliases to compare. Uses MediaCurator config/default profile when empty.</summary>

@@ -30,10 +30,35 @@ public sealed record CurationPlan(
     public int MoveCount => Moves.Count(m => !m.AlreadyInPlace);
 }
 
+/// <summary>The result of planning a curation of one media item or folder tree: one plan per
+/// governing ruleset (only the items under the media), plus items no ruleset governs.</summary>
+public sealed record MediaCurationPlan(
+    Guid MediaKey,
+    IReadOnlyList<CurationPlan> Plans,
+    IReadOnlyList<string> Skipped);
+
+/// <summary>Thrown when planning for a media key that does not exist.</summary>
+public sealed class MediaNotFoundException : Exception
+{
+    public MediaNotFoundException(Guid mediaKey)
+        : base($"Media item '{mediaKey}' was not found.")
+    {
+        MediaKey = mediaKey;
+    }
+
+    public Guid MediaKey { get; }
+}
+
 public interface ICurationEngine
 {
     /// <summary>Pure: computes what would move where. Shared by dry-run preview and execute.</summary>
     Task<CurationPlan> PlanAsync(Guid scopeFolderKey, bool recursive, CancellationToken cancellationToken = default);
+
+    /// <summary>Plans a single image, or every image under a folder (recursively). Each image is
+    /// curated by its nearest enabled ruleset, relative to that ruleset's scope root, so the
+    /// result holds one plan per ruleset. Execute each plan separately (one run log entry each).
+    /// Throws <see cref="MediaNotFoundException"/> when the media does not exist.</summary>
+    Task<MediaCurationPlan> PlanForMediaAsync(Guid mediaKey, CancellationToken cancellationToken = default);
 
     /// <summary>Executes a plan: idempotent folder creation + moves via the media service,
     /// recording every move in the activity log.</summary>
@@ -102,52 +127,133 @@ public sealed class CurationEngine : ICurationEngine
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (item.IsFolder)
+            var outcome = await EvaluateItemAsync(item, excluded, ruleset, culture, cancellationToken);
+            if (outcome.Move is not null)
             {
-                continue;
+                moves.Add(outcome.Move);
             }
-
-            // Pinned/excluded items — or anything under an excluded folder — are never touched (§11.2).
-            if (excluded.Count > 0
-                && (excluded.Contains(item.Key)
-                    || _ancestry.GetAncestorOrSelfFolderKeys(item.Key).Any(excluded.Contains)))
+            else if (outcome.Skipped is not null)
             {
-                skipped.Add($"{item.Name}: excluded");
-                continue;
+                skipped.Add(outcome.Skipped);
             }
-
-            if (!ImageMediaTypes.Contains(item.ContentTypeAlias, StringComparer.OrdinalIgnoreCase))
-            {
-                // Non-image media is ignored, not failed (§3, §13).
-                skipped.Add($"{item.Name}: ignored (media type '{item.ContentTypeAlias}' is not an image type)");
-                continue;
-            }
-
-            // Defensive: nearest-ancestor scoping — if a deeper ruleset governs this item,
-            // this run leaves it alone (the deeper scope wins, §13).
-            var governing = await _resolver.ResolveForItemAsync(item.Key, cancellationToken);
-            if (governing is null || governing.Key != ruleset.Key)
-            {
-                skipped.Add($"{item.Name}: governed by a deeper ruleset ('{governing?.Name ?? "none"}')");
-                continue;
-            }
-
-            var context = BuildContext(item, scopeFolderKey, culture);
-            var result = await _executor.ExecuteAsync(ruleset.Rules, context, cancellationToken);
-
-            if (result.Stopped || !result.HasTarget)
-            {
-                var reason = result.Stopped ? "rule chain stopped" : "no folder levels resolved";
-                skipped.Add($"{item.Name}: left in place ({reason})");
-                continue;
-            }
-
-            var segments = result.Segments.Select(s => SanitizeFolderName(s.Name)).ToArray();
-            var alreadyInPlace = IsAlreadyInPlace(item, scopeFolderKey, segments);
-            moves.Add(new PlannedMove(item.Key, item.Name, item.ParentKey, segments, alreadyInPlace, null));
         }
 
         return new CurationPlan(scopeFolderKey, ruleset.Key, ruleset.Name, moves, skipped);
+    }
+
+    public async Task<MediaCurationPlan> PlanForMediaAsync(Guid mediaKey, CancellationToken cancellationToken = default)
+    {
+        var clicked = _media.GetItem(mediaKey)
+            ?? throw new MediaNotFoundException(mediaKey);
+
+        var items = clicked.IsFolder ? _media.GetItems(mediaKey, recursive: true) : [clicked];
+        var excluded = await _exclusions.GetAllAsync(cancellationToken);
+
+        // One plan per governing ruleset, in order of first appearance; each item is
+        // curated by its nearest enabled ruleset and targets are relative to that scope root.
+        var groups = new List<(Ruleset Ruleset, CultureInfo Culture, List<PlannedMove> Moves, List<string> Skipped)>();
+        var unattributed = new List<string>();
+
+        foreach (var item in items)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var outcome = await EvaluateItemAsync(item, excluded, expected: null, culture: null, cancellationToken);
+            if (outcome.Governing is null)
+            {
+                if (outcome.Skipped is not null)
+                {
+                    unattributed.Add(outcome.Skipped);
+                }
+
+                continue;
+            }
+
+            var group = groups.FirstOrDefault(g => g.Ruleset.Key == outcome.Governing.Key);
+            if (group.Ruleset is null)
+            {
+                group = (outcome.Governing, ResolveCulture(outcome.Governing.CultureName), [], []);
+                groups.Add(group);
+            }
+
+            if (outcome.Move is not null)
+            {
+                group.Moves.Add(outcome.Move);
+            }
+            else if (outcome.Skipped is not null)
+            {
+                group.Skipped.Add(outcome.Skipped);
+            }
+        }
+
+        var plans = groups
+            .Select(g => new CurationPlan(g.Ruleset.ScopeRootKey, g.Ruleset.Key, g.Ruleset.Name, g.Moves, g.Skipped))
+            .ToList();
+        return new MediaCurationPlan(mediaKey, plans, unattributed);
+    }
+
+    /// <summary>The verdict for one item: a move, or the reason it is left alone.
+    /// <paramref name="Governing"/> is null when the item was ruled out before a ruleset was resolved.</summary>
+    private sealed record ItemOutcome(Ruleset? Governing, PlannedMove? Move, string? Skipped);
+
+    /// <summary>Shared per-item planning. With <paramref name="expected"/> set (scope runs) the item
+    /// must be governed by exactly that ruleset; without it (media runs) the nearest enabled
+    /// ruleset is used. Targets are always relative to the governing ruleset's scope root.</summary>
+    private async Task<ItemOutcome> EvaluateItemAsync(
+        MediaItemInfo item,
+        IReadOnlySet<Guid> excluded,
+        Ruleset? expected,
+        CultureInfo? culture,
+        CancellationToken cancellationToken)
+    {
+        if (item.IsFolder)
+        {
+            return new ItemOutcome(null, null, null);
+        }
+
+        // Pinned/excluded items — or anything under an excluded folder — are never touched (§11.2).
+        if (excluded.Count > 0
+            && (excluded.Contains(item.Key)
+                || _ancestry.GetAncestorOrSelfFolderKeys(item.Key).Any(excluded.Contains)))
+        {
+            return new ItemOutcome(null, null, $"{item.Name}: excluded");
+        }
+
+        if (!ImageMediaTypes.Contains(item.ContentTypeAlias, StringComparer.OrdinalIgnoreCase))
+        {
+            // Non-image media is ignored, not failed (§3, §13).
+            return new ItemOutcome(null, null, $"{item.Name}: ignored (media type '{item.ContentTypeAlias}' is not an image type)");
+        }
+
+        // Nearest-ancestor scoping — if a deeper ruleset governs this item,
+        // a scope run leaves it alone (the deeper scope wins, §13).
+        var governing = await _resolver.ResolveForItemAsync(item.Key, cancellationToken);
+        if (expected is not null)
+        {
+            if (governing is null || governing.Key != expected.Key)
+            {
+                return new ItemOutcome(null, null, $"{item.Name}: governed by a deeper ruleset ('{governing?.Name ?? "none"}')");
+            }
+        }
+        else if (governing is null)
+        {
+            return new ItemOutcome(null, null, $"{item.Name}: no ruleset applies");
+        }
+
+        var ruleset = governing;
+        var scopeFolderKey = ruleset.ScopeRootKey;
+        var context = BuildContext(item, scopeFolderKey, culture ?? ResolveCulture(ruleset.CultureName));
+        var result = await _executor.ExecuteAsync(ruleset.Rules, context, cancellationToken);
+
+        if (result.Stopped || !result.HasTarget)
+        {
+            var reason = result.Stopped ? "rule chain stopped" : "no folder levels resolved";
+            return new ItemOutcome(ruleset, null, $"{item.Name}: left in place ({reason})");
+        }
+
+        var segments = result.Segments.Select(s => SanitizeFolderName(s.Name)).ToArray();
+        var alreadyInPlace = IsAlreadyInPlace(item, scopeFolderKey, segments);
+        return new ItemOutcome(ruleset, new PlannedMove(item.Key, item.Name, item.ParentKey, segments, alreadyInPlace, null), null);
     }
 
     public async Task<CurationRunSummary> ExecuteAsync(CurationPlan plan, string trigger, CancellationToken cancellationToken = default)

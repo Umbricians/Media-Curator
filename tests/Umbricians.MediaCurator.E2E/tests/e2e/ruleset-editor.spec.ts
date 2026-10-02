@@ -1,6 +1,13 @@
-import { ConstantHelper } from '@umbraco-cms/acceptance-test-helpers';
 import { expect, test } from './fixtures';
-import { deleteRulesetsByPrefix } from './util';
+import {
+  addRuleViaPanel,
+  deleteRulesetFromTree,
+  deleteRulesetsByPrefix,
+  expandMediaCuratorTree,
+  rulesetTreeItem,
+  saveRuleset,
+  startNewRuleset,
+} from './util';
 
 const folderName = 'MC Test Folder';
 const rulesetName = 'MC Date Ruleset';
@@ -17,54 +24,34 @@ test.describe('MediaCurator ruleset editor', () => {
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
   });
 
-  test('create, persist, and delete a ruleset through the dashboard', async ({ umbracoUi }) => {
+  test('create, persist, and delete a ruleset in the Settings section', async ({ umbracoUi }) => {
     const page = umbracoUi.page;
     await umbracoUi.goToBackOffice();
-    await umbracoUi.content.goToSection(ConstantHelper.sections.media);
 
-    // Open the Media Curator dashboard tab
-    await page.getByRole('tab', { name: 'Media Curator' }).click();
-    await expect(page.locator('mediacurator-dashboard')).toBeVisible({ timeout: 15000 });
-
-    // Create a new ruleset
-    await page.getByLabel('Create ruleset').click();
-    await page.getByTestId('mc:name').locator('input').fill(rulesetName);
-
-    // Pick the scope folder via the media picker: select the card's checkbox (the
-    // pattern Umbraco's own acceptance-test helpers use), then submit the modal.
-    await page.getByTestId('mc:scope').getByRole('button').first().click();
-    const modal = page.locator('umb-backoffice-modal-container');
-    const card = modal.locator('uui-card-media').filter({ hasText: folderName });
-    await card.waitFor({ timeout: 10000 });
-    await card.hover();
-    await card.locator('#select-checkbox').click({ force: true });
-    await modal.getByRole('button', { name: /^(Submit|Choose|Select)$/i }).last().click();
-    // The picked folder must now show in the scope input
-    await expect(page.getByTestId('mc:scope')).toContainText(folderName, { timeout: 10000 });
+    // Create a new ruleset: name in the header, scope folder on the Settings tab (asserted in the helper)
+    await startNewRuleset(page, { name: rulesetName, scopeFolderName: folderName });
 
     // Add a rule, switch it to the Date provider, and tweak its format setting
-    await page.getByTestId('mc:canvas-add').click();
+    await addRuleViaPanel(page, {
+      providerAlias: 'Umbricians.MediaCurator.Date',
+      settings: { format: 'yyyy/MM/dd' },
+    });
     const rootNode = page.locator('[data-node-id="rule:0"]');
-    await expect(rootNode).toBeVisible();
-    await rootNode.getByTestId('mc:node-provider').locator('select').selectOption('Umbricians.MediaCurator.Date');
-    await rootNode.getByTestId('mc:setting-format').locator('input').fill('yyyy/MM/dd');
+    await expect(rootNode.getByTestId('mc:node-summary').first()).toHaveText('yyyy/MM/dd');
 
-    // Save and verify it appears in the list
-    await page.getByTestId('mc:save').click();
-    const row = page.getByTestId('mc:ruleset-row').filter({ hasText: rulesetName });
-    await expect(row).toBeVisible({ timeout: 10000 });
+    // Save and verify it appears in the Media Curator tree
+    await saveRuleset(page);
+    await expandMediaCuratorTree(page);
+    const item = rulesetTreeItem(page, rulesetName);
+    await expect(item).toBeVisible({ timeout: 10000 });
 
     // Reload to prove persistence
     await page.reload();
-    await page.getByRole('tab', { name: 'Media Curator' }).click();
-    await expect(row).toBeVisible({ timeout: 15000 });
+    await expandMediaCuratorTree(page);
+    await expect(item).toBeVisible({ timeout: 15000 });
 
-    // Delete it (confirm via the Umbraco modal)
-    await page.getByLabel(`Delete ${rulesetName}`).click();
-    await page
-      .locator('umb-backoffice-modal-container')
-      .getByRole('button', { name: 'Delete' })
-      .click();
-    await expect(row).toHaveCount(0, { timeout: 10000 });
+    // Delete it (tree item actions > Delete, confirm via the Umbraco modal)
+    await deleteRulesetFromTree(page, rulesetName);
+    await expect(item).toHaveCount(0, { timeout: 10000 });
   });
 });

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Umbraco.Automate.Core.Actions;
+using Umbraco.Automate.Core.Execution;
 using Umbraco.Automate.Core.Settings;
 using Umbricians.MediaCurator;
 using Umbricians.MediaCurator.Automate.Actions;
@@ -25,6 +26,29 @@ public class AutomateActionsTests
         ActionAlias = "test",
         Settings = settings,
     };
+
+    /// <summary>Mirrors Automate's accessor: the origin lives in an AsyncLocal, so it only
+    /// reaches code that runs in the same async flow.</summary>
+    private sealed class FakeOriginAccessor : IAutomationOriginAccessor
+    {
+        private static readonly AsyncLocal<AutomationOrigin?> Value = new();
+
+        public AutomationOrigin? Current => Value.Value;
+
+        public IDisposable Push(AutomationOrigin origin)
+        {
+            var previous = Value.Value;
+            Value.Value = origin;
+            return new Restore(() => Value.Value = previous);
+        }
+
+        private sealed class Restore(Action undo) : IDisposable
+        {
+            public void Dispose() => undo();
+        }
+    }
+
+    private static readonly FakeOriginAccessor Origins = new();
 
     private static IServiceScopeFactory ScopeFactory(params object[] services)
         => new FakeScopeFactory(services);
@@ -92,13 +116,23 @@ public class AutomateActionsTests
     private sealed class FakeEngine : ICurationEngine
     {
         public CurationPlan? Plan;
+
+        public MediaCurationPlan? MediaPlan;
+
+        public bool PlannedWholeScope;
         public CurationPlan? ExecutedPlan;
         public string? ExecutedTrigger;
 
         public Task<CurationPlan> PlanAsync(Guid scope, bool recursive, CancellationToken ct = default)
-            => Plan is null
+        {
+            PlannedWholeScope = true;
+            return Plan is null
                 ? throw new InvalidOperationException("No enabled ruleset.")
                 : Task.FromResult(Plan);
+        }
+
+        public Task<MediaCurationPlan> PlanForMediaAsync(Guid mediaKey, CancellationToken ct = default)
+            => Task.FromResult(MediaPlan ?? new MediaCurationPlan(mediaKey, [], [$"{mediaKey}: no ruleset applies"]));
 
         public Task<CurationRunSummary> ExecuteAsync(CurationPlan plan, string trigger, CancellationToken ct = default)
         {
@@ -122,6 +156,8 @@ public class AutomateActionsTests
         public bool? ForceSeen;
         public string? SchemeSeen;
 
+        public AutomationOrigin? OriginSeen;
+
         public Task<RecognitionResult?> AnalyzeAsync(
             Guid mediaKey,
             bool force = false,
@@ -130,6 +166,7 @@ public class AutomateActionsTests
         {
             ForceSeen = force;
             SchemeSeen = classificationSchemeAlias;
+            OriginSeen = Origins.Current;
             return Task.FromResult(Result);
         }
     }
@@ -152,7 +189,7 @@ public class AutomateActionsTests
         {
             Plan = PlanWith(new PlannedMove(Guid.NewGuid(), "a.jpg", Guid.NewGuid(), ["2026"], false, null)),
         };
-        var action = new CurateFolderAction(Infrastructure(), ScopeFactory(engine));
+        var action = new CurateFolderAction(Infrastructure(), Origins, ScopeFactory(engine));
 
         var result = await action.ExecuteAsync(
             Context(new CurateFolderSettings { ScopeFolderKey = Guid.NewGuid().ToString(), DryRun = true }),
@@ -170,7 +207,7 @@ public class AutomateActionsTests
         {
             Plan = PlanWith(new PlannedMove(Guid.NewGuid(), "a.jpg", Guid.NewGuid(), ["2026"], false, null)),
         };
-        var action = new CurateFolderAction(Infrastructure(), ScopeFactory(engine));
+        var action = new CurateFolderAction(Infrastructure(), Origins, ScopeFactory(engine));
 
         var result = await action.ExecuteAsync(
             Context(new CurateFolderSettings { ScopeFolderKey = Guid.NewGuid().ToString() }),
@@ -185,7 +222,7 @@ public class AutomateActionsTests
     [Fact]
     public async Task CurateFolder_without_ruleset_fails_with_validation_category()
     {
-        var action = new CurateFolderAction(Infrastructure(), ScopeFactory(new FakeEngine()));
+        var action = new CurateFolderAction(Infrastructure(), Origins, ScopeFactory(new FakeEngine()));
 
         var result = await action.ExecuteAsync(
             Context(new CurateFolderSettings { ScopeFolderKey = Guid.NewGuid().ToString() }),
@@ -198,16 +235,14 @@ public class AutomateActionsTests
     public async Task CategorizeMedia_moves_only_the_requested_item()
     {
         var mediaKey = Guid.NewGuid();
-        var other = Guid.NewGuid();
+        
         var scope = Guid.NewGuid();
         var engine = new FakeEngine
         {
-            Plan = PlanWith(
-                new PlannedMove(mediaKey, "a.jpg", scope, ["2026"], false, null),
-                new PlannedMove(other, "b.jpg", scope, ["2025"], false, null)),
+            MediaPlan = new MediaCurationPlan(mediaKey, [PlanWith(new PlannedMove(mediaKey, "a.jpg", scope, ["2026"], false, null))], []),
         };
         var resolver = new FakeResolver { Ruleset = new Ruleset { ScopeRootKey = scope, Name = "rs" } };
-        var action = new CategorizeMediaAction(Infrastructure(), ScopeFactory(resolver, engine));
+        var action = new CategorizeMediaAction(Infrastructure(), Origins, ScopeFactory(resolver, engine));
 
         var result = await action.ExecuteAsync(
             Context(new CategorizeMediaSettings { MediaKey = mediaKey.ToString() }),
@@ -218,6 +253,8 @@ public class AutomateActionsTests
         Assert.True(output.Moved);
         Assert.Equal("2026", output.TargetPath);
         Assert.Equal(mediaKey, Assert.Single(engine.ExecutedPlan!.Moves).MediaKey);
+        // Planning the whole scope runs every rule (and AI recognition) for every image in it.
+        Assert.False(engine.PlannedWholeScope);
     }
 
     [Fact]
@@ -227,10 +264,10 @@ public class AutomateActionsTests
         var scope = Guid.NewGuid();
         var engine = new FakeEngine
         {
-            Plan = PlanWith(new PlannedMove(mediaKey, "a.jpg", scope, ["2026"], false, null)),
+            MediaPlan = new MediaCurationPlan(mediaKey, [PlanWith(new PlannedMove(mediaKey, "a.jpg", scope, ["2026"], false, null))], []),
         };
         var resolver = new FakeResolver { Ruleset = new Ruleset { ScopeRootKey = scope, Name = "rs" } };
-        var action = new CategorizeMediaAction(Infrastructure(), ScopeFactory(resolver, engine));
+        var action = new CategorizeMediaAction(Infrastructure(), Origins, ScopeFactory(resolver, engine));
 
         var result = await action.ExecuteAsync(
             Context(new CategorizeMediaSettings { MediaKey = mediaKey.ToString(), DryRun = true }),
@@ -245,7 +282,7 @@ public class AutomateActionsTests
     [Fact]
     public async Task CategorizeMedia_without_governing_ruleset_reports_reason()
     {
-        var action = new CategorizeMediaAction(Infrastructure(), ScopeFactory(new FakeResolver(), new FakeEngine()));
+        var action = new CategorizeMediaAction(Infrastructure(), Origins, ScopeFactory(new FakeResolver(), new FakeEngine()));
 
         var result = await action.ExecuteAsync(
             Context(new CategorizeMediaSettings { MediaKey = Guid.NewGuid().ToString() }),
@@ -254,6 +291,29 @@ public class AutomateActionsTests
         var output = (CategorizeMediaOutput)result.OutputData!;
         Assert.False(output.Moved);
         Assert.Contains("No ruleset", output.Reason);
+    }
+
+    // Regression: the actions ran on a thread without the ambient execution context, so the
+    // media saves they caused looked user-made and re-fired "Media Saved" automations forever.
+    [Fact]
+    public async Task AnalyzeImage_keeps_the_automation_origin_so_its_saves_are_recognised()
+    {
+        var recognition = new FakeRecognition { Result = new RecognitionResult([], "a planet") };
+        var action = new AnalyzeImageAction(
+            Infrastructure(),
+            Origins,
+            ScopeFactory(recognition),
+            new OptionsMonitorStub(new MediaCuratorOptions()));
+        var origin = new AutomationOrigin(Guid.NewGuid(), Guid.NewGuid(), [Guid.NewGuid()]);
+
+        using (Origins.Push(origin))
+        {
+            await action.ExecuteAsync(
+                Context(new AnalyzeImageSettings { MediaKey = Guid.NewGuid().ToString() }),
+                CancellationToken.None);
+        }
+
+        Assert.Equal(origin, recognition.OriginSeen);
     }
 
     [Fact]
@@ -279,6 +339,7 @@ public class AutomateActionsTests
         };
         var action = new AnalyzeImageAction(
             Infrastructure(),
+            Origins,
             ScopeFactory(recognition),
             new OptionsMonitorStub(new MediaCuratorOptions()));
 
@@ -301,6 +362,7 @@ public class AutomateActionsTests
         };
         var action = new AnalyzeImageAction(
             Infrastructure(),
+            Origins,
             ScopeFactory(recognition),
             new OptionsMonitorStub(new MediaCuratorOptions { ClassificationSchemeAlias = "lcc" }));
 
@@ -323,6 +385,7 @@ public class AutomateActionsTests
         var recognition = new FakeRecognition { Result = RecognitionResult.Empty };
         var action = new AnalyzeImageAction(
             Infrastructure(),
+            Origins,
             ScopeFactory(recognition),
             new OptionsMonitorStub(new MediaCuratorOptions { ClassificationSchemeAlias = "dewey-pd" }));
 

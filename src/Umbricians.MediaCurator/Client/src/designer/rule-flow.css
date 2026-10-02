@@ -26,12 +26,12 @@
 }
 
 .mc-rule-flow-viewport .react-flow__node {
-  width: 320px !important;
+  width: 280px !important;
 }
 
 .mc-rule-flow-viewport .react-flow__node-scope,
 .mc-rule-flow-viewport .react-flow__node-rule {
-  width: 320px;
+  width: 280px;
   background: transparent;
   border: none;
   box-shadow: none;
@@ -57,122 +57,238 @@
   fill: var(--uui-color-surface-alt, #f6f4f4);
 }
 
-.mc-rule-flow-scope,
-.mc-rule-flow-node {
-  background: var(--uui-color-surface, #fff);
-  border: 1px solid var(--uui-color-border, #d8d7d9);
-  border-radius: var(--uui-border-radius, 6px);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  width: 320px;
+.mc-rule-flow-block {
+  position: relative;
+  width: 280px;
   box-sizing: border-box;
+  background: var(--uui-color-surface, #fff);
+  border: 1px solid var(--uui-color-divider-standalone, #e9e9eb);
+  border-radius: 6px;
+  box-shadow: var(--uui-shadow-depth-1, 0 1px 6px rgba(0, 0, 0, 0.1), 0 0 1px rgba(0, 0, 0, 0.1));
   font-family: var(--uui-font-family, inherit);
-  color: var(--uui-color-text, #1b264f);
-}
-
-.mc-rule-flow-scope {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: var(--uui-color-surface-alt, #f6f4f4);
-}
-
-.mc-rule-flow-scope small {
-  color: var(--uui-color-text-alt, #6e6e6e);
-}
-
-.mc-rule-flow-node-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--uui-color-border, #d8d7d9);
-}
-
-.mc-rule-flow-drag-handle {
+  font-size: var(--uui-type-small-size, 12px);
+  color: var(--uui-color-text, #060606);
   cursor: grab;
-  padding: 0.15rem 0.35rem;
-  color: var(--uui-color-text-alt, #6e6e6e);
-  user-select: none;
-  line-height: 1;
-  border-radius: 4px;
+  transition: box-shadow 120ms ease;
 }
 
-.mc-rule-flow-drag-handle:active {
+.mc-rule-flow-block:hover {
+  box-shadow: var(--uui-shadow-depth-2, 0 3px 12px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.1));
+}
+
+.react-flow__node.dragging .mc-rule-flow-block {
   cursor: grabbing;
 }
 
-.mc-rule-flow-node-header select {
+/* Coloured stripe, inset so the block needs no overflow clipping (handles and + sit outside). */
+.mc-rule-flow-block::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  bottom: -1px;
+  width: 4px;
+  background: var(--mc-block-stripe, var(--uui-color-text-alt, #6b7280));
+  border-radius: 6px 0 0 6px;
+}
+
+.mc-rule-flow-block--scope {
+  --mc-block-stripe: #6366f1;
+  cursor: default;
+}
+
+.mc-rule-flow-block--rule {
+  --mc-block-stripe: #3b82f6;
+}
+
+.mc-rule-flow-block--unknown {
+  --mc-block-stripe: var(--uui-color-danger, #d42054);
+}
+
+.mc-rule-flow-block__header {
+  display: flex;
+  align-items: center;
+  gap: var(--uui-size-space-4, 12px);
+  padding: var(--uui-size-space-3, 9px) var(--uui-size-space-4, 12px);
+  padding-left: calc(var(--uui-size-space-4, 12px) + 4px);
+  min-height: 24px;
+}
+
+.mc-rule-flow-block__body:not(:empty) {
+  border-top: 1px solid var(--uui-color-divider-standalone, #e9e9eb);
+}
+
+.mc-rule-flow-block__icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--mc-block-stripe);
+}
+
+.mc-rule-flow-block__icon uui-icon {
+  font-size: 18px;
+}
+
+.mc-rule-flow-block__title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.mc-rule-flow-block__kind {
+  align-self: flex-start;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.mc-rule-flow-block__name {
   flex: 1;
   min-width: 0;
+  font-size: var(--uui-type-default-size, 14px);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.mc-rule-flow-node-actions {
+.mc-rule-flow-block__body {
   display: flex;
-  gap: 0.25rem;
-  padding: 0 1rem 0.5rem;
-  position: relative;
-  z-index: 2;
-  pointer-events: auto;
-}
-
-.mc-rule-flow-node-actions button {
-  cursor: pointer;
-  border: 1px solid var(--uui-color-border, #d8d7d9);
-  background: var(--uui-color-surface, #fff);
-  border-radius: 4px;
-  padding: 0.15rem 0.45rem;
-  pointer-events: auto;
-  position: relative;
-  z-index: 2;
-}
-
-.mc-rule-flow-node-actions button.danger {
-  color: var(--uui-color-danger, #d42054);
-}
-
-.mc-rule-flow-node-body {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 0.35rem 0.75rem;
+  flex-wrap: wrap;
   align-items: center;
-  padding: 0.75rem 1rem;
+  gap: 4px;
+  padding: var(--uui-size-space-3, 9px) var(--uui-size-space-4, 12px);
+  padding-left: calc(var(--uui-size-space-4, 12px) + 4px);
 }
 
-.mc-rule-flow-node-body label {
-  font-size: 0.85rem;
-  color: var(--uui-color-text-alt, #6e6e6e);
+.mc-rule-flow-block__body:empty {
+  display: none;
 }
 
-.mc-rule-flow-node-body input,
-.mc-rule-flow-node-body select,
-.mc-rule-flow-node-body textarea {
-  width: 100%;
-  box-sizing: border-box;
+.mc-rule-flow-block__chip {
+  max-width: 100%;
+  font-family: var(--uui-font-monospace, monospace);
+  font-size: 11px;
+  color: var(--uui-color-text-alt, #2e2b29);
+  background: var(--uui-color-surface-alt, #f7f7f8);
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.mc-rule-flow-node-body textarea {
-  min-height: 4rem;
-  resize: vertical;
+.mc-rule-flow-block__chip--condition {
+  background: var(--uui-color-warning-standalone, #fbd142);
+  color: var(--uui-color-warning-contrast, #000);
 }
 
-.mc-rule-flow-tag {
-  display: inline-block;
-  font-size: 0.75rem;
-  padding: 0.1rem 0.45rem;
+.mc-rule-flow-block__tag {
+  font-size: 11px;
+  padding: 1px 6px;
   border-radius: 1rem;
   background: var(--uui-color-warning, #f5c1bc);
 }
 
-.mc-rule-flow-example {
-  margin: 0 1rem 0.75rem;
-  font-family: monospace;
-  font-size: 0.85rem;
-  color: var(--uui-color-positive, #2bc37c);
+/* Hover action bar, mirroring Umbraco Automate's (itself modelled on the block list's uui-action-bar). */
+.mc-rule-flow-action-bar {
+  display: inline-flex;
+  align-items: stretch;
+  flex: none;
+  background: var(--uui-color-surface, #fff);
+  border: 1px solid var(--uui-color-divider-standalone, #e9e9eb);
+  border-radius: 50px;
+  box-shadow: var(--uui-shadow-depth-1, 0 1px 6px rgba(0, 0, 0, 0.1), 0 0 1px rgba(0, 0, 0, 0.1));
+  overflow: hidden;
 }
 
-.mc-rule-flow-add-child {
-  margin: 0 1rem 0.75rem;
+.mc-rule-flow-action-bar__btn {
+  width: 28px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--uui-color-text-alt, #2e2b29);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.mc-rule-flow-action-bar__btn + .mc-rule-flow-action-bar__btn {
+  border-left: 1px solid var(--uui-color-divider-standalone, #e9e9eb);
+}
+
+.mc-rule-flow-action-bar__btn:hover {
+  background: var(--uui-color-surface-alt, #f7f7f8);
+  color: var(--uui-color-text, #060606);
+}
+
+.mc-rule-flow-action-bar__btn:focus-visible {
+  outline: 2px solid var(--uui-color-focus, #2152a3);
+  outline-offset: -2px;
+}
+
+.mc-rule-flow-action-bar__btn--danger:hover {
+  background: var(--uui-color-danger, #d42054);
+  color: #fff;
+}
+
+.mc-rule-flow-action-bar__btn uui-icon {
+  font-size: 14px;
+}
+
+.mc-rule-flow-block__actions {
+  opacity: 0;
+  margin-left: auto;
+  transition: opacity 120ms ease;
+}
+
+.mc-rule-flow-block:hover .mc-rule-flow-block__actions,
+.mc-rule-flow-block__actions:focus-within {
+  opacity: 1;
+}
+
+/* "+" below a block: adds a child rule (or a root rule from the scope). */
+.mc-rule-flow-add {
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--uui-color-border, #d8d7d9);
+  background: var(--uui-color-surface, #fff);
+  color: var(--uui-color-text-alt, #2e2b29);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.mc-rule-flow-block:hover .mc-rule-flow-add,
+.mc-rule-flow-add:focus-visible {
+  opacity: 1;
+}
+
+.mc-rule-flow-add:hover {
+  background: var(--uui-color-positive, #2bc37c);
+  border-color: var(--uui-color-positive, #2bc37c);
+  color: #fff;
+}
+
+.mc-rule-flow-add uui-icon {
+  font-size: 12px;
 }
 
 .mc-rule-flow-toolbar {
@@ -181,8 +297,7 @@
   margin-top: 0.75rem;
 }
 
-.mc-rule-flow-toolbar button,
-.mc-rule-flow-add-child button {
+.mc-rule-flow-toolbar button {
   cursor: pointer;
   border: 1px solid var(--uui-color-border, #d8d7d9);
   background: var(--uui-color-surface-alt, #f6f4f4);
@@ -195,13 +310,36 @@
   color: var(--uui-color-text-alt, #6e6e6e);
 }
 
-.mc-rule-flow-edge-label {
-  font-size: 0.8rem;
-  background: var(--uui-color-surface-alt, #f6f4f4);
-  border-radius: 1em;
-  padding: 0 0.5rem;
+/* Fill mode: the designer takes its container's full size (the ruleset workspace Design view). */
+:host([fill]) {
+  height: 100%;
 }
 
-.mc-rule-flow-edge-label--condition {
-  background: var(--uui-color-warning, #f5c1bc);
+:host([fill]) .react-root,
+:host([fill]) .mc-rule-flow-canvas,
+:host([fill]) .mc-rule-flow-viewport {
+  height: 100%;
+}
+
+:host([fill]) .mc-rule-flow-viewport {
+  border: none;
+  border-radius: 0;
+}
+
+:host([fill]) .mc-rule-flow-toolbar {
+  position: absolute;
+  top: var(--uui-size-space-5, 18px);
+  left: var(--uui-size-space-5, 18px);
+  z-index: 5;
+  margin: 0;
+}
+
+:host([fill]) .mc-rule-flow-empty {
+  position: absolute;
+  top: var(--uui-size-space-5, 18px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  margin: 0;
+  pointer-events: none;
 }

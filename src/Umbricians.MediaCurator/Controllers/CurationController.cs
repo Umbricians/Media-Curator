@@ -68,6 +68,60 @@ public class CurationController : MediaCuratorApiControllerBase
         }
     }
 
+    /// <summary>Dry-run for one media item: a single image, or every image under a folder
+    /// (and its subfolders), each planned by its governing ruleset.</summary>
+    [HttpPost("curation/media/{mediaKey:guid}/plan")]
+    [ProducesResponseType<MediaCurationPlanModel>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> PlanMediaCuration(Guid mediaKey, CancellationToken ct)
+    {
+        try
+        {
+            return Ok(MediaCurationPlanModel.From(await _engine.PlanForMediaAsync(mediaKey, ct)));
+        }
+        catch (MediaNotFoundException ex)
+        {
+            return NotFound(Error(ex.Message));
+        }
+    }
+
+    /// <summary>Plans and executes curation for one media item or folder tree. Each governing
+    /// ruleset runs (and is logged) separately.</summary>
+    [HttpPost("curation/media/{mediaKey:guid}/execute")]
+    [ProducesResponseType<MediaCurationSummaryModel>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ExecuteMediaCuration(Guid mediaKey, CancellationToken ct)
+    {
+        try
+        {
+            var plan = await _engine.PlanForMediaAsync(mediaKey, ct);
+            int moved = 0, inPlace = 0, failed = 0;
+            var runKeys = new List<Guid>();
+            foreach (var p in plan.Plans)
+            {
+                var summary = await _engine.ExecuteAsync(p, trigger: "manual", ct);
+                moved += summary.Moved;
+                inPlace += summary.AlreadyInPlace;
+                failed += summary.Failed;
+                // A vetoed run (cancelled by a notification handler) has no run entry.
+                if (summary.RunKey != Guid.Empty)
+                {
+                    runKeys.Add(summary.RunKey);
+                }
+            }
+
+            return Ok(new MediaCurationSummaryModel { Moved = moved, AlreadyInPlace = inPlace, Failed = failed, RunKeys = runKeys });
+        }
+        catch (MediaNotFoundException ex)
+        {
+            return NotFound(Error(ex.Message));
+        }
+    }
+
+    // The backoffice shows a problem's title in its error notification, so the reason goes there.
+    // It only treats the body as problem details when "type" is present.
+    private static ProblemDetails Error(string message) => new() { Title = message, Type = "Error" };
+
     /// <summary>Queues a background bulk run for the scope folder (processed by the
     /// elected worker; editors don't wait).</summary>
     [HttpPost("curation/queue")]

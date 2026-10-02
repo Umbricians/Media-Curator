@@ -21,7 +21,28 @@ public static class RulesetSerializer
         => JsonSerializer.Serialize(rules, _options);
 
     public static List<RuleNode> Deserialize(string? json)
-        => string.IsNullOrWhiteSpace(json)
-            ? []
-            : JsonSerializer.Deserialize<List<RuleNode>>(json, _options) ?? [];
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        var rules = JsonSerializer.Deserialize<List<RuleNode>>(json, _options) ?? [];
+        UpgradeLegacyAliases(rules);
+        return rules;
+    }
+
+    // Built-in providers were originally aliased "MediaCurator.*"; rulesets saved before the
+    // "Umbricians." prefix would otherwise match no provider in the engine or the designer.
+    private const string LegacyAliasPrefix = "MediaCurator.";
+    private const string AliasPrefix = "Umbricians.";
+
+    private static void UpgradeLegacyAliases(List<RuleNode> rules)
+    {
+        foreach (var rule in rules)
+        {
+            if (rule.ProviderAlias.StartsWith(LegacyAliasPrefix, StringComparison.Ordinal))
+            {
+                rule.ProviderAlias = AliasPrefix + rule.ProviderAlias;
+            }
+
+            UpgradeLegacyAliases(rule.Children);
+        }
+    }
 }

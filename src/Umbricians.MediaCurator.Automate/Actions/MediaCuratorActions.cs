@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Umbraco.Automate.Core.Actions;
+using Umbraco.Automate.Core.Execution;
 using Umbraco.Automate.Core.Settings;
 using Umbricians.MediaCurator.Engine;
 using Umbricians.MediaCurator.Recognition;
@@ -19,13 +20,24 @@ file static class AutomateActionConcurrency
     private static readonly SemaphoreSlim _gate = new(1, 1);
 
     internal static async Task<ActionResult> RunSeriallyAsync(
+        IAutomationOriginAccessor originAccessor,
         Func<Task<ActionResult>> action,
         CancellationToken cancellationToken)
     {
+        // The ambient context is dropped below, which also drops Automate's record of which
+        // automation is running. Carry it across so media saves made by this action count as
+        // automation-originated, letting "Media Saved" triggers skip their own cycle.
+        var origin = originAccessor.Current;
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            return await RunWithoutAmbientExecutionContextAsync(action, cancellationToken);
+            return await RunWithoutAmbientExecutionContextAsync(
+                async () =>
+                {
+                    using var _ = origin is null ? null : originAccessor.Push(origin);
+                    return await action();
+                },
+                cancellationToken);
         }
         finally
         {
@@ -88,21 +100,25 @@ public class AnalyzeImageOutput
 [Action("mediaCurator.analyzeImage", "Analyze image (MediaCurator)")]
 public class AnalyzeImageAction : ActionBase<AnalyzeImageSettings, AnalyzeImageOutput>
 {
+    private readonly IAutomationOriginAccessor _originAccessor;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IOptionsMonitor<MediaCuratorOptions> _options;
 
     public AnalyzeImageAction(
         ActionInfrastructure infrastructure,
+        IAutomationOriginAccessor originAccessor,
         IServiceScopeFactory scopeFactory,
         IOptionsMonitor<MediaCuratorOptions> options)
         : base(infrastructure)
     {
+        _originAccessor = originAccessor;
         _scopeFactory = scopeFactory;
         _options = options;
     }
 
     public override async Task<ActionResult> ExecuteAsync(ActionContext context, CancellationToken cancellationToken)
         => await AutomateActionConcurrency.RunSeriallyAsync(
+            _originAccessor,
             () => ExecuteCoreAsync(context, cancellationToken),
             cancellationToken);
 
@@ -158,16 +174,22 @@ public class CategorizeMediaOutput
 [Action("mediaCurator.categorizeMedia", "Categorize media (MediaCurator)")]
 public class CategorizeMediaAction : ActionBase<CategorizeMediaSettings, CategorizeMediaOutput>
 {
+    private readonly IAutomationOriginAccessor _originAccessor;
     private readonly IServiceScopeFactory _scopeFactory;
 
-    public CategorizeMediaAction(ActionInfrastructure infrastructure, IServiceScopeFactory scopeFactory)
+    public CategorizeMediaAction(
+        ActionInfrastructure infrastructure,
+        IAutomationOriginAccessor originAccessor,
+        IServiceScopeFactory scopeFactory)
         : base(infrastructure)
     {
+        _originAccessor = originAccessor;
         _scopeFactory = scopeFactory;
     }
 
     public override async Task<ActionResult> ExecuteAsync(ActionContext context, CancellationToken cancellationToken)
         => await AutomateActionConcurrency.RunSeriallyAsync(
+            _originAccessor,
             () => ExecuteCoreAsync(context, cancellationToken),
             cancellationToken);
 
@@ -190,9 +212,21 @@ public class CategorizeMediaAction : ActionBase<CategorizeMediaSettings, Categor
             return Success(new CategorizeMediaOutput { Moved = false, Reason = "No ruleset governs this item." });
         }
 
-        var plan = await engine.PlanAsync(ruleset.ScopeRootKey, recursive: true, cancellationToken);
-        var move = plan.Moves.FirstOrDefault(m => m.MediaKey == mediaKey);
-        if (move is null || move.AlreadyInPlace)
+        // Plan only this item: planning the whole scope would run every rule — including AI
+        // recognition for images without a stored code — on every image in it.
+        MediaCurationPlan mediaPlan;
+        try
+        {
+            mediaPlan = await engine.PlanForMediaAsync(mediaKey, cancellationToken);
+        }
+        catch (MediaNotFoundException)
+        {
+            return ActionResult.Skipped("Media item not found.");
+        }
+
+        var plan = mediaPlan.Plans.FirstOrDefault(p => p.Moves.Any(m => m.MediaKey == mediaKey));
+        var move = plan?.Moves.First(m => m.MediaKey == mediaKey);
+        if (plan is null || move is null || move.AlreadyInPlace)
         {
             return Success(new CategorizeMediaOutput
             {
@@ -238,16 +272,22 @@ public class CurateFolderOutput
 [Action("mediaCurator.curateFolder", "Curate folder (MediaCurator)")]
 public class CurateFolderAction : ActionBase<CurateFolderSettings, CurateFolderOutput>
 {
+    private readonly IAutomationOriginAccessor _originAccessor;
     private readonly IServiceScopeFactory _scopeFactory;
 
-    public CurateFolderAction(ActionInfrastructure infrastructure, IServiceScopeFactory scopeFactory)
+    public CurateFolderAction(
+        ActionInfrastructure infrastructure,
+        IAutomationOriginAccessor originAccessor,
+        IServiceScopeFactory scopeFactory)
         : base(infrastructure)
     {
+        _originAccessor = originAccessor;
         _scopeFactory = scopeFactory;
     }
 
     public override async Task<ActionResult> ExecuteAsync(ActionContext context, CancellationToken cancellationToken)
         => await AutomateActionConcurrency.RunSeriallyAsync(
+            _originAccessor,
             () => ExecuteCoreAsync(context, cancellationToken),
             cancellationToken);
 

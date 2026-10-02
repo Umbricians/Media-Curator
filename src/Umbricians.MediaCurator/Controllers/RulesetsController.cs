@@ -25,6 +25,15 @@ public class RulesetsController : MediaCuratorApiControllerBase
     public async Task<List<RulesetModel>> GetRulesets(CancellationToken ct)
         => (await _repository.GetAllAsync(ct)).Select(RulesetModel.From).ToList();
 
+    [HttpGet("rulesets/{key:guid}")]
+    [ProducesResponseType<RulesetModel>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetRuleset(Guid key, CancellationToken ct)
+    {
+        var ruleset = await _repository.GetAsync(key, ct);
+        return ruleset is null ? NotFound() : Ok(RulesetModel.From(ruleset));
+    }
+
     [HttpGet("rulesets/by-scope/{scopeRootKey:guid}")]
     [ProducesResponseType<RulesetModel>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -36,17 +45,18 @@ public class RulesetsController : MediaCuratorApiControllerBase
 
     [HttpPut("rulesets")]
     [ProducesResponseType<RulesetModel>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> SaveRuleset(RulesetModel model, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(model.Name))
         {
-            return BadRequest("Name is required.");
+            return BadRequest(SaveError("Name is required."));
         }
 
         if (model.ScopeRootKey == Guid.Empty)
         {
-            return BadRequest("ScopeRootKey is required.");
+            return BadRequest(SaveError("Choose a scope folder for the ruleset."));
         }
 
         var unknown = CollectAliases(model.Rules)
@@ -55,20 +65,25 @@ public class RulesetsController : MediaCuratorApiControllerBase
             .ToList();
         if (unknown.Count > 0)
         {
-            return BadRequest($"Unknown provider alias(es): {string.Join(", ", unknown)}.");
+            return BadRequest(SaveError($"Unknown provider alias(es): {string.Join(", ", unknown)}."));
         }
 
-        // One ruleset per scope folder: an existing ruleset on the same scope is updated.
+        // One ruleset per scope folder: a different ruleset already on this folder is a conflict.
         var existing = await _repository.GetByScopeKeyAsync(model.ScopeRootKey, ct);
         var ruleset = model.ToRuleset();
         if (existing is not null && existing.Key != ruleset.Key)
         {
-            ruleset.Key = existing.Key;
+            return Conflict(SaveError(
+                $"The folder is already curated by the ruleset \"{existing.Name}\". Each folder can have only one ruleset."));
         }
 
         await _repository.SaveAsync(ruleset, ct);
         return Ok(RulesetModel.From(ruleset));
     }
+
+    // The backoffice shows a problem's title in its error notification, so the reason goes there.
+    // It only treats the body as problem details when "type" is present.
+    private static ProblemDetails SaveError(string message) => new() { Title = message, Type = "Error" };
 
     [HttpDelete("rulesets/{key:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]

@@ -1,5 +1,5 @@
 import { UMB_AUTH_CONTEXT as i } from "@umbraco-cms/backoffice/auth";
-import { c as s } from "./client.gen-CkijBioZ.js";
+import { c as s } from "./client.gen-Duro_iP4.js";
 const n = "Umbricians.MediaCurator.Styles", r = "/App_Plugins/MediaCurator/media-curator.css";
 function l() {
   if (document.getElementById(n)) return;
@@ -21,4 +21,4 @@ export {
   m as onInit,
   d as onUnload
 };
-//# sourceMappingURL=entrypoint-BXDH0O8K.js.map
+//# sourceMappingURL=entrypoint-D1teVEvQ.js.map

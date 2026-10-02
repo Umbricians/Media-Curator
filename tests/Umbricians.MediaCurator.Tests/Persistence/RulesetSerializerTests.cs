@@ -48,6 +48,21 @@ public class RulesetSerializerTests
         Assert.Contains("\"unsorted\"", json);
     }
 
+    [Fact]
+    public void Upgrades_legacy_unprefixed_provider_aliases_throughout_the_tree()
+    {
+        const string json = """
+            [{"providerAlias":"MediaCurator.Date","settings":{"format":"yyyy"},
+              "children":[{"providerAlias":"MediaCurator.Color","children":[]}]}]
+            """;
+
+        var root = Assert.Single(RulesetSerializer.Deserialize(json));
+
+        Assert.Equal("Umbricians.MediaCurator.Date", root.ProviderAlias);
+        Assert.Equal("yyyy", root.Settings["format"]!.GetValue<string>());
+        Assert.Equal("Umbricians.MediaCurator.Color", Assert.Single(root.Children).ProviderAlias);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

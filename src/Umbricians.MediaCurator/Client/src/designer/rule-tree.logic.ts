@@ -23,6 +23,28 @@ export function addChildAt(rules: RuleNodeModel[], path: number[], child: RuleNo
   return updateAt(rules, path, (node) => ({ ...node, children: [...(node.children ?? []), child] }));
 }
 
+export function ruleAt(rules: RuleNodeModel[], path: number[]): RuleNodeModel | undefined {
+  let siblings = rules;
+  let current: RuleNodeModel | undefined;
+  for (const index of path) {
+    current = siblings[index];
+    if (!current) return undefined;
+    siblings = current.children ?? [];
+  }
+  return current;
+}
+
+/** Append a rule at the root (`parentPath` null) or under a parent; returns the new rule's path. */
+export function addRule(
+  rules: RuleNodeModel[],
+  parentPath: number[] | null,
+  rule: RuleNodeModel,
+): { rules: RuleNodeModel[]; path: number[] } {
+  if (!parentPath) return { rules: [...rules, rule], path: [rules.length] };
+  const childCount = ruleAt(rules, parentPath)?.children?.length ?? 0;
+  return { rules: addChildAt(rules, parentPath, rule), path: [...parentPath, childCount] };
+}
+
 export function removeAt(rules: RuleNodeModel[], path: number[]): RuleNodeModel[] {
   return updateAt(rules, path, () => null);
 }

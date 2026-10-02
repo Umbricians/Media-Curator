@@ -7,11 +7,15 @@ import {
   type PropertyValues,
 } from "@umbraco-cms/backoffice/external/lit";
 import { UmbElementMixin } from "@umbraco-cms/backoffice/element-api";
+import { umbConfirmModal, umbOpenModal } from "@umbraco-cms/backoffice/modal";
 import { createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { ProviderModel, RuleNodeModel } from "../api/index.js";
 import { RuleFlowCanvas } from "./rule-flow.react.js";
+import { newRule } from "./rule-flow.nodes.js";
 import { adoptRuleFlowStyles } from "./rule-flow.styles.js";
+import { MC_RULE_SETTINGS_MODAL } from "./rule-settings-modal.token.js";
+import { addRule, removeAt, ruleAt, updateAt } from "./rule-tree.logic.js";
 
 /**
  * xyflow-based ruleset designer: React Flow renders inside a custom element that
@@ -22,6 +26,8 @@ export class McRuleFlowElement extends UmbElementMixin(LitElement) {
   @property({ attribute: false }) rules: RuleNodeModel[] = [];
   @property({ attribute: false }) providers: ProviderModel[] = [];
   @property({ attribute: false }) scopeName = "Scope";
+  /** Fill the host's container instead of using a fixed-height viewport. */
+  @property({ type: Boolean, reflect: true }) fill = false;
 
   #mount?: HTMLDivElement;
   #root?: Root;
@@ -80,6 +86,55 @@ export class McRuleFlowElement extends UmbElementMixin(LitElement) {
     this.dispatchEvent(new CustomEvent("rules-change", { detail: { rules }, bubbles: false }));
   }
 
+  #providerName(rule: RuleNodeModel): string {
+    return this.providers.find((provider) => provider.alias === rule.providerAlias)?.name ?? rule.providerAlias;
+  }
+
+  /** Edit a rule in the settings sidebar. A dismissed new rule is rolled back to `rollback`. */
+  async #openSettings(path: number[], isNew: boolean, rollback?: RuleNodeModel[]) {
+    const rule = ruleAt(this.rules, path);
+    if (!rule) return;
+
+    try {
+      const { rule: updated } = await umbOpenModal(this, MC_RULE_SETTINGS_MODAL, {
+        data: { rule, providers: this.providers, isChild: path.length > 1, isNew },
+      });
+      this.#emitChange(updateAt(this.rules, path, (current) => ({ ...updated, children: current.children })));
+    } catch {
+      if (rollback) this.#emitChange(rollback, true);
+    }
+  }
+
+  #onEditRule = (path: number[]) => void this.#openSettings(path, false);
+
+  #onAddRule = (parentPath: number[] | null) => {
+    const rule = newRule(this.providers);
+    if (!rule) return;
+    const before = this.rules;
+    const { rules, path } = addRule(before, parentPath, rule);
+    this.#emitChange(rules, true);
+    void this.#openSettings(path, true, before);
+  };
+
+  #onDeleteRule = async (path: number[]) => {
+    const rule = ruleAt(this.rules, path);
+    if (!rule) return;
+    const childCount = rule.children?.length ?? 0;
+    const children = childCount === 0 ? "" : ` and its ${childCount === 1 ? "child rule" : `${childCount} child rules`}`;
+
+    try {
+      await umbConfirmModal(this, {
+        headline: "Delete",
+        content: `Are you sure you want to delete "${this.#providerName(rule)}"${children}?`,
+        color: "danger",
+        confirmLabel: "Delete",
+      });
+    } catch {
+      return;
+    }
+    this.#emitChange(removeAt(this.rules, path), true);
+  };
+
   #renderReact() {
     if (!this.#root) return;
 
@@ -91,6 +146,9 @@ export class McRuleFlowElement extends UmbElementMixin(LitElement) {
         layoutGeneration: this.#layoutGeneration,
         onRulesChange: (rules: RuleNodeModel[], options?: { relayout?: boolean }) =>
           this.#emitChange(rules, options?.relayout === true),
+        onEditRule: this.#onEditRule,
+        onDeleteRule: this.#onDeleteRule,
+        onAddRule: this.#onAddRule,
       }),
     );
   }
@@ -103,8 +161,12 @@ export class McRuleFlowElement extends UmbElementMixin(LitElement) {
         isolation: isolate;
         z-index: 1;
       }
+      :host([fill]) {
+        height: 100%;
+      }
       .react-root {
         width: 100%;
+        height: 100%;
         position: relative;
         z-index: 1;
       }

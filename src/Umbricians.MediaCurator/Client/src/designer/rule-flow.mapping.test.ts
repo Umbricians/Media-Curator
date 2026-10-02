@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RuleNodeModel } from "../api/index.js";
 import {
-  edgeConditionLabel,
   idToPath,
   isValidTreeConnection,
   pathToId,
@@ -9,6 +8,7 @@ import {
   rulesStructureKey,
   rulesToFlow,
   SCOPE_NODE_ID,
+  Y_GAP,
   subtreeBottom,
 } from "./rule-flow.mapping.js";
 
@@ -25,14 +25,6 @@ describe("pathToId / idToPath", () => {
     expect(pathToId([0, 1, 2])).toBe("rule:0.1.2");
     expect(idToPath("rule:0.1.2")).toEqual([0, 1, 2]);
     expect(idToPath(SCOPE_NODE_ID)).toBeNull();
-  });
-});
-
-describe("edgeConditionLabel", () => {
-  it("uses always for empty conditions", () => {
-    expect(edgeConditionLabel(undefined)).toBe("always");
-    expect(edgeConditionLabel("  ")).toBe("always");
-    expect(edgeConditionLabel("2026")).toBe("2026");
   });
 });
 
@@ -56,7 +48,7 @@ describe("isValidTreeConnection", () => {
 });
 
 describe("rulesToFlow", () => {
-  it("creates scope, rule nodes, and conditional edges", () => {
+  it("creates scope, rule nodes, and parent-to-child edges", () => {
     const rules = [node("a", [node("b", [], { condition: "x" })])];
     const { nodes, edges } = rulesToFlow(rules, [], "Products");
 
@@ -66,13 +58,13 @@ describe("rulesToFlow", () => {
     expect(nodes[2]?.id).toBe("rule:0.0");
 
     const childEdge = edges.find((edge) => edge.target === "rule:0.0");
-    expect(childEdge?.label).toBe("x");
+    expect(childEdge?.source).toBe("rule:0");
+    expect(childEdge?.data?.condition).toBe("x");
   });
 
-  it("omits edge labels for root rules", () => {
+  it("connects root rules to the scope", () => {
     const { edges } = rulesToFlow([node("a")], [], "Products");
-    const rootEdge = edges.find((edge) => edge.target === "rule:0");
-    expect(rootEdge?.label).toBeUndefined();
+    expect(edges.find((edge) => edge.target === "rule:0")?.source).toBe(SCOPE_NODE_ID);
   });
 
   it("stacks nodes vertically and indents by depth", () => {
@@ -88,7 +80,24 @@ describe("rulesToFlow", () => {
     expect(child?.position.y).toBeGreaterThan(root?.position.y ?? 0);
     expect(child?.position.x).toBeGreaterThan(root?.position.x ?? 0);
     // Auto-layout leaves a visible gap between stacked cards.
-    expect((child?.position.y ?? 0) - ((root?.position.y ?? 0) + (root?.height ?? 0))).toBeGreaterThanOrEqual(48);
+    expect((child?.position.y ?? 0) - ((root?.position.y ?? 0) + (root?.initialHeight ?? 0))).toBeGreaterThanOrEqual(Y_GAP);
+  });
+
+  it("does not pin node heights, so cards can size to their content", () => {
+    const { nodes } = rulesToFlow([node("a")], [], "Products");
+    expect(nodes.every((item) => item.height === undefined)).toBe(true);
+  });
+
+  it("stacks using measured heights when they are known", () => {
+    const rules = [node("a"), node("b")];
+    const measured = new Map([["rule:0", 400]]);
+    const { nodes } = rulesToFlow(rules, [], "Products", measured);
+
+    const first = nodes.find((item) => item.id === "rule:0");
+    const second = nodes.find((item) => item.id === "rule:1");
+
+    expect(first?.initialHeight).toBe(400);
+    expect((second?.position.y ?? 0) - ((first?.position.y ?? 0) + 400)).toBe(Y_GAP);
   });
 });
 

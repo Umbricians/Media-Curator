@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProviderModel, RuleNodeModel } from "../api/index.js";
-import { addChildAt, defaultSettings, examplePath, moveSibling, removeAt, reorderSibling, updateAt } from "./rule-tree.logic.js";
+import { addChildAt, addRule, defaultSettings, examplePath, moveSibling, removeAt, reorderSibling, ruleAt, updateAt } from "./rule-tree.logic.js";
 
 const node = (alias: string, children: RuleNodeModel[] = [], extra: Partial<RuleNodeModel> = {}): RuleNodeModel => ({
   providerAlias: alias,
@@ -117,5 +117,28 @@ describe("examplePath", () => {
 
     expect(examplePath("S", exif, providers)).toBe("S/Nikon");
     expect(examplePath("S", color, providers)).toBe("S/Brand Blue");
+  });
+});
+
+describe("ruleAt", () => {
+  it("finds nested rules and returns undefined for missing paths", () => {
+    const rules = [node("a", [node("b"), node("c")])];
+    expect(ruleAt(rules, [0, 1])?.providerAlias).toBe("c");
+    expect(ruleAt(rules, [0, 5])).toBeUndefined();
+    expect(ruleAt(rules, [])).toBeUndefined();
+  });
+});
+
+describe("addRule", () => {
+  it("appends a root rule and returns its path", () => {
+    const { rules, path } = addRule([node("a")], null, node("b"));
+    expect(path).toEqual([1]);
+    expect(rules.map((r) => r.providerAlias)).toEqual(["a", "b"]);
+  });
+
+  it("appends a child after existing children and returns its path", () => {
+    const { rules, path } = addRule([node("a", [node("b")])], [0], node("c"));
+    expect(path).toEqual([0, 1]);
+    expect(ruleAt(rules, path)?.providerAlias).toBe("c");
   });
 });
