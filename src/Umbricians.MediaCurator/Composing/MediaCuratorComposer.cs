@@ -1,6 +1,7 @@
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.AI.Extensions;
+using Umbricians.MediaCurator.People;
 using Umbricians.MediaCurator.Providers;
 using Umbricians.MediaCurator.Recognition;
 
@@ -23,6 +24,9 @@ public class MediaCuratorComposer : IComposer
             .AddProvider<FilenameConventionProvider>()
             .AddScheme<Schemes.DeweyPublicDomainScheme>()
             .AddScheme<Schemes.LccOutlineScheme>();
+
+        // "Contains people" detection: media tree badges, path upkeep and the People provider.
+        builder.AddMediaCuratorPeopleDetection();
 
         builder.AITestFeatures()
             .Add<PizzaOriginalRecognitionTestFeature>()

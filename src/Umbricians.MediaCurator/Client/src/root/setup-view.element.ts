@@ -145,6 +145,22 @@ export class McRootSetupViewElement extends UmbLitElement {
               Lets classification run again from the description, without re-sending the image to the AI.
             </div>
           </div>
+
+          <uui-label for="mc-detect-people">Detect people</uui-label>
+          <div>
+            <uui-toggle
+              id="mc-detect-people"
+              data-mark="mc:detect-people"
+              label="Detect people"
+              .checked=${settings.detectPeople}
+              @change=${(e: Event) => this.#update({ detectPeople: (e.target as HTMLInputElement).checked })}
+            ></uui-toggle>
+            <div class="hint">
+              When images are analyzed, also decide from their description whether they show people. The media tree
+              then marks those images, and every folder with such images below it, for privacy and model-release
+              review. "Analyze images" fills this in for images analyzed earlier without sending them again.
+            </div>
+          </div>
         </div>
       </uui-box>
 

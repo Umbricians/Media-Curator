@@ -22,6 +22,7 @@ import {
 } from "./curate-media.summary.js";
 import "./empty-folders-option.element.js";
 import { treeReloadTargets } from "./tree-reload.js";
+import { peopleDetectionEnabled, reloadPeopleBadges } from "../people/reload-people-badges.js";
 import type { McEmptyFoldersOptionElement } from "./empty-folders-option.element.js";
 
 const MEDIA_ENTITY_TYPE = "media";
@@ -103,6 +104,12 @@ export class McCurateMediaEntityAction extends UmbEntityActionBase<never> {
     const keys = [unique, ...plan.plans.map((p) => p.scopeFolderKey), ...changedFolderKeys];
     for (const target of treeReloadTargets(keys, MEDIA_ENTITY_TYPE, UMB_MEDIA_ROOT_ENTITY_TYPE)) {
       actionEvents.dispatchEvent(new UmbRequestReloadChildrenOfEntityEvent(target));
+    }
+
+    // Moved images keep their people badge, but the "people below" badge of every folder above a changed
+    // folder may have changed too.
+    if (changedFolderKeys.length > 0 && (await peopleDetectionEnabled())) {
+      await reloadPeopleBadges(this, changedFolderKeys);
     }
   }
 }

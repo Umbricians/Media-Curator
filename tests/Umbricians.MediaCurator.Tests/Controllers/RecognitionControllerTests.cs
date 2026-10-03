@@ -3,6 +3,7 @@ using Umbricians.MediaCurator;
 using Umbricians.MediaCurator.Controllers;
 using Umbricians.MediaCurator.Controllers.ViewModels;
 using Umbricians.MediaCurator.Engine;
+using Umbricians.MediaCurator.People;
 using Umbricians.MediaCurator.Recognition;
 using Umbricians.MediaCurator.Settings;
 
@@ -88,14 +89,14 @@ public class RecognitionControllerTests
             => Task.FromResult(Unclassified.Contains(mediaKey) ? null : scheme);
     }
 
-    private sealed class FakeSettings(bool persistDescriptions) : IMediaCuratorSettingsService
+    private sealed class FakeSettings(bool persistDescriptions, bool detectPeople = false) : IMediaCuratorSettingsService
     {
         public Task<string?> GetTypeSafeApiKeyAsync(CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
 
         public Task SetTypeSafeApiKeyAsync(string? apiKey, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task<MediaCuratorSiteSettings> GetAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult(new MediaCuratorSiteSettings { PersistImageDescription = persistDescriptions });
+            => Task.FromResult(new MediaCuratorSiteSettings { PersistImageDescription = persistDescriptions, DetectPeople = detectPeople });
 
         public Task SaveAsync(MediaCuratorSiteSettings settings, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
@@ -366,5 +367,97 @@ public class RecognitionControllerTests
         Assert.Null(recognition.Calls.Single(c => c.Key == images[0]).Scheme);
         Assert.All(recognition.Calls.Where(c => c.Key != images[0]), c => Assert.Equal("dewey", c.Scheme));
     }
-}
 
+    private sealed class FakePeople(Tests.People.FakePeopleRepository repository) : IPeopleDetectionService
+    {
+        public readonly List<(Guid Key, string? Description, bool Force)> Calls = [];
+
+        public Task<PeopleDetection?> DetectAsync(
+            Guid mediaKey, string? description, IReadOnlyList<AiTag> tags, bool force = false, CancellationToken cancellationToken = default)
+        {
+            lock (Calls)
+            {
+                Calls.Add((mediaKey, description, force));
+            }
+
+            var detection = new PeopleDetection(mediaKey, true, 0.9, PeopleDetectionSources.Jev, "-1,1", null, DateTime.UtcNow);
+            repository.Rows[mediaKey] = detection;
+            return Task.FromResult<PeopleDetection?>(detection);
+        }
+    }
+
+    private static (RecognitionController Controller, FakeMedia Media, FakeRecognition Recognition, FakePeople People, Tests.People.FakePeopleRepository Repository)
+        CreateWithPeople(bool detectPeople = true)
+    {
+        var media = new FakeMedia();
+        var recognition = new FakeRecognition();
+        var repository = new Tests.People.FakePeopleRepository();
+        var people = new FakePeople(repository);
+        var controller = new RecognitionController(
+            recognition, media, new FakeSettings(true, detectPeople), null!, null!,
+            schemes: new FakeSchemes("dewey"), people: people, peopleRepository: repository);
+        return (controller, media, recognition, people, repository);
+    }
+
+    [Fact]
+    public async Task With_people_detection_on_analyzed_images_without_a_people_decision_count_as_not_analyzed()
+    {
+        var (c, m, _, _, repository) = CreateWithPeople();
+        var (_, root, i1, i2) = Tree(m);
+        MarkAnalyzed(m, i1);
+        MarkAnalyzed(m, i2);
+        repository.Add(i2, "-1,1,2");
+
+        var count = Assert.IsType<MediaImageCountModel>(Assert.IsType<OkObjectResult>(
+            await c.CountMediaImages(root, CancellationToken.None)).Value);
+
+        Assert.Equal(2, count.Count);
+        Assert.Equal(1, count.NotAnalyzedCount);
+    }
+
+    [Fact]
+    public async Task With_people_detection_off_people_decisions_do_not_affect_the_count()
+    {
+        var (c, m, _, _, _) = CreateWithPeople(detectPeople: false);
+        var (_, root, i1, i2) = Tree(m);
+        MarkAnalyzed(m, i1);
+        MarkAnalyzed(m, i2);
+
+        var count = Assert.IsType<MediaImageCountModel>(Assert.IsType<OkObjectResult>(
+            await c.CountMediaImages(root, CancellationToken.None)).Value);
+
+        Assert.Equal(0, count.NotAnalyzedCount);
+    }
+
+    [Fact]
+    public async Task Keeping_existing_analysis_decides_people_from_it_without_sending_the_image_again()
+    {
+        var (c, m, r, people, _) = CreateWithPeople();
+        var (_, _, analyzed, fresh) = Tree(m);
+        MarkAnalyzed(m, analyzed);
+
+        var result = Assert.IsType<ReanalyzeImagesResponseModel>(Assert.IsType<OkObjectResult>(await c.ReanalyzeImages(
+            new ReanalyzeImagesRequestModel { MediaKeys = [analyzed, fresh], KeepExistingAnalysis = true },
+            CancellationToken.None)).Value);
+
+        Assert.False(r.Calls.Single(x => x.Key == analyzed).Force);
+        Assert.True(r.Calls.Single(x => x.Key == fresh).Force);
+        var decided = Assert.Single(people.Calls);
+        Assert.Equal((analyzed, "A cat", false), decided);
+        Assert.True(result.Results.Single(x => x.MediaKey == analyzed).ContainsPeople);
+    }
+
+    [Fact]
+    public async Task Re_analysis_reports_no_people_result_while_detection_is_off()
+    {
+        var (c, m, _, people, _) = CreateWithPeople(detectPeople: false);
+        var (_, _, image, _) = Tree(m);
+
+        var result = Assert.IsType<ReanalyzeImagesResponseModel>(Assert.IsType<OkObjectResult>(await c.ReanalyzeImages(
+            new ReanalyzeImagesRequestModel { MediaKeys = [image] },
+            CancellationToken.None)).Value);
+
+        Assert.Null(Assert.Single(result.Results).ContainsPeople);
+        Assert.Empty(people.Calls);
+    }
+}

@@ -19,6 +19,25 @@ public class MediaCuratorMigrationPlan : PackageMigrationPlan
         To<CreateExclusionTableMigration>("mediacurator-create-exclusion-table");
         To<CreateSiteSettingsTableMigration>("mediacurator-create-site-settings-table");
         To<AddSiteSettingsAiColumnMigration>("mediacurator-add-site-settings-ai-column");
+        To<CreatePeopleDetectionTableMigration>("mediacurator-create-people-table");
+    }
+}
+
+public class CreatePeopleDetectionTableMigration : AsyncMigrationBase
+{
+    public CreatePeopleDetectionTableMigration(IMigrationContext context)
+        : base(context)
+    {
+    }
+
+    protected override Task MigrateAsync()
+    {
+        if (!TableExists(People.PeopleDetectionDto.TableName))
+        {
+            Create.Table<People.PeopleDetectionDto>().Do();
+        }
+
+        return Task.CompletedTask;
     }
 }
 

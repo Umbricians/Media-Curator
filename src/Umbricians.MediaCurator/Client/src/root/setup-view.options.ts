@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS: MediaCuratorSiteSettingsModel = {
   jevApiKeySource: "None",
   maxParallelAnalyses: 4,
   savePreparedImages: false,
+  detectPeople: false,
 };
 
 export const CLASSIFICATION_METHODS: { value: ClassificationMethod; name: string }[] = [

@@ -88,6 +88,7 @@ internal sealed class MediaCuratorSettingsService : IMediaCuratorSettingsService
         ai.JevModel = Blank(settings.JevModel);
         ai.MaxParallelAnalyses = ClampParallel(settings.MaxParallelAnalyses);
         ai.SavePreparedImages = settings.SavePreparedImages;
+        ai.DetectPeople = settings.DetectPeople;
         await WriteAsync(settings.PersistImageDescription, ai, cancellationToken);
     }
 
@@ -250,6 +251,7 @@ internal sealed class MediaCuratorSettingsService : IMediaCuratorSettingsService
         JevApiKeyConfigured = apiKeyConfigured,
         MaxParallelAnalyses = ClampParallel(ai?.MaxParallelAnalyses ?? MediaCuratorDefaults.MaxParallelAnalyses),
         SavePreparedImages = ai?.SavePreparedImages ?? false,
+        DetectPeople = ai?.DetectPeople ?? false,
     };
 
     internal static int ClampParallel(int value) => Math.Clamp(value, 1, MediaCuratorDefaults.MaxParallelAnalysesLimit);
@@ -310,6 +312,7 @@ internal sealed class MediaCuratorSettingsService : IMediaCuratorSettingsService
         JevApiKeySource = s.JevApiKeySource,
         MaxParallelAnalyses = s.MaxParallelAnalyses,
         SavePreparedImages = s.SavePreparedImages,
+        DetectPeople = s.DetectPeople,
     };
 }
 
@@ -341,6 +344,8 @@ internal sealed class StoredAiSettings
     public int? MaxParallelAnalyses { get; set; }
 
     public bool? SavePreparedImages { get; set; }
+
+    public bool? DetectPeople { get; set; }
 
     /// <summary>True once the old "MediaCurator" app settings section has been imported.</summary>
     public bool LegacyImported { get; set; }

@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Umbraco.AI.Core.Chat;
 using Umbricians.MediaCurator.Controllers.ViewModels;
 using Umbricians.MediaCurator.Engine;
+using Umbricians.MediaCurator.People;
 using Umbricians.MediaCurator.Providers;
 using Umbricians.MediaCurator.Recognition;
 using Umbricians.MediaCurator.Rules;
@@ -33,6 +34,8 @@ public class RecognitionController : MediaCuratorApiControllerBase
     private readonly IWebHostEnvironment _environment;
     private readonly IParallelMediaWork? _parallel;
     private readonly IClassificationSchemeLocator? _schemes;
+    private readonly IPeopleDetectionService? _people;
+    private readonly IPeopleDetectionRepository? _peopleRepository;
 
     public RecognitionController(
         IRecognitionService recognition,
@@ -41,10 +44,14 @@ public class RecognitionController : MediaCuratorApiControllerBase
         IServiceProvider services,
         IWebHostEnvironment environment,
         IParallelMediaWork? parallel = null,
-        IClassificationSchemeLocator? schemes = null)
+        IClassificationSchemeLocator? schemes = null,
+        IPeopleDetectionService? people = null,
+        IPeopleDetectionRepository? peopleRepository = null)
     {
         _parallel = parallel;
         _schemes = schemes;
+        _people = people;
+        _peopleRepository = peopleRepository;
         _recognition = recognition;
         _media = media;
         _settings = settings;
@@ -65,7 +72,11 @@ public class RecognitionController : MediaCuratorApiControllerBase
 
         var scheme = ResolveScheme(request.ClassificationSchemeAlias);
 
-        var results = await ReanalyzeManyAsync(request.MediaKeys.Distinct().ToList(), scheme, cancellationToken);
+        var results = await ReanalyzeManyAsync(
+            request.MediaKeys.Distinct().ToList(),
+            scheme,
+            request.KeepExistingAnalysis,
+            cancellationToken);
         return Ok(new ReanalyzeImagesResponseModel { Results = results });
     }
 
@@ -94,7 +105,7 @@ public class RecognitionController : MediaCuratorApiControllerBase
         }
 
         var scheme = ResolveScheme(null);
-        var results = await ReanalyzeManyAsync(toAnalyze.Select(i => i.Key).ToList(), scheme, cancellationToken);
+        var results = await ReanalyzeManyAsync(toAnalyze.Select(i => i.Key).ToList(), scheme, keepExisting: !all, cancellationToken);
 
         return Ok(new AnalyzeMediaImagesResponseModel
         {
@@ -141,15 +152,28 @@ public class RecognitionController : MediaCuratorApiControllerBase
     }
 
     /// <summary>Images with no stored AI description. A classification code alone doesn't count:
-    /// editors can enter codes by hand. When descriptions aren't stored, a code is all there is.</summary>
+    /// editors can enter codes by hand. When descriptions aren't stored, a code is all there is.
+    /// With people detection on, analyzed images not yet checked for people count too; analyzing them
+    /// keeps their stored analysis and decides from it.</summary>
     private async Task<List<MediaItemInfo>> NotAnalyzedAsync(List<MediaItemInfo> images, CancellationToken cancellationToken)
     {
-        var descriptionsStored = (await _settings.GetAsync(cancellationToken)).PersistImageDescription;
-        var marker = descriptionsStored
+        var settings = await _settings.GetAsync(cancellationToken);
+        var marker = AnalysisMarker(settings);
+        var missing = images.Where(i => string.IsNullOrWhiteSpace(_media.GetPropertyValue(i.Key, marker))).ToList();
+        if (!settings.DetectPeople || !settings.AiEnabled || _peopleRepository is null)
+        {
+            return missing;
+        }
+
+        var decided = await _peopleRepository.GetManyAsync(images.Select(i => i.Key).ToList(), cancellationToken);
+        var missingKeys = missing.Select(i => i.Key).ToHashSet();
+        return images.Where(i => missingKeys.Contains(i.Key) || !decided.ContainsKey(i.Key)).ToList();
+    }
+
+    private static string AnalysisMarker(MediaCuratorSiteSettings settings)
+        => settings.PersistImageDescription
             ? UmbracoAiRecognitionService.DescriptionPropertyAlias
             : ClassificationProvider.CodePropertyAlias;
-        return images.Where(i => string.IsNullOrWhiteSpace(_media.GetPropertyValue(i.Key, marker))).ToList();
-    }
 
     // The backoffice shows a problem's title in its error notification, so the reason goes there.
     // It only treats the body as problem details when "type" is present.
@@ -180,15 +204,21 @@ public class RecognitionController : MediaCuratorApiControllerBase
     /// <summary>Analyzes the images concurrently (up to the configured number at a time); results keep
     /// the order of <paramref name="mediaKeys"/>.</summary>
     private async Task<List<ReanalyzeImageResultModel>> ReanalyzeManyAsync(
-        IReadOnlyList<Guid> mediaKeys, string? scheme, CancellationToken cancellationToken)
+        IReadOnlyList<Guid> mediaKeys, string? scheme, bool keepExisting, CancellationToken cancellationToken)
     {
+        var settings = await _settings.GetAsync(cancellationToken);
+        var options = new AnalyzeOptions(
+            scheme,
+            keepExisting ? AnalysisMarker(settings) : null,
+            settings.DetectPeople && settings.AiEnabled);
         if (_parallel is null || mediaKeys.Count <= 1)
         {
             var results = new List<ReanalyzeImageResultModel>(mediaKeys.Count);
             foreach (var mediaKey in mediaKeys)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                results.Add(await ReanalyzeOneAsync(_recognition, _media, _schemes, mediaKey, scheme, cancellationToken));
+                results.Add(await ReanalyzeOneAsync(
+                    _recognition, _media, _schemes, _people, _peopleRepository, mediaKey, options, cancellationToken));
             }
 
             return results;
@@ -200,23 +230,35 @@ public class RecognitionController : MediaCuratorApiControllerBase
                 services.GetRequiredService<IRecognitionService>(),
                 services.GetRequiredService<IMediaOperations>(),
                 services.GetService<IClassificationSchemeLocator>(),
+                services.GetService<IPeopleDetectionService>(),
+                services.GetService<IPeopleDetectionRepository>(),
                 mediaKey,
-                scheme,
+                options,
                 ct),
             cancellationToken);
         return parallelResults.ToList();
     }
 
-    /// <summary>Analyzes one image from scratch. Without an explicit <paramref name="scheme"/>, the image is
-    /// classified with the scheme of the ruleset that curates it (none: description and tags only).</summary>
+    /// <param name="Scheme">An explicit classification scheme, or null for each image's ruleset scheme.</param>
+    /// <param name="KeepExistingMarker">When set, images with a value in this property keep their stored
+    /// analysis: only missing results are decided from it.</param>
+    /// <param name="DetectPeople">Whether people detection is on.</param>
+    private sealed record AnalyzeOptions(string? Scheme, string? KeepExistingMarker, bool DetectPeople);
+
+    /// <summary>Analyzes one image from scratch (or, with <see cref="AnalyzeOptions.KeepExistingMarker"/>, fills in
+    /// what an analyzed image is missing). Without an explicit scheme, the image is classified with the scheme
+    /// of the ruleset that curates it (none: description and tags only).</summary>
     private static async Task<ReanalyzeImageResultModel> ReanalyzeOneAsync(
         IRecognitionService recognition,
         IMediaOperations media,
         IClassificationSchemeLocator? schemes,
+        IPeopleDetectionService? people,
+        IPeopleDetectionRepository? peopleRepository,
         Guid mediaKey,
-        string? scheme,
+        AnalyzeOptions options,
         CancellationToken cancellationToken)
     {
+        var scheme = options.Scheme;
         var item = media.GetItem(mediaKey);
         if (item is null)
         {
@@ -237,7 +279,9 @@ public class RecognitionController : MediaCuratorApiControllerBase
         try
         {
             scheme ??= schemes is null ? null : await schemes.GetSchemeForMediaAsync(mediaKey, cancellationToken);
-            var result = await recognition.AnalyzeAsync(mediaKey, force: true, scheme, cancellationToken);
+            var keep = options.KeepExistingMarker is { } marker
+                && !string.IsNullOrWhiteSpace(media.GetPropertyValue(mediaKey, marker));
+            var result = await recognition.AnalyzeAsync(mediaKey, force: !keep, scheme, cancellationToken);
             if (result is null)
             {
                 return new ReanalyzeImageResultModel
@@ -257,6 +301,7 @@ public class RecognitionController : MediaCuratorApiControllerBase
                 Description = result.Description,
                 Tags = result.Tags.Select(t => t.Name).ToList(),
                 ClassificationCode = result.ClassificationCode,
+                ContainsPeople = await ContainsPeopleAsync(people, peopleRepository, mediaKey, result, keep, options, cancellationToken),
             };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -273,6 +318,33 @@ public class RecognitionController : MediaCuratorApiControllerBase
                 Error = ex.Message,
             };
         }
+    }
+
+    /// <summary>A fresh analysis already decided people (the recognition enricher); a kept analysis is decided
+    /// now from its stored description, unless a current decision is stored.</summary>
+    private static async Task<bool?> ContainsPeopleAsync(
+        IPeopleDetectionService? people,
+        IPeopleDetectionRepository? peopleRepository,
+        Guid mediaKey,
+        RecognitionResult result,
+        bool kept,
+        AnalyzeOptions options,
+        CancellationToken cancellationToken)
+    {
+        if (!options.DetectPeople)
+        {
+            return null;
+        }
+
+        if (kept && people is not null)
+        {
+            return (await people.DetectAsync(mediaKey, result.Description, result.Tags, force: false, cancellationToken))
+                ?.ContainsPeople;
+        }
+
+        return peopleRepository is null
+            ? null
+            : (await peopleRepository.GetManyAsync([mediaKey], cancellationToken)).GetValueOrDefault(mediaKey)?.ContainsPeople;
     }
 
     /// <summary>Runs the bundled pizza test image through Umbraco.AI without resizing.</summary>

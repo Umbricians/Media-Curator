@@ -35,7 +35,7 @@ export class McRootReanalyzeViewElement extends UmbLitElement {
     this._reanalyzing = true;
     try {
       const response = await MediaCuratorService.reanalyzeImages({
-        body: { mediaKeys: this._mediaKeys },
+        body: { mediaKeys: this._mediaKeys, keepExistingAnalysis: false },
       });
       if (response.error || !response.data) {
         notify(this.#notifications, "danger", `Re-analyze failed: ${JSON.stringify(response.error ?? "no data")}`);
