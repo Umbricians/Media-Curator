@@ -28,6 +28,10 @@ public interface IClassificationScheme
 
     /// <summary>Direct children of <paramref name="parentCode"/>; when null, returns root entries.</summary>
     IReadOnlyList<ClassificationEntry> GetChildren(string? parentCode);
+
+    /// <summary>What the AI should classify by, added to every code decision. Subject schemes (the
+    /// default) classify what the image depicts; a format or purpose scheme says so instead.</summary>
+    string DecisionGuidance => Recognition.ClassificationPromptBuilder.DepictsNotMediumGuidance;
 }
 
 public sealed class ClassificationSchemeCollection : BuilderCollectionBase<IClassificationScheme>
@@ -80,6 +84,8 @@ public abstract class ResourceFileScheme : IClassificationScheme
 
     public IReadOnlyList<ClassificationEntry> GetAllEntries()
         => _entries.Value.Values.OrderBy(e => e.Code, StringComparer.OrdinalIgnoreCase).ToList();
+
+    public virtual string DecisionGuidance => Recognition.ClassificationPromptBuilder.DepictsNotMediumGuidance;
 
     public IReadOnlyList<ClassificationEntry> GetChildren(string? parentCode)
     {

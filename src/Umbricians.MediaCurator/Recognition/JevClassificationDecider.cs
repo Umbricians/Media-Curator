@@ -151,10 +151,10 @@ internal sealed class JevClassificationDecider : IJevClassificationDecider
         }
 
         var instructions =
-            $"Which category of the \"{choice.Scheme.Name}\" library classification scheme best fits the PRIMARY " +
-            "SUBJECT of the image described in `image_summary` and `tags`" +
+            $"Which category of the \"{choice.Scheme.Name}\" classification scheme best fits the image " +
+            "described in `image_summary` and `tags`" +
             (choice.Parent is null ? "?" : ", within `already_classified_under`?") +
-            " " + ClassificationPromptBuilder.DepictsNotMediumGuidance;
+            " " + choice.Scheme.DecisionGuidance;
 
         return new
         {
