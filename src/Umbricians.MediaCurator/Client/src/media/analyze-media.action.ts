@@ -15,6 +15,7 @@ import {
   type AnalyzeOutcome,
 } from "./analyze-media.summary.js";
 import { updateNotificationMessage } from "./notification-progress.js";
+import { reloadPeopleBadges } from "../people/reload-people-badges.js";
 import { runPool } from "./run-pool.js";
 
 const HEADLINE = "Analyze images";
@@ -78,7 +79,7 @@ export class McAnalyzeMediaEntityAction extends UmbEntityActionBase<never> {
       results = await runPool(
         listed.images,
         parallel,
-        (image) => this.#analyzeOne(image.mediaKey, image.mediaName),
+        (image) => this.#analyzeOne(image.mediaKey, image.mediaName, !all),
         (_, done) => updateNotificationMessage(progress, HEADLINE, progressMessage(done, total)),
       );
     } finally {
@@ -87,15 +88,33 @@ export class McAnalyzeMediaEntityAction extends UmbEntityActionBase<never> {
 
     const failed = results.some((r) => !r.analyzed);
     await this.#notify(failed ? "warning" : "positive", resultMessage(results, listed.alreadyAnalyzedCount));
+
+    // People decisions come back only when people detection is on; then refresh the tree badges.
+    if (results.some((r) => r.containsPeople != null)) {
+      await reloadPeopleBadges(this, listed.images.map((image) => image.mediaKey));
+    }
   }
 
   /** Errors are collected for the summary rather than shown one notification at a time. */
-  async #analyzeOne(mediaKey: string, mediaName: string): Promise<AnalyzeOutcome> {
+  /** With keepExistingAnalysis, an image analyzed before is not sent again; only what it is missing (such as
+   * whether it shows people) is decided from its stored description. */
+  async #analyzeOne(
+    mediaKey: string,
+    mediaName: string,
+    keepExistingAnalysis: boolean,
+  ): Promise<AnalyzeOutcome> {
     try {
-      const { data, error } = await MediaCuratorService.reanalyzeImages({ body: { mediaKeys: [mediaKey] } });
+      const { data, error } = await MediaCuratorService.reanalyzeImages({
+        body: { mediaKeys: [mediaKey], keepExistingAnalysis },
+      });
       const result = data?.results[0];
       if (error || !result) return { mediaName, analyzed: false, error: "The request failed." };
-      return { mediaName: result.mediaName ?? mediaName, analyzed: result.analyzed, error: result.error };
+      return {
+        mediaName: result.mediaName ?? mediaName,
+        analyzed: result.analyzed,
+        error: result.error,
+        containsPeople: result.containsPeople,
+      };
     } catch (error) {
       return { mediaName, analyzed: false, error: error instanceof Error ? error.message : "The request failed." };
     }

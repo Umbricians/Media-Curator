@@ -6,6 +6,10 @@ public class ReanalyzeImagesRequestModel
 
     /// <summary>Optional scheme alias; uses the configured default when omitted.</summary>
     public string? ClassificationSchemeAlias { get; init; }
+
+    /// <summary>When true, an image that already has a stored analysis is not sent to the AI again: only what
+    /// is missing (such as whether it shows people) is decided, from the stored description.</summary>
+    public bool KeepExistingAnalysis { get; init; }
 }
 
 public class ReanalyzeImageResultModel
@@ -16,6 +20,9 @@ public class ReanalyzeImageResultModel
     public string? Description { get; init; }
     public List<string> Tags { get; init; } = [];
     public string? ClassificationCode { get; init; }
+
+    /// <summary>Whether the image shows people; null when people detection is off or undecided.</summary>
+    public bool? ContainsPeople { get; init; }
     public string? Error { get; init; }
 }
 

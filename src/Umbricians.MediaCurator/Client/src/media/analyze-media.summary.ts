@@ -1,6 +1,12 @@
 /** Pure wording helpers for the "Analyze images" action (unit-tested in Node). */
 
-export type AnalyzeOutcome = { mediaName?: string | null; analyzed: boolean; error?: string | null };
+export type AnalyzeOutcome = {
+  mediaName?: string | null;
+  analyzed: boolean;
+  error?: string | null;
+  /** Whether the image shows people; only reported while people detection is on. */
+  containsPeople?: boolean | null;
+};
 
 const MAX_FAILURES_LISTED = 3;
 

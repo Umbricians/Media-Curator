@@ -60,6 +60,10 @@ public sealed class MediaCuratorSiteSettings
     /// <summary>Diagnostics: also write every prepared image sent to the AI to
     /// <see cref="MediaCuratorDefaults.PreparedImagesFolder"/>.</summary>
     public bool SavePreparedImages { get; set; }
+
+    /// <summary>When true, analyzing an image also decides whether it shows people, so the media tree can
+    /// badge those images and the folders above them (privacy / model-release review).</summary>
+    public bool DetectPeople { get; set; }
 }
 
 /// <summary>Reasoning effort requested from reasoning-capable models. <see cref="Default"/> leaves it to

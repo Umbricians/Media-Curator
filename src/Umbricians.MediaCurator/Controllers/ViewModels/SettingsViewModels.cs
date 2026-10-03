@@ -40,6 +40,9 @@ public class MediaCuratorSiteSettingsModel
 
     public bool SavePreparedImages { get; set; }
 
+    /// <summary>Also decide, when images are analyzed, whether they show people (media tree badges).</summary>
+    public bool DetectPeople { get; set; }
+
     public static MediaCuratorSiteSettingsModel From(MediaCuratorSiteSettings settings) => new()
     {
         AiEnabled = settings.AiEnabled,
@@ -56,6 +59,7 @@ public class MediaCuratorSiteSettingsModel
         JevApiKeySource = settings.JevApiKeySource,
         MaxParallelAnalyses = settings.MaxParallelAnalyses,
         SavePreparedImages = settings.SavePreparedImages,
+        DetectPeople = settings.DetectPeople,
     };
 
     public MediaCuratorSiteSettings ToSettings() => new()
@@ -72,6 +76,7 @@ public class MediaCuratorSiteSettingsModel
         JevModel = string.IsNullOrWhiteSpace(JevModel) ? MediaCuratorDefaults.JevModel : JevModel.Trim(),
         MaxParallelAnalyses = MaxParallelAnalyses,
         SavePreparedImages = SavePreparedImages,
+        DetectPeople = DetectPeople,
     };
 }
 
