@@ -15,7 +15,7 @@ const imageName = 'NA MC modern building'; // leading LCC code "NA" = Fine Arts 
 const rulesetName = 'MC Classify Ruleset';
 const base = () => process.env.UMBRACO_URL || process.env.URL || 'http://localhost:40264';
 
-test.describe('MediaCurator library classification', () => {
+test.describe('MediaCurator classification', () => {
   test.beforeEach(async ({ umbracoApi }) => {
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
     await removeTestMedia(umbracoApi, imageName);

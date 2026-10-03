@@ -19,12 +19,13 @@ internal static class ClassificationPromptBuilder
         "Do not use bare color names (e.g. \"black\", \"white\") unless the image is primarily a color study. " +
         "Confidence between 0 and 1.";
 
-    /// <summary>Stops decisions filing ordinary photos under the medium (Photography, Painting) instead of
-    /// the subject. Benchmarked: with reasoning off, agreement with the full-reasoning path rose from 12/20
-    /// to 16/20 images (19/20 top level).</summary>
+    /// <summary>The default <see cref="IClassificationScheme.DecisionGuidance"/> for subject schemes: stops
+    /// decisions filing ordinary photos under the medium (Photography, Painting) instead of the subject.
+    /// Benchmarked: with reasoning off, agreement with the full-reasoning path rose from 12/20 to 16/20
+    /// images (19/20 top level).</summary>
     internal const string DepictsNotMediumGuidance =
-        "Classify what the image DEPICTS, not the medium: every item is a photo or image, so only use " +
-        "photography/painting/drawing codes when the picture is about that art itself.";
+        "Classify the PRIMARY SUBJECT, what the image DEPICTS, not the medium: every item is a photo or " +
+        "image, so only use photography/painting/drawing codes when the picture is about that art itself.";
 
     /// <summary>Vision step: description and tags only (no classification codes).</summary>
     public static string BuildDescribePrompt() => BasePrompt;
@@ -45,12 +46,10 @@ internal static class ClassificationPromptBuilder
         var builder = new StringBuilder(BasePrompt);
         builder.AppendLine();
         builder.AppendLine();
-        builder.Append("Also pick the single best classification code for the PRIMARY SUBJECT from the \"");
+        builder.Append("Also pick the single best classification code for the image from the \"");
         builder.Append(scheme.Name);
         builder.AppendLine("\" scheme.");
-        builder.AppendLine(
-            "Choose the code whose name best matches what is depicted (e.g. a train → transportation or railroad, " +
-            "not an unrelated science category).");
+        builder.AppendLine(scheme.DecisionGuidance);
         builder.AppendLine("Extend the JSON shape to include \"classificationCode\" set to an exact code from this list:");
         foreach (var entry in scheme.GetAllEntries())
         {
@@ -76,7 +75,7 @@ internal static class ClassificationPromptBuilder
 
         var builder = new StringBuilder();
         AppendSubject(builder, choice.Scheme, choice.Description, choice.Tags, choice.Parent);
-        builder.AppendLine("Pick the single best code for the PRIMARY SUBJECT from ONLY this list (context in brackets):");
+        builder.AppendLine("Pick the single best code for the image from ONLY this list (context in brackets):");
         foreach (var entry in choice.Candidates)
         {
             builder.AppendLine(choice.Label(entry, "|"));
@@ -96,7 +95,7 @@ internal static class ClassificationPromptBuilder
     {
         var builder = new StringBuilder();
         AppendSubject(builder, scheme, description, tags, parent);
-        builder.AppendLine("Pick the single best code for the PRIMARY SUBJECT from ONLY this list:");
+        builder.AppendLine("Pick the single best code for the image from ONLY this list:");
         foreach (var entry in candidates)
         {
             builder.Append(entry.Code);
@@ -115,7 +114,7 @@ internal static class ClassificationPromptBuilder
         IReadOnlyList<AiTag> tags,
         ClassificationEntry? parent)
     {
-        builder.Append("Classify media for a library using the \"");
+        builder.Append("Classify an image using the \"");
         builder.Append(scheme.Name);
         builder.AppendLine("\" scheme.");
         builder.Append("Image summary: ");
@@ -135,6 +134,6 @@ internal static class ClassificationPromptBuilder
         }
 
         builder.AppendLine();
-        builder.AppendLine(DepictsNotMediumGuidance);
+        builder.AppendLine(scheme.DecisionGuidance);
     }
 }

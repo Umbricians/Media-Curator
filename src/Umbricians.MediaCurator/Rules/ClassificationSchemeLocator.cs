@@ -6,7 +6,7 @@ namespace Umbricians.MediaCurator.Rules;
 public interface IClassificationSchemeLocator
 {
     /// <summary>
-    /// The scheme of the first Library Classification rule (in rule order) in the ruleset governing the
+    /// The scheme of the first Classification rule (in rule order) in the ruleset governing the
     /// item, when that rule asks the AI for codes; null when the item has no ruleset, no such rule, or
     /// its codes come from file names or a custom table. Analysis then describes and tags the image only.
     /// </summary>

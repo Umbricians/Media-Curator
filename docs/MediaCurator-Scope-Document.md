@@ -83,7 +83,7 @@ Sorts images into nested date folders.
 - Configurable date source: upload (create) date, Umbraco update date, or EXIF `DateTimeOriginal`, with a fallback order (e.g. EXIF → create date).
 - Month/day names rendered through the localization layer (§10).
 
-### 5.2 Library Classification Provider
+### 5.2 Classification Provider
 
 Sorts images according to a recognized classification scheme. **Only schemes that are public domain or freely usable without a license are embedded**, and scheme data lives in replaceable resource files behind a pluggable scheme model (`IClassificationScheme`), so additional open lists can be added by us or by third parties.
 
@@ -91,6 +91,8 @@ Built-in schemes (v1):
 
 - **Dewey-based scheme** — strictly the **public-domain levels** of the Dewey system (high-level classes/divisions from out-of-copyright editions). Modern DDC editions are proprietary to OCLC and are explicitly not embedded; documentation states the boundary.
 - **Library of Congress Classification (LCC)** — the LCC outline (classes A–Z and subclasses), freely available from the Library of Congress.
+- **Thesaurus for Graphic Materials (TGM), genre/format terms** — what kind of picture an item is (photographs, posters, drawings, maps, …). A US government work in the public domain, generated from the Library of Congress bulk download.
+- **Web asset role** — MediaCurator's own small scheme describing what an image is for on a website (logo, hero banner, product shot, headshot, …).
 - **Custom code tables** — administrator-defined or imported (code → folder path).
 
 Candidate additional open schemes (license-vetted per scheme before inclusion, as built-ins or first-party add-ons):
@@ -140,7 +142,7 @@ Candidates for the core package or first-party add-ons; each also serves as a re
 
 ## 7. Media Type Property Provisioning
 
-Many providers need somewhere to read or persist metadata: the AI providers need description/tag properties, the EXIF provider needs properties to store extracted values, the Library Classification provider may need a code property. Rather than failing or silently mutating schema, MediaCurator manages this through a **declare → check → consent → provision** flow:
+Many providers need somewhere to read or persist metadata: the AI providers need description/tag properties, the EXIF provider needs properties to store extracted values, the Classification provider may need a code property. Rather than failing or silently mutating schema, MediaCurator manages this through a **declare → check → consent → provision** flow:
 
 1. **Declare** — each provider declares its `PropertyRequirement`s: alias, name, expected editor/data type, target media types (e.g. all image types, or user-selected), and whether the requirement is mandatory or optional for the provider to function.
 2. **Check** — when a rule is added to a ruleset (and again when a ruleset is activated), MediaCurator inspects the relevant media types for matching properties. Matching is by alias first, with a compatibility check on the editor type; an administrator can also **map a requirement onto an existing property** with a different alias (e.g. an existing `photoDescription` property satisfies the "image description" requirement) instead of creating a new one. Where an existing property only **partially** matches (right alias but different editor type, or compatible editor under a different alias), the consent dialog offers **both options side by side** — map onto the existing property, or create the new property alongside it — with the implications of each stated (e.g. mapping reuses existing editor data; creating adds a parallel property).
@@ -276,7 +278,7 @@ Provider model, scoped rulesets (single-level rules), property requirement check
 Recognition pipeline on Umbraco.AI, AI Tag provider, Color provider, the visual workflow-style ruleset designer (nesting + conditional branches, Automate-style UX), background bulk runs.
 
 **Phase 3 — Classification, automation & polish**
-Library Classification provider (public-domain Dewey + LCC + custom tables, pluggable schemes), `Umbricians.MediaCurator.Automate` companion package (triggers + actions, tracking Automate toward its official release), rule nesting GA, remaining suggested providers, undo, uSync support, exclusions/pinning, health dashboard.
+Classification provider (public-domain Dewey + LCC + TGM genre/format, web asset role, custom tables, pluggable schemes), `Umbricians.MediaCurator.Automate` companion package (triggers + actions, tracking Automate toward its official release), rule nesting GA, remaining suggested providers, undo, uSync support, exclusions/pinning, health dashboard.
 
 ## 15. Future Directions (post-v1)
 

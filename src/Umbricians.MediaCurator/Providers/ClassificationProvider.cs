@@ -28,7 +28,7 @@ public sealed class ClassificationProvider : ICurationProvider, ICurationFolderO
 
     public string Alias => ProviderAlias;
 
-    public string Name => "Library Classification";
+    public string Name => "Classification";
 
     public string Icon => "icon-books";
 
@@ -41,7 +41,7 @@ public sealed class ClassificationProvider : ICurationProvider, ICurationFolderO
             EditorAlias = "Umbraco.TextBox",
             EditorUiAlias = "Umb.PropertyEditorUi.TextBox",
             Mandatory = false,
-            Description = "The classification code used by the Library Classification rule.",
+            Description = "The classification code used by the Classification rule.",
         },
     ];
 

@@ -22,7 +22,9 @@ public class MediaCuratorComposer : IComposer
             .AddProvider<ImageFormatProvider>()
             .AddProvider<FilenameConventionProvider>()
             .AddScheme<Schemes.DeweyPublicDomainScheme>()
-            .AddScheme<Schemes.LccOutlineScheme>();
+            .AddScheme<Schemes.LccOutlineScheme>()
+            .AddScheme<Schemes.TgmGenreFormatScheme>()
+            .AddScheme<Schemes.WebAssetRoleScheme>();
 
         builder.AITestFeatures()
             .Add<PizzaOriginalRecognitionTestFeature>()

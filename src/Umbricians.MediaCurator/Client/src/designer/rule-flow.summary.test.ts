@@ -4,7 +4,7 @@ import { ruleSummaryChips } from "./rule-flow.summary.js";
 
 const classification: ProviderModel = {
   alias: "Umbricians.MediaCurator.Classification",
-  name: "Library Classification",
+  name: "Classification",
   icon: "icon-books",
   requirements: [],
   settingsFields: [
@@ -60,7 +60,7 @@ const rule = (providerAlias: string, settings: Record<string, unknown> = {}, ext
 });
 
 describe("ruleSummaryChips", () => {
-  it("shows the scheme option label for library classification", () => {
+  it("shows the scheme option label for classification", () => {
     const chips = ruleSummaryChips(rule(classification.alias, { scheme: "dewey-pd" }), classification);
     expect(chips).toEqual([{ text: "Dewey (public domain)", title: "Scheme: Dewey (public domain)" }]);
   });

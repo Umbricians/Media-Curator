@@ -117,7 +117,7 @@ export class McRootSetupViewElement extends UmbLitElement {
       <uui-box headline="Setup" data-mark="mc:settings">
         <p>
           Everything Media Curator needs is set up here. The classification scheme is set on each ruleset's
-          Library Classification rule, and images are classified with the scheme of the ruleset that curates them.
+          Classification rule, and images are classified with the scheme of the ruleset that curates them.
         </p>
         <div class="form">
           <uui-label for="mc-ai-enabled">Use AI</uui-label>
@@ -222,7 +222,7 @@ export class McRootSetupViewElement extends UmbLitElement {
 
       <uui-box headline="Decisions" data-mark="mc:ai-decisions">
         <p>
-          Choices the rules cannot work out on their own, such as picking a library classification code from the
+          Choices the rules cannot work out on their own, such as picking a classification code from the
           image description.
         </p>
         <div class="form">

@@ -1,0 +1,33 @@
+# Web asset role — what an image is for on a website. Media Curator's own scheme, licence-free.
+# Codes have no spaces, dashes, underscores or dots, so a filename prefix such as "BRD1 acme logo.png"
+# resolves with the filename code source. Top-level codes are deliberately not English words.
+# Format: code|name|parentCode
+BKG|Backgrounds|
+BKG1|Background or texture|BKG
+BKG2|Pattern|BKG
+BRD|Branding|
+BRD1|Logo|BRD
+BRD2|Icon|BRD
+BRD3|Favicon or app icon|BRD
+EDT|Editorial|
+EDT1|Article photo|EDT
+EDT2|Illustration|EDT
+EDT3|Stock or concept photo|EDT
+INF|Information|
+INF1|Chart or infographic|INF
+INF2|Diagram|INF
+INF3|Screenshot|INF
+INF4|Map|INF
+INF5|Document scan|INF
+MKT|Marketing|
+MKT1|Hero or banner|MKT
+MKT2|Promotional graphic|MKT
+MKT3|Social media image|MKT
+PPL|People|
+PPL1|Headshot or portrait|PPL
+PPL2|Team or group photo|PPL
+PPL3|Event photo|PPL
+PRD|Products|
+PRD1|Product shot|PRD
+PRD2|Product in use|PRD
+PRD3|Product detail|PRD

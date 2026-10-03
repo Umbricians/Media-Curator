@@ -98,7 +98,7 @@ public class FolderOrderProviderTests
         Assert.Null(new DateFolderProvider().GetFolderComparer(Context(2, "en-US", ("format", "yyyy/MM"))));
     }
 
-    // ----- Library Classification -----
+    // ----- Classification -----
 
     private static ClassificationProvider Classification()
         => new(new ClassificationSchemeCollection(() => [new DeweyPublicDomainScheme(), new LccOutlineScheme()]));

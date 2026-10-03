@@ -37,7 +37,7 @@ for the full product scope.
 - [EXIF Value](docs/providers/exif-value.md): reads camera metadata and can map raw values to friendly folder names.
 - [AI Tag / Subject](docs/providers/ai-tag-subject.md): uses Umbraco.AI recognition tags with confidence thresholds and optional tag mappings.
 - [Color](docs/providers/color.md): extracts dominant or average color and snaps it to a named palette.
-- [Library Classification](docs/providers/library-classification.md): resolves classification codes through built-in schemes or a custom code table.
+- [Classification](docs/providers/classification.md): resolves classification codes through built-in schemes (subject, genre/format or web asset role) or a custom code table.
 - [Dimensions / Orientation](docs/providers/dimensions-orientation.md): sorts images into landscape, portrait, or square folders.
 - [Image Format](docs/providers/image-format.md): groups images by extension, including JPEG, PNG, SVG, GIF, WebP, AVIF, and other formats.
 - [Filename Convention](docs/providers/filename-convention.md): extracts a folder name from the media name with a regular expression.
@@ -95,7 +95,7 @@ The one exception is the TypeSafe API key, which can instead come from server co
 (`MediaCurator__Secrets__TypeSafeApiKey`) or Azure Key Vault (`MediaCurator--Secrets--TypeSafeApiKey`).
 When set, it wins over a key saved in the backoffice, and the setup's key field is locked.
 
-The classification scheme is not a site setting: each ruleset's Library Classification rule sets it,
+The classification scheme is not a site setting: each ruleset's Classification rule sets it,
 and analysis uses the scheme of the ruleset that curates the image. Sites upgrading from versions that
 read a `"MediaCurator"` app settings section have its values imported into the setup once; the section
 can then be removed.
