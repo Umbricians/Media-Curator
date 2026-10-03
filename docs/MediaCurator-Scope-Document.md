@@ -167,6 +167,10 @@ Additional behaviour:
 - Cost controls: per-folder opt-in/opt-out for AI analysis, batch size limits, and a "metadata-only mode" where MediaCurator runs without any AI calls at all (all non-AI providers still work).
 - Where a curation flow runs inside an Automate workflow, recognition can alternatively be performed by an **AI agent step** (via Umbraco.AI.Automate) whose structured output feeds MediaCurator's categorize action (§9.2).
 
+### People detection
+
+Optional (setting *Detect people*, default off). After recognition, a yes/no decision on whether the image shows real people is made from the stored description and tags: Jev (threshold 0.5) when Jev is the decision engine, otherwise one text-only Umbraco.AI call; failures never affect recognition. Results (key, answer, confidence, source, tree path, source file) are stored in `mediaCuratorPeople`, and a changed file triggers a new decision. An `IFlagProvider` adds `MediaCurator.ContainsPeople` to images and `MediaCurator.ContainsPeopleBelow` to folders on media tree items, using one node lookup and one path-prefix query per tree page and no AI calls. Media move, recycle-bin and delete notifications keep stored paths current. Badges render as entity signs in the media tree only (Umbraco's media grid and table views do not render signs). After analysis or curation the backoffice reloads every tree branch above the affected items. A People curation provider sorts into People / No people. See [People detection](people-detection.md).
+
 ## 9. Automation via Umbraco.Automate
 
 > **Dependency note:** Umbraco.Automate is a new, **not-yet-officially-released** HQ workflow automation engine (`Umbraco.Automate.Core`, currently 0.1+, observed via the Umbraco.AI monorepo's dev branch). Its API surface — triggers, actions, settings, binding syntax — may change before release. MediaCurator's Automate integration ships as a **separate companion package** (`Umbricians.MediaCurator.Automate`) so the core package carries no hard dependency on a pre-release product, mirroring how `Umbraco.AI.Automate` is itself a separate integration package.

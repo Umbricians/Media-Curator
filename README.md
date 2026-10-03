@@ -30,6 +30,10 @@ for the full product scope.
 - **AI on your terms** — recognition runs on the [Umbraco.AI](https://www.nuget.org/packages/Umbraco.AI)
   abstractions (any configured provider), results are cached per image, and AI can be
   switched off entirely in the setup. Classification decisions can optionally use TypeSafe's Jev.
+- **People detection** — turn on *Detect people* in Setup and analysis also decides, from the
+  stored description and tags (the image is never re-sent), whether each image shows people.
+  The media tree marks those images and every folder above them, so editors can find them for
+  privacy or model-release review. See [People detection](docs/people-detection.md).
 
 ## Built-in providers
 
@@ -41,6 +45,7 @@ for the full product scope.
 - [Dimensions / Orientation](docs/providers/dimensions-orientation.md): sorts images into landscape, portrait, or square folders.
 - [Image Format](docs/providers/image-format.md): groups images by extension, including JPEG, PNG, SVG, GIF, WebP, AVIF, and other formats.
 - [Filename Convention](docs/providers/filename-convention.md): extracts a folder name from the media name with a regular expression.
+- [People](docs/providers/people.md): sorts images into "People" / "No people" folders from the people detection result.
 - [Alphabetical](docs/providers/alphabetical.md): buckets media by the first letter of the item name.
 
 ## Quick start
