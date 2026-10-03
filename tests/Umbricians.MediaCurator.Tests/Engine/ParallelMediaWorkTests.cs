@@ -10,6 +10,10 @@ public class ParallelMediaWorkTests
 
     private sealed class Settings(int parallel) : IMediaCuratorSettingsService
     {
+        public Task<string?> GetTypeSafeApiKeyAsync(CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
+
+        public Task SetTypeSafeApiKeyAsync(string? apiKey, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
         public Task<MediaCuratorSiteSettings> GetAsync(CancellationToken cancellationToken = default)
             => Task.FromResult(new MediaCuratorSiteSettings { MaxParallelAnalyses = parallel });
 

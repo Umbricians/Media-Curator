@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 using Umbricians.MediaCurator;
 using Umbricians.MediaCurator.Controllers;
 using Umbricians.MediaCurator.Controllers.ViewModels;
@@ -79,15 +78,22 @@ public class RecognitionControllerTests
         }
     }
 
-    private sealed class StaticOptions(MediaCuratorOptions value) : IOptionsMonitor<MediaCuratorOptions>
+    /// <summary>Every image is curated by a ruleset classifying with <paramref name="scheme"/>, except
+    /// those in <see cref="Unclassified"/>.</summary>
+    private sealed class FakeSchemes(string? scheme) : Umbricians.MediaCurator.Rules.IClassificationSchemeLocator
     {
-        public MediaCuratorOptions CurrentValue => value;
-        public MediaCuratorOptions Get(string? name) => value;
-        public IDisposable? OnChange(Action<MediaCuratorOptions, string?> listener) => null;
+        public HashSet<Guid> Unclassified = [];
+
+        public Task<string?> GetSchemeForMediaAsync(Guid mediaKey, CancellationToken cancellationToken = default)
+            => Task.FromResult(Unclassified.Contains(mediaKey) ? null : scheme);
     }
 
     private sealed class FakeSettings(bool persistDescriptions) : IMediaCuratorSettingsService
     {
+        public Task<string?> GetTypeSafeApiKeyAsync(CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
+
+        public Task SetTypeSafeApiKeyAsync(string? apiKey, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
         public Task<MediaCuratorSiteSettings> GetAsync(CancellationToken cancellationToken = default)
             => Task.FromResult(new MediaCuratorSiteSettings { PersistImageDescription = persistDescriptions });
 
@@ -99,9 +105,8 @@ public class RecognitionControllerTests
     {
         var media = new FakeMedia();
         var recognition = new FakeRecognition();
-        var options = new StaticOptions(new MediaCuratorOptions { ClassificationSchemeAlias = "dewey" });
         var settings = new FakeSettings(persistDescriptions);
-        return (new RecognitionController(recognition, media, options, settings, null!, null!), media, recognition);
+        return (new RecognitionController(recognition, media, settings, null!, null!, schemes: new FakeSchemes("dewey")), media, recognition);
     }
 
     private static void MarkAnalyzed(FakeMedia media, Guid image, string? description = "Stored", string? code = "500")
@@ -338,11 +343,13 @@ public class RecognitionControllerTests
         var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
         Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton<IRecognitionService>(services, recognition);
         Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton<IMediaOperations>(services, media);
+        var schemes = new FakeSchemes("dewey");
+        schemes.Unclassified.Add(images[0]);
+        Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton<Umbricians.MediaCurator.Rules.IClassificationSchemeLocator>(services, schemes);
         var parallel = new TestParallelWork(3, Microsoft.Extensions.DependencyInjection.ServiceCollectionContainerBuilderExtensions.BuildServiceProvider(services));
         var controller = new RecognitionController(
             recognition,
             media,
-            new StaticOptions(new MediaCuratorOptions { ClassificationSchemeAlias = "dewey" }),
             new FakeSettings(true),
             null!,
             null!,
@@ -355,6 +362,9 @@ public class RecognitionControllerTests
         Assert.False(model.Results[2].Analyzed);
         Assert.Equal("boom", model.Results[2].Error);
         Assert.Equal(5, model.Results.Count(r => r.Analyzed));
+        // Each image is classified with its own ruleset's scheme; one outside any classification ruleset gets none.
+        Assert.Null(recognition.Calls.Single(c => c.Key == images[0]).Scheme);
+        Assert.All(recognition.Calls.Where(c => c.Key != images[0]), c => Assert.Equal("dewey", c.Scheme));
     }
 }
 

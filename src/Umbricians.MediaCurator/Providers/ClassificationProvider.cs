@@ -16,6 +16,12 @@ public sealed class ClassificationProvider : ICurationProvider, ICurationFolderO
 
     public const string CodePropertyAlias = "mediaCuratorClassificationCode";
 
+    /// <summary>Scheme used when a rule has none set.</summary>
+    public const string DefaultScheme = "lcc";
+
+    /// <summary>Code source used when a rule has none set: the stored code, filled in by AI recognition.</summary>
+    public const string DefaultSource = "property";
+
     private readonly ClassificationSchemeCollection _schemes;
 
     public ClassificationProvider(ClassificationSchemeCollection schemes) => _schemes = schemes;
@@ -90,7 +96,7 @@ public sealed class ClassificationProvider : ICurationProvider, ICurationFolderO
 
     public async Task<CurationResult> ResolveAsync(CurationContext context, CancellationToken cancellationToken = default)
     {
-        var schemeAlias = context.GetSetting("scheme", "lcc");
+        var schemeAlias = context.GetSetting("scheme", DefaultScheme);
         var code = await ResolveCodeAsync(context, schemeAlias, cancellationToken);
         if (string.IsNullOrWhiteSpace(code))
         {
@@ -119,7 +125,7 @@ public sealed class ClassificationProvider : ICurationProvider, ICurationFolderO
         string schemeAlias,
         CancellationToken cancellationToken)
     {
-        var source = context.GetSetting("source", "property");
+        var source = context.GetSetting("source", DefaultSource);
         if (source == "filename")
         {
             return ResolveFilenameCode(context);
@@ -128,6 +134,15 @@ public sealed class ClassificationProvider : ICurationProvider, ICurationFolderO
         var code = context.Properties.GetString(CodePropertyAlias);
         if (!string.IsNullOrWhiteSpace(code))
         {
+            // A stored AI code may predate how codes are chosen now: re-decide it from the saved
+            // description (no image is sent; editors' codes are left alone), then use whatever is stored.
+            if (context.RefreshClassificationAsync is not null
+                && !schemeAlias.Equals("custom", StringComparison.OrdinalIgnoreCase))
+            {
+                await context.RefreshClassificationAsync(schemeAlias, cancellationToken);
+                code = context.Properties.GetString(CodePropertyAlias) ?? code;
+            }
+
             return code;
         }
 
@@ -198,7 +213,7 @@ public sealed class ClassificationProvider : ICurationProvider, ICurationFolderO
     public IComparer<string>? GetFolderComparer(FolderOrderContext context)
     {
         var natural = new NaturalFolderNameComparer(context.Culture);
-        var schemeAlias = context.GetSetting("scheme", "lcc");
+        var schemeAlias = context.GetSetting("scheme", DefaultScheme);
         var codeByName = new Dictionary<string, string>(StringComparer.Create(context.Culture, ignoreCase: true));
         var codes = new List<string>();
 

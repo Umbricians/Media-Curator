@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Umbraco.Automate.Core.Actions;
 using Umbraco.Automate.Core.Execution;
 using Umbraco.Automate.Core.Settings;
@@ -98,6 +97,9 @@ public class AutomateActionsTests
                 case ICurationEngine engine:
                     _services[typeof(ICurationEngine)] = engine;
                     break;
+                case IClassificationSchemeLocator schemes:
+                    _services[typeof(IClassificationSchemeLocator)] = schemes;
+                    break;
 
                 case IRulesetResolver resolver:
                     _services[typeof(IRulesetResolver)] = resolver;
@@ -185,12 +187,11 @@ public class AutomateActionsTests
         }
     }
 
-    private sealed class OptionsMonitorStub : IOptionsMonitor<MediaCuratorOptions>
+    /// <summary>The scheme of the ruleset curating every image (null: none classifies).</summary>
+    private sealed class FakeSchemeLocator(string? scheme) : IClassificationSchemeLocator
     {
-        public OptionsMonitorStub(MediaCuratorOptions value) => CurrentValue = value;
-        public MediaCuratorOptions CurrentValue { get; }
-        public MediaCuratorOptions Get(string? name) => CurrentValue;
-        public IDisposable? OnChange(Action<MediaCuratorOptions, string?> listener) => null;
+        public Task<string?> GetSchemeForMediaAsync(Guid mediaKey, CancellationToken cancellationToken = default)
+            => Task.FromResult(scheme);
     }
 
     private static CurationPlan PlanWith(params PlannedMove[] moves)
@@ -343,8 +344,7 @@ public class AutomateActionsTests
         var action = new AnalyzeImageAction(
             Infrastructure(),
             Origins,
-            ScopeFactory(recognition),
-            new OptionsMonitorStub(new MediaCuratorOptions()),
+            ScopeFactory(recognition, new FakeSchemeLocator(null)),
             new TestParallelWork());
         var origin = new AutomationOrigin(Guid.NewGuid(), Guid.NewGuid(), [Guid.NewGuid()]);
 
@@ -382,8 +382,7 @@ public class AutomateActionsTests
         var action = new AnalyzeImageAction(
             Infrastructure(),
             Origins,
-            ScopeFactory(recognition),
-            new OptionsMonitorStub(new MediaCuratorOptions()),
+            ScopeFactory(recognition, new FakeSchemeLocator(null)),
             new TestParallelWork());
 
         var result = await action.ExecuteAsync(
@@ -406,8 +405,7 @@ public class AutomateActionsTests
         var action = new AnalyzeImageAction(
             Infrastructure(),
             Origins,
-            ScopeFactory(recognition),
-            new OptionsMonitorStub(new MediaCuratorOptions { ClassificationSchemeAlias = "lcc" }),
+            ScopeFactory(recognition, new FakeSchemeLocator("lcc")),
             new TestParallelWork());
 
         var result = await action.ExecuteAsync(
@@ -424,14 +422,13 @@ public class AutomateActionsTests
     }
 
     [Fact]
-    public async Task AnalyzeImage_uses_appsettings_scheme_when_step_scheme_unset()
+    public async Task AnalyzeImage_uses_the_scheme_of_the_images_ruleset_when_the_step_has_none()
     {
         var recognition = new FakeRecognition { Result = RecognitionResult.Empty };
         var action = new AnalyzeImageAction(
             Infrastructure(),
             Origins,
-            ScopeFactory(recognition),
-            new OptionsMonitorStub(new MediaCuratorOptions { ClassificationSchemeAlias = "dewey-pd" }),
+            ScopeFactory(recognition, new FakeSchemeLocator("dewey-pd")),
             new TestParallelWork());
 
         await action.ExecuteAsync(

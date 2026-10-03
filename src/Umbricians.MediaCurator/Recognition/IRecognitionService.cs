@@ -2,11 +2,17 @@ namespace Umbricians.MediaCurator.Recognition;
 
 public sealed record AiTag(string Name, double Confidence);
 
+/// <param name="ClassificationMethod">How the AI chose <paramref name="ClassificationCode"/>, e.g.
+/// "dewey-pd:one-step-v1". A code stored by an older method is re-decided from the saved description;
+/// null for results from before methods were recorded.</param>
+/// <param name="SourceFile">The media file the result describes; a different file makes it stale.</param>
 public sealed record RecognitionResult(
     IReadOnlyList<AiTag> Tags,
     string? Description,
     string? ClassificationCode = null,
-    DateTime? SourceUpdateDate = null)
+    DateTime? SourceUpdateDate = null,
+    string? ClassificationMethod = null,
+    string? SourceFile = null)
 {
     public static readonly RecognitionResult Empty = new([], null);
 }
@@ -28,6 +34,19 @@ public interface IRecognitionService
         bool force = false,
         string? classificationSchemeAlias = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Brings an AI-chosen classification code up to date with the current way codes are decided, without
+    /// sending the image again: when the stored code was chosen by the AI with an older method (or another
+    /// scheme), it is decided again from the saved description and tags. Codes an editor entered or changed
+    /// are left alone, as are images with no saved description. Returns the (possibly updated) recognition
+    /// result, or null when there is none.
+    /// </summary>
+    Task<RecognitionResult?> RefreshClassificationAsync(
+        Guid mediaKey,
+        string classificationSchemeAlias,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<RecognitionResult?>(null);
 }
 
 /// <summary>Mutable analysis state passed through enrichers before the result is cached.</summary>

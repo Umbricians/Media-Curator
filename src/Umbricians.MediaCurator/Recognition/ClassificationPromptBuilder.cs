@@ -65,9 +65,26 @@ internal static class ClassificationPromptBuilder
         return builder.ToString();
     }
 
-    /// <summary>Text-only drill-down step: pick one code from direct children of the current level.</summary>
+    /// <summary>Text-only decision: pick one code from <see cref="ClassificationChoice.Candidates"/>, each
+    /// shown with its context in brackets (its main class, or what it includes).</summary>
     public static string BuildRefinePrompt(ClassificationChoice choice)
-        => BuildRefinePrompt(choice.Scheme, choice.Description, choice.Tags, choice.Parent, choice.Candidates);
+    {
+        if (choice.CandidateNotes is not { Count: > 0 })
+        {
+            return BuildRefinePrompt(choice.Scheme, choice.Description, choice.Tags, choice.Parent, choice.Candidates);
+        }
+
+        var builder = new StringBuilder();
+        AppendSubject(builder, choice.Scheme, choice.Description, choice.Tags, choice.Parent);
+        builder.AppendLine("Pick the single best code for the PRIMARY SUBJECT from ONLY this list (context in brackets):");
+        foreach (var entry in choice.Candidates)
+        {
+            builder.AppendLine(choice.Label(entry, "|"));
+        }
+
+        builder.AppendLine("Respond with ONLY a JSON object, no markdown fences: {\"classificationCode\":\"CODE\"}");
+        return builder.ToString();
+    }
 
     /// <summary>Text-only drill-down step: pick one code from direct children of the current level.</summary>
     public static string BuildRefinePrompt(
@@ -78,6 +95,26 @@ internal static class ClassificationPromptBuilder
         IReadOnlyList<ClassificationEntry> candidates)
     {
         var builder = new StringBuilder();
+        AppendSubject(builder, scheme, description, tags, parent);
+        builder.AppendLine("Pick the single best code for the PRIMARY SUBJECT from ONLY this list:");
+        foreach (var entry in candidates)
+        {
+            builder.Append(entry.Code);
+            builder.Append('|');
+            builder.AppendLine(entry.Name);
+        }
+
+        builder.AppendLine("Respond with ONLY a JSON object, no markdown fences: {\"classificationCode\":\"CODE\"}");
+        return builder.ToString();
+    }
+
+    private static void AppendSubject(
+        StringBuilder builder,
+        IClassificationScheme scheme,
+        string description,
+        IReadOnlyList<AiTag> tags,
+        ClassificationEntry? parent)
+    {
         builder.Append("Classify media for a library using the \"");
         builder.Append(scheme.Name);
         builder.AppendLine("\" scheme.");
@@ -99,15 +136,5 @@ internal static class ClassificationPromptBuilder
 
         builder.AppendLine();
         builder.AppendLine(DepictsNotMediumGuidance);
-        builder.AppendLine("Pick the single best code for the PRIMARY SUBJECT from ONLY this list:");
-        foreach (var entry in candidates)
-        {
-            builder.Append(entry.Code);
-            builder.Append('|');
-            builder.AppendLine(entry.Name);
-        }
-
-        builder.AppendLine("Respond with ONLY a JSON object, no markdown fences: {\"classificationCode\":\"CODE\"}");
-        return builder.ToString();
     }
 }

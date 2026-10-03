@@ -47,6 +47,7 @@ public static class MediaCuratorBuilderExtensions
         {
             builder.Services.AddSingleton<IRulesetRepository, RulesetRepository>();
             builder.Services.AddScoped<IRulesetResolver, RulesetResolver>();
+            builder.Services.AddScoped<IClassificationSchemeLocator, ClassificationSchemeLocator>();
             builder.Services.AddScoped<IMediaAncestry, MediaServiceAncestry>();
             builder.Services.AddSingleton<RuleChainExecutor>();
             builder.Services.AddSingleton<IPropertyMapRepository, PropertyMapRepository>();
@@ -67,7 +68,6 @@ public static class MediaCuratorBuilderExtensions
             builder.Services.AddSingleton<IMediaCuratorSettingsRepository, MediaCuratorSettingsRepository>();
             builder.Services.AddSingleton<IMediaCuratorSettingsService, MediaCuratorSettingsService>();
             builder.Services.AddSingleton<Umbraco.Cms.Infrastructure.BackgroundJobs.IRecurringBackgroundJob, Engine.BulkCurationJob>();
-            builder.Services.AddOptions<MediaCuratorOptions>().BindConfiguration(MediaCuratorOptions.SectionName);
             builder.WithCollectionBuilder<Recognition.RecognitionEnricherCollectionBuilder>();
 
             // Ensure the collections exist even before any Add* call.

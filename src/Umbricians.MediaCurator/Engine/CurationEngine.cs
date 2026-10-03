@@ -315,10 +315,11 @@ public sealed class CurationEngine : ICurationEngine
     /// <paramref name="Governing"/> is null when the item was ruled out before a ruleset was resolved.</summary>
     private sealed record ItemOutcome(Ruleset? Governing, PlannedMove? Move, string? Skipped);
 
-    /// <summary>One recognition call: an item analysed for a scheme (null for tags only).</summary>
-    private readonly record struct RecognitionRequest(Guid MediaKey, string? SchemeAlias);
+    /// <summary>One recognition call: an item analysed for a scheme (null for tags only), or with
+    /// <paramref name="RefreshOnly"/> its stored AI classification brought up to date.</summary>
+    private readonly record struct RecognitionRequest(Guid MediaKey, string? SchemeAlias, bool RefreshOnly = false);
 
-    private delegate Task<Recognition.RecognitionResult?> RecognizeFn(Guid mediaKey, string? schemeAlias, CancellationToken cancellationToken);
+    private delegate Task<Recognition.RecognitionResult?> RecognizeFn(RecognitionRequest request, CancellationToken cancellationToken);
 
     /// <summary>
     /// Evaluates every item, analysing images in parallel first. AI recognition dominates planning time
@@ -347,9 +348,8 @@ public sealed class CurationEngine : ICurationEngine
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var missing = false;
-                outcomes[index] = await evaluate(items[index], (key, scheme, _) =>
+                outcomes[index] = await evaluate(items[index], (request, _) =>
                 {
-                    var request = new RecognitionRequest(key, scheme);
                     if (_recognitionMemo.TryGetValue(request, out var known) && known.IsCompleted)
                     {
                         return known;
@@ -384,10 +384,16 @@ public sealed class CurationEngine : ICurationEngine
         return outcomes;
     }
 
-    private Task<Recognition.RecognitionResult?> RecognizeMemoizedAsync(Guid mediaKey, string? schemeAlias, CancellationToken cancellationToken)
-        => _recognitionMemo.GetOrAdd(
-            new RecognitionRequest(mediaKey, schemeAlias),
-            request => _recognition.AnalyzeAsync(request.MediaKey, force: false, request.SchemeAlias, cancellationToken));
+    private Task<Recognition.RecognitionResult?> RecognizeMemoizedAsync(RecognitionRequest request, CancellationToken cancellationToken)
+        => _recognitionMemo.GetOrAdd(request, r => RunAsync(_recognition, r, cancellationToken));
+
+    private static Task<Recognition.RecognitionResult?> RunAsync(
+        Recognition.IRecognitionService recognition,
+        RecognitionRequest request,
+        CancellationToken cancellationToken)
+        => request.RefreshOnly
+            ? recognition.RefreshClassificationAsync(request.MediaKey, request.SchemeAlias!, cancellationToken)
+            : recognition.AnalyzeAsync(request.MediaKey, force: false, request.SchemeAlias, cancellationToken);
 
     /// <summary>Runs the missing recognition calls concurrently. An item's calls stay sequential (and
     /// scheme-specific ones first) so one image is never analysed twice at the same time; the later
@@ -396,7 +402,7 @@ public sealed class CurationEngine : ICurationEngine
     {
         var perItem = demands
             .GroupBy(d => d.MediaKey)
-            .Select(g => g.OrderBy(d => d.SchemeAlias is null).ToList())
+            .Select(g => g.OrderBy(d => d.SchemeAlias is null).ThenBy(d => d.RefreshOnly).ToList())
             .ToList();
 
         var results = await _parallel!.RunAsync<List<RecognitionRequest>, (RecognitionRequest Request, Recognition.RecognitionResult? Result)[]>(
@@ -409,7 +415,7 @@ public sealed class CurationEngine : ICurationEngine
                 {
                     try
                     {
-                        analysed.Add((request, await recognition.AnalyzeAsync(request.MediaKey, force: false, request.SchemeAlias, ct)));
+                        analysed.Add((request, await RunAsync(recognition, request, ct)));
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
@@ -770,7 +776,8 @@ public sealed class CurationEngine : ICurationEngine
             ScopeRootKey = scopeFolderKey,
             Exif = exif,
             Properties = new MediaPropertyAccessor(_media, item.Key),
-            RecognizeAsync = (scheme, ct) => recognize(item.Key, scheme, ct),
+            RecognizeAsync = (scheme, ct) => recognize(new RecognitionRequest(item.Key, scheme), ct),
+            RefreshClassificationAsync = (scheme, ct) => recognize(new RecognitionRequest(item.Key, scheme, RefreshOnly: true), ct),
             OpenFile = () => _media.OpenFile(item.Key),
         };
     }

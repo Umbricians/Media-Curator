@@ -4,17 +4,16 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using Umbricians.MediaCurator.Settings;
 
 namespace Umbricians.MediaCurator.Recognition;
 
 /// <summary>Picks one classification code per drill-down level with TypeSafe's Jev model.</summary>
 public interface IJevClassificationDecider
 {
-    bool IsConfigured { get; }
 
-    /// <summary>The chosen code, or null when Jev is not configured or the call failed, so the caller can
-    /// fall back to Umbraco.AI.</summary>
+    /// <summary>The chosen code, or null when no TypeSafe API key is stored or the call failed, so the
+    /// caller can fall back to Umbraco.AI.</summary>
     Task<string?> ChooseAsync(ClassificationChoice choice, CancellationToken cancellationToken = default);
 }
 
@@ -39,53 +38,52 @@ internal sealed class JevClassificationDecider : IJevClassificationDecider
     };
 
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IOptionsMonitor<MediaCuratorOptions> _options;
+    private readonly IMediaCuratorSettingsService _settings;
     private readonly ILogger<JevClassificationDecider> _logger;
     private readonly Func<TimeSpan, CancellationToken, Task> _delay;
 
     public JevClassificationDecider(
         IHttpClientFactory httpClientFactory,
-        IOptionsMonitor<MediaCuratorOptions> options,
+        IMediaCuratorSettingsService settings,
         ILogger<JevClassificationDecider> logger)
-        : this(httpClientFactory, options, logger, Task.Delay)
+        : this(httpClientFactory, settings, logger, Task.Delay)
     {
     }
 
     internal JevClassificationDecider(
         IHttpClientFactory httpClientFactory,
-        IOptionsMonitor<MediaCuratorOptions> options,
+        IMediaCuratorSettingsService settings,
         ILogger<JevClassificationDecider> logger,
         Func<TimeSpan, CancellationToken, Task> delay)
     {
         _httpClientFactory = httpClientFactory;
-        _options = options;
+        _settings = settings;
         _logger = logger;
         _delay = delay;
     }
 
-    public bool IsConfigured => _options.CurrentValue.TypeSafe.IsConfigured;
-
     public async Task<string?> ChooseAsync(ClassificationChoice choice, CancellationToken cancellationToken = default)
     {
-        var typeSafe = _options.CurrentValue.TypeSafe;
-        if (!typeSafe.IsConfigured || choice.Candidates.Count == 0 || choice.Candidates.Count > MaxChoiceOptions)
+        var apiKey = await _settings.GetTypeSafeApiKeyAsync(cancellationToken);
+        if (apiKey is null || choice.Candidates.Count == 0 || choice.Candidates.Count > MaxChoiceOptions)
         {
             return null;
         }
 
-        var body = BuildRequest(choice, typeSafe.Model);
+        var model = (await _settings.GetAsync(cancellationToken)).JevModel;
+        var body = BuildRequest(choice, model);
         for (var attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             try
             {
-                using var request = new HttpRequestMessage(HttpMethod.Post, typeSafe.Endpoint)
+                using var request = new HttpRequestMessage(HttpMethod.Post, MediaCuratorDefaults.TypeSafeEndpoint)
                 {
                     Content = JsonContent.Create(body, options: _json),
                 };
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", typeSafe.ApiKey);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeout.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, typeSafe.TimeoutSeconds)));
+                timeout.CancelAfter(TimeSpan.FromSeconds(MediaCuratorDefaults.TypeSafeTimeoutSeconds));
 
                 var client = _httpClientFactory.CreateClient(HttpClientName);
                 using var response = await client.SendAsync(request, timeout.Token);
@@ -168,7 +166,7 @@ internal sealed class JevClassificationDecider : IJevClassificationDecider
                 {
                     type = "choice",
                     instructions,
-                    criteria = choice.Candidates.ToDictionary(c => c.Code, c => $"{c.Code} {c.Name}"),
+                    criteria = choice.Candidates.ToDictionary(c => c.Code, c => choice.Label(c)),
                 },
             },
         };

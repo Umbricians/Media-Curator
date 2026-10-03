@@ -6,8 +6,9 @@ const ai = {
     { alias: "vision", name: "Vision", model: "gpt-5.5" },
     { alias: "fast", name: "Fast" },
   ],
-  jevAvailable: false,
   maxParallelAnalysesLimit: 16,
+  preparedImagesFolder: "umbraco/Data/TEMP/MediaCurator/PreparedImages",
+  typeSafeApiKeyConfigurationKey: "MediaCurator:Secrets:TypeSafeApiKey",
 };
 
 describe("profileOptions", () => {

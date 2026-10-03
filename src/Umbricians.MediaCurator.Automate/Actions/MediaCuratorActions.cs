@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Umbraco.Automate.Core.Actions;
 using Umbraco.Automate.Core.Execution;
 using Umbraco.Automate.Core.Settings;
@@ -119,7 +118,9 @@ public class AnalyzeImageSettings
     [Field(SortOrder = 1)]
     public bool Force { get; set; }
 
-    [Field(SortOrder = 2)]
+    /// <summary>Optional override. Empty (recommended) uses the classification scheme of the ruleset that
+    /// curates the image, as set up in Media Curator.</summary>
+    [Field(SortOrder = 2, Label = "Classification scheme override", Description = "Leave empty to use the scheme of the ruleset that curates the image (e.g. dewey-pd or lcc).")]
     public string? Scheme { get; set; }
 }
 
@@ -138,21 +139,18 @@ public class AnalyzeImageAction : ActionBase<AnalyzeImageSettings, AnalyzeImageO
 {
     private readonly IAutomationOriginAccessor _originAccessor;
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IOptionsMonitor<MediaCuratorOptions> _options;
     private readonly IParallelMediaWork _parallel;
 
     public AnalyzeImageAction(
         ActionInfrastructure infrastructure,
         IAutomationOriginAccessor originAccessor,
         IServiceScopeFactory scopeFactory,
-        IOptionsMonitor<MediaCuratorOptions> options,
         IParallelMediaWork parallel)
         : base(infrastructure)
     {
         _parallel = parallel;
         _originAccessor = originAccessor;
         _scopeFactory = scopeFactory;
-        _options = options;
     }
 
     public override async Task<ActionResult> ExecuteAsync(ActionContext context, CancellationToken cancellationToken)
@@ -171,12 +169,12 @@ public class AnalyzeImageAction : ActionBase<AnalyzeImageSettings, AnalyzeImageO
             return ActionResult.Skipped("No media key provided.");
         }
 
-        var scheme = string.IsNullOrWhiteSpace(settings.Scheme)
-            ? _options.CurrentValue.ClassificationSchemeAlias
-            : settings.Scheme.Trim();
-
         using var serviceScope = _scopeFactory.CreateScope();
         var recognition = serviceScope.ServiceProvider.GetRequiredService<IRecognitionService>();
+        var scheme = string.IsNullOrWhiteSpace(settings.Scheme)
+            ? await serviceScope.ServiceProvider.GetRequiredService<IClassificationSchemeLocator>()
+                .GetSchemeForMediaAsync(mediaKey, cancellationToken)
+            : settings.Scheme.Trim();
 
         var result = await recognition.AnalyzeAsync(
             mediaKey,

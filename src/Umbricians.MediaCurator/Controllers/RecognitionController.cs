@@ -4,12 +4,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Umbraco.AI.Core.Chat;
 using Umbricians.MediaCurator.Controllers.ViewModels;
 using Umbricians.MediaCurator.Engine;
 using Umbricians.MediaCurator.Providers;
 using Umbricians.MediaCurator.Recognition;
+using Umbricians.MediaCurator.Rules;
 using Umbricians.MediaCurator.Settings;
 using SixLabors.ImageSharp;
 
@@ -28,25 +28,25 @@ public class RecognitionController : MediaCuratorApiControllerBase
 
     private readonly IRecognitionService _recognition;
     private readonly IMediaOperations _media;
-    private readonly IOptionsMonitor<MediaCuratorOptions> _options;
     private readonly IMediaCuratorSettingsService _settings;
     private readonly IServiceProvider _services;
     private readonly IWebHostEnvironment _environment;
     private readonly IParallelMediaWork? _parallel;
+    private readonly IClassificationSchemeLocator? _schemes;
 
     public RecognitionController(
         IRecognitionService recognition,
         IMediaOperations media,
-        IOptionsMonitor<MediaCuratorOptions> options,
         IMediaCuratorSettingsService settings,
         IServiceProvider services,
         IWebHostEnvironment environment,
-        IParallelMediaWork? parallel = null)
+        IParallelMediaWork? parallel = null,
+        IClassificationSchemeLocator? schemes = null)
     {
         _parallel = parallel;
+        _schemes = schemes;
         _recognition = recognition;
         _media = media;
-        _options = options;
         _settings = settings;
         _services = services;
         _environment = environment;
@@ -155,13 +155,10 @@ public class RecognitionController : MediaCuratorApiControllerBase
     // It only treats the body as problem details when "type" is present.
     private static ProblemDetails Error(string message) => new() { Title = message, Type = "Error" };
 
-    private string? ResolveScheme(string? requested)
-    {
-        var scheme = string.IsNullOrWhiteSpace(requested)
-            ? _options.CurrentValue.ClassificationSchemeAlias
-            : requested.Trim();
-        return string.IsNullOrWhiteSpace(scheme) ? null : scheme;
-    }
+    /// <summary>An explicitly requested scheme, or null to use each image's ruleset (see
+    /// <see cref="IClassificationSchemeLocator"/>).</summary>
+    private static string? ResolveScheme(string? requested)
+        => string.IsNullOrWhiteSpace(requested) ? null : requested.Trim();
 
     /// <summary>The images under a folder (recursively), or the item itself when it is an image.
     /// Null when the media item does not exist.</summary>
@@ -191,7 +188,7 @@ public class RecognitionController : MediaCuratorApiControllerBase
             foreach (var mediaKey in mediaKeys)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                results.Add(await ReanalyzeOneAsync(_recognition, _media, mediaKey, scheme, cancellationToken));
+                results.Add(await ReanalyzeOneAsync(_recognition, _media, _schemes, mediaKey, scheme, cancellationToken));
             }
 
             return results;
@@ -202,6 +199,7 @@ public class RecognitionController : MediaCuratorApiControllerBase
             (services, mediaKey, ct) => ReanalyzeOneAsync(
                 services.GetRequiredService<IRecognitionService>(),
                 services.GetRequiredService<IMediaOperations>(),
+                services.GetService<IClassificationSchemeLocator>(),
                 mediaKey,
                 scheme,
                 ct),
@@ -209,8 +207,15 @@ public class RecognitionController : MediaCuratorApiControllerBase
         return parallelResults.ToList();
     }
 
+    /// <summary>Analyzes one image from scratch. Without an explicit <paramref name="scheme"/>, the image is
+    /// classified with the scheme of the ruleset that curates it (none: description and tags only).</summary>
     private static async Task<ReanalyzeImageResultModel> ReanalyzeOneAsync(
-        IRecognitionService recognition, IMediaOperations media, Guid mediaKey, string? scheme, CancellationToken cancellationToken)
+        IRecognitionService recognition,
+        IMediaOperations media,
+        IClassificationSchemeLocator? schemes,
+        Guid mediaKey,
+        string? scheme,
+        CancellationToken cancellationToken)
     {
         var item = media.GetItem(mediaKey);
         if (item is null)
@@ -231,6 +236,7 @@ public class RecognitionController : MediaCuratorApiControllerBase
 
         try
         {
+            scheme ??= schemes is null ? null : await schemes.GetSchemeForMediaAsync(mediaKey, cancellationToken);
             var result = await recognition.AnalyzeAsync(mediaKey, force: true, scheme, cancellationToken);
             if (result is null)
             {
@@ -308,10 +314,11 @@ public class RecognitionController : MediaCuratorApiControllerBase
         }
 
         var imageBytes = await System.IO.File.ReadAllBytesAsync(imagePath, cancellationToken);
-        var maxEdgePixels = request.MaxEdgePixels ?? _options.CurrentValue.MaxRecognitionEdgePixels;
-        var testOutputFolder = RecognitionImagePreparer.ResolveTestOutputFolder(
-            _options.CurrentValue.RecognitionPreparedImageTestFolder,
-            _environment.ContentRootPath);
+        var settings = await _settings.GetAsync(cancellationToken);
+        var maxEdgePixels = request.MaxEdgePixels ?? settings.RecognitionImageSize;
+        var testOutputFolder = settings.SavePreparedImages
+            ? RecognitionImagePreparer.ResolveTestOutputFolder(MediaCuratorDefaults.PreparedImagesFolder, _environment.ContentRootPath)
+            : null;
         var (preparedBytes, preparedMediaType) = RecognitionImagePreparer.Prepare(
             imageBytes,
             "image/jpeg",
@@ -336,7 +343,7 @@ public class RecognitionController : MediaCuratorApiControllerBase
         PizzaRecognitionTestRequestModel request,
         CancellationToken cancellationToken)
     {
-        var profiles = ResolveProfileAliases(request);
+        var profiles = ResolveProfileAliases(request, (await _settings.GetAsync(cancellationToken)).DescriptionProfileAlias);
         var results = new List<PizzaRecognitionTestResultModel>(profiles.Count);
         var (width, height) = ReadDimensions(imageBytes);
         var chatService = _services.GetService<IAIChatService>();
@@ -407,7 +414,7 @@ public class RecognitionController : MediaCuratorApiControllerBase
         return new PizzaRecognitionTestResponseModel { Results = results };
     }
 
-    private List<string?> ResolveProfileAliases(PizzaRecognitionTestRequestModel request)
+    private static List<string?> ResolveProfileAliases(PizzaRecognitionTestRequestModel request, string? configured)
     {
         var aliases = request.ProfileAliases
             .Where(alias => !string.IsNullOrWhiteSpace(alias))
@@ -420,8 +427,7 @@ public class RecognitionController : MediaCuratorApiControllerBase
             return aliases;
         }
 
-        var configured = _options.CurrentValue.RecognitionProfileAlias?.Trim();
-        return [string.IsNullOrWhiteSpace(configured) ? null : configured];
+        return [string.IsNullOrWhiteSpace(configured) ? null : configured.Trim()];
     }
 
     private string? ResolveWorkspaceFile(string relativePath)

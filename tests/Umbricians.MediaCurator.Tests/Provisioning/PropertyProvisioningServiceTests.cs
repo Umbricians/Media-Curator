@@ -84,6 +84,10 @@ public class PropertyProvisioningServiceTests
 
     private sealed class FakeSettingsService : IMediaCuratorSettingsService
     {
+        public Task<string?> GetTypeSafeApiKeyAsync(CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
+
+        public Task SetTypeSafeApiKeyAsync(string? apiKey, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
         public MediaCuratorSiteSettings Value { get; set; } = new();
 
         public Task<MediaCuratorSiteSettings> GetAsync(CancellationToken cancellationToken = default)
@@ -211,4 +215,28 @@ public class PropertyProvisioningServiceTests
 
         Assert.NotEmpty(result.Errors);
     }
+
+    // Classification needs the recognition cache to tell AI codes (which it may update) from editors' codes.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Classification_rules_require_the_recognition_cache_once(bool withAiTagRule)
+    {
+        var rulesets = new FakeRulesets();
+        RuleNode[] rules = withAiTagRule
+            ? [new RuleNode { ProviderAlias = Umbricians.MediaCurator.Providers.ClassificationProvider.ProviderAlias }, new RuleNode { ProviderAlias = Umbricians.MediaCurator.Providers.AiTagProvider.ProviderAlias }]
+            : [new RuleNode { ProviderAlias = Umbricians.MediaCurator.Providers.ClassificationProvider.ProviderAlias }];
+        rulesets.Ruleset = new Ruleset { ScopeRootKey = Guid.NewGuid(), Name = "rs", Rules = [.. rules] };
+        var providers = new CurationProviderCollection(() =>
+        [
+            new Umbricians.MediaCurator.Providers.ClassificationProvider(new Umbricians.MediaCurator.Schemes.ClassificationSchemeCollection(() => [new Umbricians.MediaCurator.Schemes.DeweyPublicDomainScheme()])),
+            new Umbricians.MediaCurator.Providers.AiTagProvider(),
+        ]);
+        var service = new PropertyProvisioningService(rulesets, providers, new FakeSchema(), new FakeMaps(), new FakeSettingsService());
+
+        var report = await service.CheckAsync(rulesets.Ruleset.Key);
+
+        Assert.Single(report.Items, i => i.Requirement.Alias == "mediaCuratorTags");
+    }
 }
+

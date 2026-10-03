@@ -74,6 +74,21 @@ public sealed class PropertyProvisioningService : IPropertyProvisioningService
             }
         }
 
+        // AI classification needs the recognition cache too (AI Tag rules already declare it).
+        if (CollectProviderAliases(ruleset.Rules).Any(alias => RecognitionProviderAliases.Contains(alias))
+            && !items.Any(i => i.Requirement.Alias.Equals(RecognitionRequirements.Cache.Alias, StringComparison.OrdinalIgnoreCase)))
+        {
+            foreach (var mediaTypeAlias in TargetMediaTypes)
+            {
+                items.Add(await EvaluateAsync(
+                    RecognitionRequirements.ProviderAlias,
+                    RecognitionRequirements.Cache,
+                    mediaTypeAlias,
+                    maps,
+                    cancellationToken));
+            }
+        }
+
         if (await ShouldIncludeDescriptionRequirementAsync(ruleset.Rules, cancellationToken))
         {
             foreach (var mediaTypeAlias in TargetMediaTypes)
@@ -155,6 +170,7 @@ public sealed class PropertyProvisioningService : IPropertyProvisioningService
         var requirementsByAlias = _providers
             .SelectMany(p => p.Requirements)
             .Append(RecognitionRequirements.Description)
+            .Append(RecognitionRequirements.Cache)
             .GroupBy(r => r.Alias, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 

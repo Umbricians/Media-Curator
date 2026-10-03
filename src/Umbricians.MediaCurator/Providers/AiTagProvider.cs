@@ -18,19 +18,7 @@ public sealed class AiTagProvider : ICurationProvider
 
     public string Icon => "icon-brain";
 
-    public IEnumerable<PropertyRequirement> Requirements =>
-    [
-        new PropertyRequirement
-        {
-            Alias = UmbracoAiRecognitionService.TagsPropertyAlias,
-            Name = "AI tags (Media Curator)",
-            EditorAlias = "Umbraco.TextArea",
-            EditorUiAlias = "Umb.PropertyEditorUi.TextArea",
-            ValueType = "TEXT",
-            Mandatory = false,
-            Description = "Recognition output cached by Media Curator so AI runs once per image.",
-        },
-    ];
+    public IEnumerable<PropertyRequirement> Requirements => [RecognitionRequirements.Cache];
 
     public ProviderSettingsSchema SettingsSchema { get; } = new()
     {

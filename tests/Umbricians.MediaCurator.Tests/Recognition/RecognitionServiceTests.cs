@@ -1,7 +1,6 @@
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Umbraco.AI.Core.Chat;
 using Umbraco.AI.Core.Profiles;
 using Umbricians.MediaCurator;
@@ -63,15 +62,11 @@ public class RecognitionServiceTests
             var builder = new Umbraco.AI.Core.InlineChat.AIChatBuilder();
             configure(builder);
             // The builder's state is internal to Umbraco.AI; read it the way its chat service would.
-            var effort = ReadBuilder<ChatOptions>(builder, "ChatOptions")?.Reasoning?.Effort;
+            // Umbraco.AI drops ChatOptions.Reasoning on this path, so it must never carry one.
+            Assert.Null(ReadBuilder<ChatOptions>(builder, "ChatOptions")?.Reasoning);
             lock (Requests)
             {
-                Requests.Add((ReadBuilder<string>(builder, "ProfileAlias"), effort));
-            }
-
-            if (RejectReasoning && effort is not null)
-            {
-                throw new InvalidOperationException("HTTP 400: Unsupported parameter: 'reasoning.effort' is not supported with this model.");
+                Requests.Add((ReadBuilder<string>(builder, "ProfileAlias"), null));
             }
 
             return GetChatResponseAsync(messages, null, cancellationToken);
@@ -80,8 +75,42 @@ public class RecognitionServiceTests
         public IAsyncEnumerable<ChatResponseUpdate> StreamChatResponseAsync(Action<Umbraco.AI.Core.InlineChat.AIChatBuilder> configure, IEnumerable<ChatMessage> messages, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
+        /// <summary>Calls that went through a client from CreateChatClientAsync (the reasoning-effort path).</summary>
+        public int ClientCalls;
+
         public Task<IChatClient> CreateChatClientAsync(Action<Umbraco.AI.Core.InlineChat.AIChatBuilder> configure, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
+        {
+            var builder = new Umbraco.AI.Core.InlineChat.AIChatBuilder();
+            configure(builder);
+            return Task.FromResult<IChatClient>(new FakeClient(this, ReadBuilder<string>(builder, "ProfileAlias")));
+        }
+
+        private sealed class FakeClient(FakeChatService owner, string? profile) : IChatClient
+        {
+            public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+            {
+                var effort = options?.Reasoning?.Effort;
+                lock (owner.Requests)
+                {
+                    owner.Requests.Add((profile, effort));
+                    owner.ClientCalls++;
+                }
+
+                if (owner.RejectReasoning && effort is not null)
+                {
+                    throw new InvalidOperationException("HTTP 400: Unsupported parameter: 'reasoning.effort' is not supported with this model.");
+                }
+
+                return owner.GetChatResponseAsync(messages, null, cancellationToken);
+            }
+
+            public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+                => throw new NotSupportedException();
+
+            public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+            public void Dispose() { }
+        }
 
         public Task<IChatClient> GetChatClientAsync(Guid? profileId = null, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
@@ -165,7 +194,7 @@ public class RecognitionServiceTests
         FakeChatService? chat,
         bool metadataOnly = false,
         IRecognitionEnricher? enricher = null,
-        Action<MediaCuratorOptions>? configureOptions = null,
+        Action<MediaCuratorSiteSettings>? configure = null,
         FakeSettingsService? settings = null,
         IJevClassificationDecider? jev = null)
     {
@@ -175,17 +204,19 @@ public class RecognitionServiceTests
             services.AddSingleton<IAIChatService>(chat);
         }
 
-        var optionsValue = new MediaCuratorOptions { MetadataOnly = metadataOnly };
-        configureOptions?.Invoke(optionsValue);
-        var options = new OptionsMonitorStub(optionsValue);
         var enrichers = new RecognitionEnricherCollection(() => enricher is null ? [] : [enricher]);
         settings ??= new FakeSettingsService();
+        if (metadataOnly)
+        {
+            settings.Value.AiEnabled = false;
+        }
+
+        configure?.Invoke(settings.Value);
         return new UmbracoAiRecognitionService(
             services.BuildServiceProvider(),
             media,
             Schemes(),
             enrichers,
-            options,
             settings,
             NullLogger<UmbracoAiRecognitionService>.Instance,
             jev);
@@ -193,8 +224,6 @@ public class RecognitionServiceTests
 
     private sealed class FakeJev : IJevClassificationDecider
     {
-        public bool IsConfigured { get; set; } = true;
-
         public Queue<string?> Picks = new();
 
         public List<ClassificationChoice> Choices = [];
@@ -209,16 +238,12 @@ public class RecognitionServiceTests
     private const string DescribeResponse =
         """{"description":"a high-speed train at a station","tags":[{"name":"train","confidence":0.95}]}""";
 
-    private sealed class OptionsMonitorStub : IOptionsMonitor<MediaCuratorOptions>
-    {
-        public OptionsMonitorStub(MediaCuratorOptions value) => CurrentValue = value;
-        public MediaCuratorOptions CurrentValue { get; }
-        public MediaCuratorOptions Get(string? name) => CurrentValue;
-        public IDisposable? OnChange(Action<MediaCuratorOptions, string?> listener) => null;
-    }
-
     private sealed class FakeSettingsService : IMediaCuratorSettingsService
     {
+        public Task<string?> GetTypeSafeApiKeyAsync(CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
+
+        public Task SetTypeSafeApiKeyAsync(string? apiKey, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
         public MediaCuratorSiteSettings Value { get; set; } = new();
 
         public Task<MediaCuratorSiteSettings> GetAsync(CancellationToken cancellationToken = default)
@@ -271,7 +296,8 @@ public class RecognitionServiceTests
     [Fact]
     public async Task Sends_same_prepared_image_bytes_that_are_written_to_test_folder()
     {
-        var outputDir = Path.Combine(Path.GetTempPath(), "mc-service-prepared-test", Guid.NewGuid().ToString("N"));
+        var outputDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), MediaCuratorDefaults.PreparedImagesFolder));
+        var mediaKey = Guid.NewGuid();
         var media = new FakeMediaOps
         {
             Name = "test-pizza.jpg",
@@ -281,17 +307,17 @@ public class RecognitionServiceTests
         var service = Create(
             media,
             chat,
-            configureOptions: o =>
+            configure: s =>
             {
-                o.MaxRecognitionEdgePixels = 512;
-                o.RecognitionPreparedImageTestFolder = outputDir;
+                s.RecognitionImageSize = 512;
+                s.SavePreparedImages = true;
             });
 
         try
         {
-            await service.AnalyzeAsync(Guid.NewGuid(), force: true);
+            await service.AnalyzeAsync(mediaKey, force: true);
 
-            var written = Directory.GetFiles(outputDir, "*_prepared_*.jpg");
+            var written = Directory.GetFiles(outputDir, $"*{mediaKey:N}*_prepared_*.jpg");
             Assert.Single(written);
             var writtenBytes = File.ReadAllBytes(written[0]);
             var dataContent = chat.ReceivedMessages
@@ -303,9 +329,9 @@ public class RecognitionServiceTests
         }
         finally
         {
-            if (Directory.Exists(outputDir))
+            foreach (var file in Directory.Exists(outputDir) ? Directory.GetFiles(outputDir, $"*{mediaKey:N}*") : [])
             {
-                Directory.Delete(outputDir, recursive: true);
+                File.Delete(file);
             }
         }
     }
@@ -415,7 +441,7 @@ public class RecognitionServiceTests
         var service = Create(
             media,
             chat,
-            configureOptions: o => o.ClassificationMode = RecognitionClassificationMode.SingleShot);
+            configure: s => s.ClassificationMethod = ClassificationMethod.SingleCall);
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
 
@@ -436,7 +462,7 @@ public class RecognitionServiceTests
         var service = Create(
             media,
             chat,
-            configureOptions: o => o.ClassificationMode = RecognitionClassificationMode.SingleShot);
+            configure: s => s.ClassificationMethod = ClassificationMethod.SingleCall);
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
 
@@ -457,7 +483,7 @@ public class RecognitionServiceTests
         var service = Create(
             media,
             chat,
-            configureOptions: o => o.ClassificationMode = RecognitionClassificationMode.SingleShot);
+            configure: s => s.ClassificationMethod = ClassificationMethod.SingleCall);
 
         await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
 
@@ -476,11 +502,32 @@ public class RecognitionServiceTests
         var service = Create(
             media,
             chat,
-            configureOptions: o => o.ClassificationMode = RecognitionClassificationMode.SingleShot);
+            configure: s => s.ClassificationMethod = ClassificationMethod.SingleCall);
 
         await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
 
         Assert.Equal("770", media.Properties[ClassificationProvider.CodePropertyAlias]);
+    }
+
+    [Fact]
+    public async Task Small_schemes_pick_the_final_code_in_one_decision_with_main_classes_shown()
+    {
+        var media = new FakeMediaOps();
+        var chat = new FakeChatService();
+        chat.ResponseQueue.Enqueue(
+            """{"description":"three friends taking a selfie at an airport","tags":[{"name":"selfie","confidence":0.95}]}""");
+        chat.ResponseQueue.Enqueue("""{"classificationCode":"910"}""");
+        var service = Create(media, chat);
+
+        var result = await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
+
+        Assert.Equal("910", result!.ClassificationCode);
+        Assert.Equal(2, chat.Calls);
+        var prompt = chat.ReceivedMessages.Last().Text;
+        Assert.Contains("910|Geography and Travels (History)", prompt);
+        Assert.Contains("790|Amusements (Fine Arts)", prompt);
+        Assert.Contains("385|Railroad Transportation (Sociology › Commerce and Communication)", prompt);
+        Assert.DoesNotContain("\n300|Sociology", prompt); // classes with sub-categories are not final codes
     }
 
     [Fact]
@@ -491,13 +538,12 @@ public class RecognitionServiceTests
             $$"""{"tags":[{"name":"cached","confidence":0.5}],"description":"cached description","sourceUpdateDate":"{{media.UpdateDate:O}}"}""";
         media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias] = "cached description";
         var chat = new FakeChatService();
-        chat.ResponseQueue.Enqueue("""{"classificationCode":"700"}""");
         chat.ResponseQueue.Enqueue("""{"classificationCode":"770"}""");
         var service = Create(media, chat);
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal(2, chat.Calls);
+        Assert.Equal(1, chat.Calls);
         Assert.Equal("770", result!.ClassificationCode);
     }
 
@@ -509,15 +555,13 @@ public class RecognitionServiceTests
             $$"""{"tags":[{"name":"train","confidence":0.9}],"description":"train at station","sourceUpdateDate":"{{media.UpdateDate:O}}"}""";
         media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias] = "train at station";
         var chat = new FakeChatService();
-        chat.ResponseQueue.Enqueue("""{"classificationCode":"300"}""");
-        chat.ResponseQueue.Enqueue("""{"classificationCode":"380"}""");
         chat.ResponseQueue.Enqueue("""{"classificationCode":"385"}""");
         var service = Create(media, chat);
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
 
         Assert.Equal("385", result!.ClassificationCode);
-        Assert.Equal(3, chat.Calls);
+        Assert.Equal(1, chat.Calls);
         Assert.Equal("train at station", media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias]);
     }
 
@@ -587,7 +631,7 @@ public class RecognitionServiceTests
         chat.ResponseQueue.Enqueue("""{"classificationCode":"380"}""");
         chat.ResponseQueue.Enqueue("""{"classificationCode":"385"}""");
 
-        var service = Create(media, chat);
+        var service = Create(media, chat, configure: s => s.ClassificationMethod = ClassificationMethod.StepByStep);
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
 
@@ -603,7 +647,7 @@ public class RecognitionServiceTests
         var media = new FakeMediaOps { Name = "wide.png", FileBytes = CreatePng(2000, 1000) };
         var chat = new FakeChatService();
         var settings = new FakeSettingsService { Value = new MediaCuratorSiteSettings { RecognitionImageSize = 512 } };
-        var service = Create(media, chat, configureOptions: o => o.MaxRecognitionEdgePixels = 1024, settings: settings);
+        var service = Create(media, chat, settings: settings);
 
         await service.AnalyzeAsync(Guid.NewGuid(), force: true);
 
@@ -618,8 +662,6 @@ public class RecognitionServiceTests
         var media = new FakeMediaOps();
         var chat = new FakeChatService();
         chat.ResponseQueue.Enqueue(DescribeResponse);
-        chat.ResponseQueue.Enqueue("""{"classificationCode":"300"}""");
-        chat.ResponseQueue.Enqueue("""{"classificationCode":"380"}""");
         chat.ResponseQueue.Enqueue("""{"classificationCode":"385"}""");
         var settings = new FakeSettingsService
         {
@@ -636,27 +678,45 @@ public class RecognitionServiceTests
         var result = await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
 
         Assert.Equal("385", result!.ClassificationCode);
-        Assert.Equal(("vision-profile", ReasoningEffort.Low), chat.Requests[0]);
-        Assert.All(chat.Requests.Skip(1), r => Assert.Equal(("decision-profile", ReasoningEffort.None), r));
+        Assert.Equal([("vision-profile", ReasoningEffort.Low), ("decision-profile", ReasoningEffort.None)], chat.Requests);
+        // Reasoning only reaches the model through a client from CreateChatClientAsync (Umbraco.AI drops it otherwise).
+        Assert.Equal(2, chat.ClientCalls);
     }
 
     [Fact]
-    public async Task Decisions_fall_back_to_the_description_profile_then_the_configured_recognition_profile()
+    public async Task Decisions_use_the_description_profile_when_they_have_none()
     {
         var media = new FakeMediaOps();
         var chat = new FakeChatService();
         chat.ResponseQueue.Enqueue(DescribeResponse);
-        chat.ResponseQueue.Enqueue("""{"classificationCode":"300"}""");
+        chat.ResponseQueue.Enqueue("""{"classificationCode":"910"}""");
         var settings = new FakeSettingsService
         {
-            Value = new MediaCuratorSiteSettings { DescriptionReasoningEffort = AiReasoningEffort.Default },
+            Value = new MediaCuratorSiteSettings
+            {
+                DescriptionProfileAlias = "vision-profile",
+                DescriptionReasoningEffort = AiReasoningEffort.Default,
+                DecisionReasoningEffort = AiReasoningEffort.Default,
+            },
         };
-        var service = Create(media, chat, configureOptions: o => { o.RecognitionProfileAlias = "appsettings-profile"; o.MaxClassificationDepth = 1; }, settings: settings);
+        var service = Create(media, chat, settings: settings);
 
         await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal(("appsettings-profile", (ReasoningEffort?)null), chat.Requests[0]);
-        Assert.Equal("appsettings-profile", chat.Requests[1].Profile);
+        Assert.Equal([("vision-profile", (ReasoningEffort?)null), ("vision-profile", (ReasoningEffort?)null)], chat.Requests);
+    }
+
+    [Fact]
+    public async Task Without_a_profile_Umbraco_AIs_default_chat_profile_is_used()
+    {
+        var media = new FakeMediaOps();
+        var chat = new FakeChatService();
+        var settings = new FakeSettingsService { Value = new MediaCuratorSiteSettings { DescriptionReasoningEffort = AiReasoningEffort.Default } };
+        var service = Create(media, chat, settings: settings);
+
+        await service.AnalyzeAsync(Guid.NewGuid(), force: true);
+
+        Assert.Equal((null, (ReasoningEffort?)null), chat.Requests.Single());
     }
 
     [Fact]
@@ -690,7 +750,7 @@ public class RecognitionServiceTests
         var media = new FakeMediaOps();
         var chat = new FakeChatService();
         chat.ResponseQueue.Enqueue(DescribeResponse);
-        var jev = new FakeJev { Picks = new Queue<string?>(["300", "380", "385"]) };
+        var jev = new FakeJev { Picks = new Queue<string?>(["385"]) };
         var settings = new FakeSettingsService { Value = new MediaCuratorSiteSettings { DecisionEngine = DecisionEngine.Jev } };
         var service = Create(media, chat, settings: settings, jev: jev);
 
@@ -698,8 +758,11 @@ public class RecognitionServiceTests
 
         Assert.Equal("385", result!.ClassificationCode);
         Assert.Equal(1, chat.Calls); // only the image description went to Umbraco.AI
-        Assert.Equal("a high-speed train at a station", jev.Choices[0].Description);
-        Assert.Equal("380", jev.Choices[2].Parent!.Code);
+        var choice = Assert.Single(jev.Choices);
+        Assert.Equal("a high-speed train at a station", choice.Description);
+        Assert.Null(choice.Parent);
+        Assert.Contains(choice.Candidates, c => c.Code == "385");
+        Assert.Equal("385 Railroad Transportation (Sociology › Commerce and Communication)", choice.Label(choice.Candidates.Single(c => c.Code == "385")));
     }
 
     [Fact]
@@ -708,31 +771,136 @@ public class RecognitionServiceTests
         var media = new FakeMediaOps();
         var chat = new FakeChatService();
         chat.ResponseQueue.Enqueue(DescribeResponse);
-        chat.ResponseQueue.Enqueue("""{"classificationCode":"380"}""");
-        var jev = new FakeJev { Picks = new Queue<string?>(["300", null]) };
+        chat.ResponseQueue.Enqueue("""{"classificationCode":"910"}""");
+        var jev = new FakeJev { Picks = new Queue<string?>([null]) };
         var settings = new FakeSettingsService { Value = new MediaCuratorSiteSettings { DecisionEngine = DecisionEngine.Jev } };
-        var service = Create(media, chat, configureOptions: o => o.MaxClassificationDepth = 2, settings: settings, jev: jev);
+        var service = Create(media, chat, settings: settings, jev: jev);
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal("380", result!.ClassificationCode);
+        Assert.Equal("910", result!.ClassificationCode);
         Assert.Equal(2, chat.Calls);
     }
 
+    // --- Refreshing stored classifications (Curate re-decides outdated AI codes, never re-sends images) ---
+
+    private static void StoreAiResult(FakeMediaOps media, string code, string? method, string file = "/media/a/photo.jpg")
+    {
+        media.Properties["umbracoFile"] = $$"""{"src":"{{file}}","crops":[]}""";
+        media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias] = "three friends taking a selfie at an airport";
+        media.Properties[ClassificationProvider.CodePropertyAlias] = code;
+        var cached = new RecognitionResult([new AiTag("selfie", 0.9)], "three friends taking a selfie at an airport", code, media.UpdateDate, method, file);
+        media.Properties[UmbracoAiRecognitionService.TagsPropertyAlias] = System.Text.Json.JsonSerializer.Serialize(cached);
+    }
+
     [Fact]
-    public async Task Jev_without_an_api_key_uses_Umbraco_AI()
+    public async Task Refresh_re_decides_an_outdated_ai_code_from_the_saved_description()
     {
         var media = new FakeMediaOps();
+        StoreAiResult(media, "390", method: null);
         var chat = new FakeChatService();
-        chat.ResponseQueue.Enqueue(DescribeResponse);
-        chat.ResponseQueue.Enqueue("""{"classificationCode":"300"}""");
-        var jev = new FakeJev { IsConfigured = false, Picks = new Queue<string?>(["900"]) };
-        var settings = new FakeSettingsService { Value = new MediaCuratorSiteSettings { DecisionEngine = DecisionEngine.Jev } };
-        var service = Create(media, chat, configureOptions: o => o.MaxClassificationDepth = 1, settings: settings, jev: jev);
+        chat.ResponseQueue.Enqueue("""{"classificationCode":"910"}""");
+        var service = Create(media, chat);
 
-        var result = await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
+        var result = await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd");
 
-        Assert.Equal("300", result!.ClassificationCode);
-        Assert.Empty(jev.Choices);
+        Assert.Equal("910", result!.ClassificationCode);
+        Assert.Equal("dewey-pd:one-step-v1", result.ClassificationMethod);
+        Assert.Equal("910", media.Properties[ClassificationProvider.CodePropertyAlias]);
+        Assert.Equal(1, chat.Calls);
+        Assert.Empty(chat.ReceivedMessages.SelectMany(m => m.Contents).OfType<DataContent>()); // no image sent
+        Assert.Contains("dewey-pd:one-step-v1", media.Properties[UmbracoAiRecognitionService.TagsPropertyAlias]);
+    }
+
+    [Fact]
+    public async Task Refresh_leaves_codes_decided_the_current_way()
+    {
+        var media = new FakeMediaOps();
+        StoreAiResult(media, "390", method: "dewey-pd:one-step-v1");
+        var chat = new FakeChatService();
+        var service = Create(media, chat);
+
+        var result = await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd");
+
+        Assert.Equal("390", result!.ClassificationCode);
+        Assert.Equal(0, chat.Calls);
+    }
+
+    [Fact]
+    public async Task Refresh_never_changes_a_code_an_editor_entered()
+    {
+        var media = new FakeMediaOps();
+        StoreAiResult(media, "390", method: null);
+        media.Properties[ClassificationProvider.CodePropertyAlias] = "920"; // edited after the AI chose 390
+        var chat = new FakeChatService();
+        var service = Create(media, chat);
+
+        await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd");
+
+        Assert.Equal("920", media.Properties[ClassificationProvider.CodePropertyAlias]);
+        Assert.Equal(0, chat.Calls);
+    }
+
+    [Fact]
+    public async Task Refresh_does_nothing_without_a_saved_description()
+    {
+        var media = new FakeMediaOps();
+        media.Properties[ClassificationProvider.CodePropertyAlias] = "390";
+        var chat = new FakeChatService();
+        var service = Create(media, chat);
+
+        Assert.Null(await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd"));
+        Assert.Equal(0, chat.Calls);
+    }
+
+    [Fact]
+    public async Task Codes_from_before_the_cache_are_re_decided_once_when_the_cache_can_be_saved()
+    {
+        var media = new FakeMediaOps();
+        media.Properties[ClassificationProvider.CodePropertyAlias] = "390";
+        media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias] = "two men smiling for a selfie in a crowded nightclub";
+        var chat = new FakeChatService();
+        chat.ResponseQueue.Enqueue("""{"classificationCode":"790"}""");
+        var service = Create(media, chat);
+
+        await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd");
+        await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd");
+
+        Assert.Equal("790", media.Properties[ClassificationProvider.CodePropertyAlias]);
+        Assert.Equal(1, chat.Calls); // the second run finds it current
+    }
+
+    [Fact]
+    public async Task Without_the_cache_property_refresh_never_calls_the_ai()
+    {
+        var media = new FakeMediaOps { ThrowOnSet = true };
+        media.Properties[ClassificationProvider.CodePropertyAlias] = "390";
+        media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias] = "people at a pub";
+        var chat = new FakeChatService();
+        var service = Create(media, chat);
+
+        await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd");
+
+        Assert.Equal(0, chat.Calls);
+    }
+
+    // Regression: saving the cache (or a move) bumps the item's update date, which made every cache stale.
+    [Fact]
+    public async Task Cache_stays_fresh_when_the_item_is_saved_and_goes_stale_when_the_file_changes()
+    {
+        var media = new FakeMediaOps();
+        StoreAiResult(media, "910", method: "dewey-pd:one-step-v1");
+        media.UpdateDate = media.UpdateDate.AddHours(1);
+        var chat = new FakeChatService();
+        var service = Create(media, chat);
+
+        var cached = await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
+        Assert.Equal("910", cached!.ClassificationCode);
+        Assert.Equal(0, chat.Calls);
+
+        media.Properties["umbracoFile"] = """{"src":"/media/b/replaced.jpg"}""";
+        await service.AnalyzeAsync(Guid.NewGuid());
+        Assert.True(chat.Calls > 0); // a new file is analysed again
     }
 }
+

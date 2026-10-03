@@ -1,15 +1,32 @@
-import type { AiReasoningEffort, AiSettingsOptionsModel, MediaCuratorSiteSettingsModel } from "../api/index.js";
+import type {
+  AiReasoningEffort,
+  AiSettingsOptionsModel,
+  ClassificationMethod,
+  MediaCuratorSiteSettingsModel,
+} from "../api/index.js";
 
 export type SelectOption = { name: string; value: string; selected?: boolean; disabled?: boolean };
 
 export const DEFAULT_SETTINGS: MediaCuratorSiteSettingsModel = {
+  aiEnabled: true,
   persistImageDescription: true,
   recognitionImageSize: 768,
   descriptionReasoningEffort: "Low",
+  classificationMethod: "OneStep",
   decisionEngine: "UmbracoAi",
   decisionReasoningEffort: "None",
+  jevModel: "jev-latest",
+  jevApiKeyConfigured: false,
+  jevApiKeySource: "None",
   maxParallelAnalyses: 4,
+  savePreparedImages: false,
 };
+
+export const CLASSIFICATION_METHODS: { value: ClassificationMethod; name: string }[] = [
+  { value: "OneStep", name: "Describe, then pick the code in one step (recommended)" },
+  { value: "StepByStep", name: "Describe, then pick one level at a time" },
+  { value: "SingleCall", name: "One call with the image and the whole scheme" },
+];
 
 export const IMAGE_SIZES: SelectOption[] = [
   { name: "512 px", value: "512" },

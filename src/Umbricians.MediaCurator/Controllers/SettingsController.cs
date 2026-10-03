@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Umbraco.AI.Core.Models;
 using Umbraco.AI.Core.Profiles;
 using Umbricians.MediaCurator.Controllers.ViewModels;
@@ -16,18 +15,15 @@ namespace Umbricians.MediaCurator.Controllers;
 public class SettingsController : MediaCuratorApiControllerBase
 {
     private readonly IMediaCuratorSettingsService _settings;
-    private readonly IOptionsMonitor<MediaCuratorOptions> _options;
     private readonly IServiceProvider _services;
     private readonly ILogger<SettingsController> _logger;
 
     public SettingsController(
         IMediaCuratorSettingsService settings,
-        IOptionsMonitor<MediaCuratorOptions> options,
         IServiceProvider services,
         ILogger<SettingsController> logger)
     {
         _settings = settings;
-        _options = options;
         _services = services;
         _logger = logger;
     }
@@ -47,17 +43,34 @@ public class SettingsController : MediaCuratorApiControllerBase
         return MediaCuratorSiteSettingsModel.From(await _settings.GetAsync(cancellationToken));
     }
 
-    /// <summary>The Umbraco.AI chat profiles to choose from, and whether Jev is available.</summary>
+    /// <summary>Stores the TypeSafe API key for Jev (encrypted), or removes it when the key is empty.
+    /// The key is write-only: no endpoint returns it.</summary>
+    [HttpPut("settings/typesafe-api-key")]
+    [ProducesResponseType<MediaCuratorSiteSettingsModel>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> SetTypeSafeApiKey(
+        TypeSafeApiKeyModel model,
+        CancellationToken cancellationToken)
+    {
+        if ((await _settings.GetAsync(cancellationToken)).JevApiKeySource == ApiKeySource.ServerConfiguration)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = $"The TypeSafe API key is set in server configuration ({MediaCuratorDefaults.TypeSafeApiKeyConfigurationKey}); change it there.",
+                Type = "Error",
+            });
+        }
+
+        await _settings.SetTypeSafeApiKeyAsync(model.ApiKey, cancellationToken);
+        return Ok(MediaCuratorSiteSettingsModel.From(await _settings.GetAsync(cancellationToken)));
+    }
+
+    /// <summary>The Umbraco.AI chat profiles to choose from.</summary>
     [HttpGet("settings/ai-options")]
     [ProducesResponseType<AiSettingsOptionsModel>(StatusCodes.Status200OK)]
     public async Task<AiSettingsOptionsModel> GetAiOptions(CancellationToken cancellationToken)
     {
-        var options = _options.CurrentValue;
-        var model = new AiSettingsOptionsModel
-        {
-            FallbackProfileAlias = string.IsNullOrWhiteSpace(options.RecognitionProfileAlias) ? null : options.RecognitionProfileAlias.Trim(),
-            JevAvailable = options.TypeSafe.IsConfigured,
-        };
+        var model = new AiSettingsOptionsModel();
 
         // Resolved lazily: the site may not have Umbraco.AI's runtime registered at all.
         var profiles = _services.GetService<IAIProfileService>();
@@ -68,6 +81,12 @@ public class SettingsController : MediaCuratorApiControllerBase
 
         try
         {
+            // GetDefaultProfileAsync throws when no default chat profile is set up.
+            if (await profiles.HasDefaultProfileAsync(AICapability.Chat, cancellationToken))
+            {
+                model.DefaultProfileAlias = (await profiles.GetDefaultProfileAsync(AICapability.Chat, cancellationToken))?.Alias;
+            }
+
             model.Profiles = (await profiles.GetProfilesAsync(AICapability.Chat, cancellationToken))
                 .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(p => new AiProfileOptionModel { Alias = p.Alias, Name = p.Name, Model = p.Model.ModelId })

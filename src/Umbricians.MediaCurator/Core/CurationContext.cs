@@ -56,6 +56,11 @@ public sealed record CurationContext
     /// service wired; providers must handle a null result.</summary>
     public Func<string?, CancellationToken, Task<Recognition.RecognitionResult?>>? RecognizeAsync { get; init; }
 
+    /// <summary>Brings the item's AI-chosen classification code (for the given scheme) up to date with how
+    /// codes are chosen now, from its saved description: never re-sends the image and never changes a code
+    /// an editor entered. Null when the engine has no recognition service wired.</summary>
+    public Func<string, CancellationToken, Task<Recognition.RecognitionResult?>>? RefreshClassificationAsync { get; init; }
+
     /// <summary>Opens the item's file for reading (caller disposes), or null when the item
     /// has no file. Wired by the engine for providers that analyze pixels (e.g. Color).</summary>
     public Func<Stream?>? OpenFile { get; init; }

@@ -14,15 +14,18 @@ export type AiReasoningEffort = 'Default' | 'None' | 'Low' | 'Medium' | 'High';
 
 export type AiSettingsOptionsModel = {
     profiles: Array<AiProfileOptionModel>;
-    fallbackProfileAlias?: string | null;
-    jevAvailable: boolean;
+    defaultProfileAlias?: string | null;
     maxParallelAnalysesLimit: number;
+    typeSafeApiKeyConfigurationKey: string;
+    preparedImagesFolder: string;
 };
 
 export type AnalyzeMediaImagesResponseModel = {
     results: Array<ReanalyzeImageResultModel>;
     alreadyAnalyzedCount: number;
 };
+
+export type ApiKeySource = 'None' | 'Backoffice' | 'ServerConfiguration';
 
 export type BulkQueueStatusModel = {
     queueLength: number;
@@ -36,6 +39,8 @@ export type BulkRunStatusModel = {
     total: number;
     error?: string | null;
 };
+
+export type ClassificationMethod = 'OneStep' | 'StepByStep' | 'SingleCall';
 
 export type CurationPlanModel = {
     scopeFolderKey: string;
@@ -109,14 +114,20 @@ export type MediaCurationSummaryModel = {
 };
 
 export type MediaCuratorSiteSettingsModel = {
+    aiEnabled: boolean;
     persistImageDescription: boolean;
     recognitionImageSize: number;
     descriptionProfileAlias?: string | null;
     descriptionReasoningEffort: AiReasoningEffort;
+    classificationMethod: ClassificationMethod;
     decisionEngine: DecisionEngine;
     decisionProfileAlias?: string | null;
     decisionReasoningEffort: AiReasoningEffort;
+    jevModel: string;
+    jevApiKeyConfigured: boolean;
+    jevApiKeySource: ApiKeySource;
     maxParallelAnalyses: number;
+    savePreparedImages: boolean;
 };
 
 export type MediaImageCountModel = {
@@ -269,6 +280,10 @@ export type SettingFieldModel = {
 export type SettingFieldOptionModel = {
     value: string;
     label: string;
+};
+
+export type TypeSafeApiKeyModel = {
+    apiKey?: string | null;
 };
 
 export type GetExclusionsData = {
@@ -1066,3 +1081,32 @@ export type GetAiOptionsResponses = {
 };
 
 export type GetAiOptionsResponse = GetAiOptionsResponses[keyof GetAiOptionsResponses];
+
+export type SetTypeSafeApiKeyData = {
+    body?: TypeSafeApiKeyModel;
+    path?: never;
+    query?: never;
+    url: '/umbraco/mediacurator/api/v1/settings/typesafe-api-key';
+};
+
+export type SetTypeSafeApiKeyErrors = {
+    /**
+     * The resource is protected and requires an authentication token
+     */
+    401: unknown;
+    /**
+     * Conflict
+     */
+    409: ProblemDetails;
+};
+
+export type SetTypeSafeApiKeyError = SetTypeSafeApiKeyErrors[keyof SetTypeSafeApiKeyErrors];
+
+export type SetTypeSafeApiKeyResponses = {
+    /**
+     * OK
+     */
+    200: MediaCuratorSiteSettingsModel;
+};
+
+export type SetTypeSafeApiKeyResponse = SetTypeSafeApiKeyResponses[keyof SetTypeSafeApiKeyResponses];

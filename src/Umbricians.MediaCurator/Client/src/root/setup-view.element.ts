@@ -5,12 +5,14 @@ import {
   MediaCuratorService,
   type AiReasoningEffort,
   type AiSettingsOptionsModel,
+  type ClassificationMethod,
   type DecisionEngine,
   type MediaCuratorSiteSettingsModel,
 } from "../api/index.js";
 import { notify, type McNotifications } from "./mc-notify.js";
 import { rootViewStyles } from "./root-view.styles.js";
 import {
+  CLASSIFICATION_METHODS,
   DEFAULT_SETTINGS,
   IMAGE_SIZES,
   profileOptions,
@@ -23,6 +25,8 @@ export class McRootSetupViewElement extends UmbLitElement {
   @state() private _settings?: MediaCuratorSiteSettingsModel;
   @state() private _ai?: AiSettingsOptionsModel;
   @state() private _saving = false;
+  @state() private _apiKey = "";
+  @state() private _savingKey = false;
 
   #notifications?: McNotifications;
 
@@ -42,7 +46,12 @@ export class McRootSetupViewElement extends UmbLitElement {
     try {
       const [settings, ai] = await Promise.all([MediaCuratorService.getSettings(), MediaCuratorService.getAiOptions()]);
       this._settings = settings.data ?? { ...DEFAULT_SETTINGS };
-      this._ai = ai.data ?? { profiles: [], jevAvailable: false, maxParallelAnalysesLimit: 16 };
+      this._ai = ai.data ?? {
+        profiles: [],
+        maxParallelAnalysesLimit: 16,
+        preparedImagesFolder: "",
+        typeSafeApiKeyConfigurationKey: "MediaCurator:Secrets:TypeSafeApiKey",
+      };
     } catch {
       notify(this.#notifications, "danger", "Could not load Media Curator settings. Check the server log and reload.");
     }
@@ -61,6 +70,24 @@ export class McRootSetupViewElement extends UmbLitElement {
       notify(this.#notifications, "positive", "Settings saved.");
     } finally {
       this._saving = false;
+    }
+  }
+
+  /** Stores (or with an empty key, removes) the TypeSafe API key. The key is write-only. */
+  async #saveApiKey(apiKey: string) {
+    this._savingKey = true;
+    try {
+      const response = await MediaCuratorService.setTypeSafeApiKey({ body: { apiKey } });
+      if (response.error || !response.data) {
+        notify(this.#notifications, "danger", "Could not save the TypeSafe API key.");
+        return;
+      }
+      // Keep unsaved form changes; only the key status comes from the server.
+      this.#update({ jevApiKeyConfigured: response.data.jevApiKeyConfigured });
+      this._apiKey = "";
+      notify(this.#notifications, "positive", apiKey ? "TypeSafe API key saved." : "TypeSafe API key removed.");
+    } finally {
+      this._savingKey = false;
     }
   }
 
@@ -83,22 +110,41 @@ export class McRootSetupViewElement extends UmbLitElement {
     const ai = this._ai;
     if (!settings || !ai) return html`<uui-loader></uui-loader>`;
     const jevSelected = settings.decisionEngine === "Jev";
+    const jevAvailable = settings.jevApiKeyConfigured;
+    const keyFromServer = settings.jevApiKeySource === "ServerConfiguration";
 
     return html`
       <uui-box headline="Setup" data-mark="mc:settings">
         <p>
-          When AI recognition is enabled, Media Curator can store the image description on each media
-          item so classification can run again without re-sending the image to the vision model.
+          Everything Media Curator needs is set up here. The classification scheme is set on each ruleset's
+          Library Classification rule, and images are classified with the scheme of the ruleset that curates them.
         </p>
         <div class="form">
+          <uui-label for="mc-ai-enabled">Use AI</uui-label>
+          <div>
+            <uui-toggle
+              id="mc-ai-enabled"
+              data-mark="mc:ai-enabled"
+              label="Use AI"
+              .checked=${settings.aiEnabled}
+              @change=${(e: Event) => this.#update({ aiEnabled: (e.target as HTMLInputElement).checked })}
+            ></uui-toggle>
+            <div class="hint">When off, Media Curator makes no AI calls; rules that need no AI still work.</div>
+          </div>
+
           <uui-label for="mc-persist-description">Save image description</uui-label>
-          <uui-toggle
-            id="mc-persist-description"
-            data-mark="mc:persist-description"
-            label="Save image description"
-            .checked=${settings.persistImageDescription}
-            @change=${(e: Event) => this.#update({ persistImageDescription: (e.target as HTMLInputElement).checked })}
-          ></uui-toggle>
+          <div>
+            <uui-toggle
+              id="mc-persist-description"
+              data-mark="mc:persist-description"
+              label="Save image description"
+              .checked=${settings.persistImageDescription}
+              @change=${(e: Event) => this.#update({ persistImageDescription: (e.target as HTMLInputElement).checked })}
+            ></uui-toggle>
+            <div class="hint">
+              Lets classification run again from the description, without re-sending the image to the AI.
+            </div>
+          </div>
         </div>
       </uui-box>
 
@@ -152,9 +198,9 @@ export class McRootSetupViewElement extends UmbLitElement {
           ${this.#select(
             "mc-description-profile",
             "Umbraco.AI profile for describing images",
-            profileOptions(ai, settings.descriptionProfileAlias, ai.fallbackProfileAlias
-              ? `Configured profile (${ai.fallbackProfileAlias})`
-              : "Umbraco.AI default chat profile"),
+            profileOptions(ai, settings.descriptionProfileAlias, ai.defaultProfileAlias
+              ? `Umbraco.AI default chat profile (${ai.defaultProfileAlias})`
+              : "Umbraco.AI default chat profile (none set up)"),
             (value) => this.#update({ descriptionProfileAlias: value || null }),
           )}
 
@@ -177,9 +223,23 @@ export class McRootSetupViewElement extends UmbLitElement {
       <uui-box headline="Decisions" data-mark="mc:ai-decisions">
         <p>
           Choices the rules cannot work out on their own, such as picking a library classification code from the
-          image description. Each level of the scheme is one decision.
+          image description.
         </p>
         <div class="form">
+          <uui-label for="mc-classification-method">How codes are chosen</uui-label>
+          <div>
+            ${this.#select(
+              "mc-classification-method",
+              "How classification codes are chosen",
+              CLASSIFICATION_METHODS.map((m) => ({ ...m, selected: m.value === settings.classificationMethod })),
+              (value) => this.#update({ classificationMethod: value as ClassificationMethod }),
+            )}
+            <div class="hint">
+              One step shows every code with its classes, so the AI sees where each one sits. Changing this
+              re-decides existing codes on the next curation, from their saved descriptions.
+            </div>
+          </div>
+
           <uui-label for="mc-decision-engine">Decision engine</uui-label>
           <div>
             ${this.#select(
@@ -188,22 +248,21 @@ export class McRootSetupViewElement extends UmbLitElement {
               [
                 { name: "Umbraco.AI chat model (default)", value: "UmbracoAi", selected: !jevSelected },
                 {
-                  name: ai.jevAvailable ? "Jev by TypeSafe" : "Jev by TypeSafe (needs an API key)",
+                  name: jevAvailable ? "Jev by TypeSafe" : "Jev by TypeSafe (needs an API key)",
                   value: "Jev",
                   selected: jevSelected,
-                  disabled: !ai.jevAvailable && !jevSelected,
+                  disabled: !jevAvailable && !jevSelected,
                 },
               ],
               (value) => this.#update({ decisionEngine: value as DecisionEngine }),
             )}
             <div class="hint">
-              ${ai.jevAvailable
+              ${jevAvailable
                 ? html`Jev returns a typed choice in well under a second. If a Jev call fails, the Umbraco.AI
                     profile below decides instead.`
-                : html`To use Jev, add <code>MediaCurator:TypeSafe:ApiKey</code> to your app settings (or user
-                    secrets) and restart the site.`}
+                : html`To use Jev, add your TypeSafe API key under "Jev by TypeSafe" below, or in server configuration.`}
             </div>
-            ${jevSelected && !ai.jevAvailable
+            ${jevSelected && !jevAvailable
               ? html`<div class="hint warning" data-mark="mc:jev-missing-key">
                   Jev is selected but no TypeSafe API key is configured, so Umbraco.AI is making the decisions.
                 </div>`
@@ -225,6 +284,91 @@ export class McRootSetupViewElement extends UmbLitElement {
             reasoningOptions(settings.decisionReasoningEffort, "None"),
             (value) => this.#update({ decisionReasoningEffort: value as AiReasoningEffort }),
           )}
+        </div>
+      </uui-box>
+
+      <uui-box headline="Jev by TypeSafe" data-mark="mc:jev">
+        <p>
+          Optional: TypeSafe's Jev model can make the classification decisions instead of an Umbraco.AI chat model.
+          Save the API key here (stored encrypted, never shown again), or provide it from server configuration as
+          <code>${ai.typeSafeApiKeyConfigurationKey}</code>: an environment variable
+          (<code>${ai.typeSafeApiKeyConfigurationKey.split(":").join("__")}</code>), user secrets or Azure Key Vault.
+          A key from server configuration always wins.
+        </p>
+        <div class="form">
+          <uui-label for="mc-jev-key">API key</uui-label>
+          <div>
+            <div class="inline">
+              <uui-input
+                id="mc-jev-key"
+                data-mark="mc:jev-key"
+                type="password"
+                autocomplete="off"
+                label="TypeSafe API key"
+                placeholder=${keyFromServer
+                  ? "Provided by server configuration"
+                  : jevAvailable
+                    ? "A key is saved; enter a new one to replace it"
+                    : "Paste your TypeSafe API key"}
+                ?disabled=${keyFromServer}
+                .value=${this._apiKey}
+                @input=${(e: Event) => (this._apiKey = (e.target as HTMLInputElement).value)}
+              ></uui-input>
+              <uui-button
+                data-mark="mc:jev-key-save"
+                label="Save key"
+                look="secondary"
+                ?disabled=${keyFromServer || !this._apiKey.trim()}
+                .state=${this._savingKey ? "waiting" : undefined}
+                @click=${() => this.#saveApiKey(this._apiKey.trim())}
+              ></uui-button>
+              ${jevAvailable && !keyFromServer
+                ? html`<uui-button
+                    data-mark="mc:jev-key-remove"
+                    label="Remove key"
+                    look="secondary"
+                    color="danger"
+                    @click=${() => this.#saveApiKey("")}
+                  ></uui-button>`
+                : nothing}
+            </div>
+            <div class="hint" data-mark="mc:jev-key-status">
+              ${keyFromServer
+                ? html`The API key comes from server configuration (<code>${ai.typeSafeApiKeyConfigurationKey}</code>);
+                    change it there.`
+                : jevAvailable
+                  ? "A TypeSafe API key is saved."
+                  : "No TypeSafe API key saved."}
+            </div>
+          </div>
+
+          <uui-label for="mc-jev-model">Model</uui-label>
+          <uui-input
+            id="mc-jev-model"
+            data-mark="mc:jev-model"
+            label="Jev model"
+            .value=${settings.jevModel}
+            @change=${(e: Event) => this.#update({ jevModel: (e.target as HTMLInputElement).value })}
+          ></uui-input>
+        </div>
+      </uui-box>
+
+      <uui-box headline="Diagnostics" data-mark="mc:diagnostics">
+        <div class="form">
+          <uui-label for="mc-save-prepared">Save prepared images</uui-label>
+          <div>
+            <uui-toggle
+              id="mc-save-prepared"
+              data-mark="mc:save-prepared"
+              label="Save prepared images"
+              .checked=${settings.savePreparedImages}
+              @change=${(e: Event) => this.#update({ savePreparedImages: (e.target as HTMLInputElement).checked })}
+            ></uui-toggle>
+            <div class="hint">
+              Also writes every resized image sent to the AI to <code>${ai.preparedImagesFolder}</code>, to check what
+              the AI sees. Leave off in production.
+            </div>
+          </div>
         </div>
         <div class="actions">
           <uui-button
@@ -253,6 +397,11 @@ export class McRootSetupViewElement extends UmbLitElement {
         color: var(--uui-color-text-alt);
         font-size: var(--uui-type-small-size);
         margin-top: var(--uui-size-space-2);
+      }
+      .inline {
+        display: flex;
+        gap: var(--uui-size-space-3);
+        align-items: center;
       }
       .hint.warning {
         color: var(--uui-color-warning-standalone);

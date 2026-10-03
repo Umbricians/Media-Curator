@@ -19,6 +19,18 @@ public class ClassificationProviderTests
         => TestContext.Create(settings: TestContext.Settings(settings))
             with { Properties = new DictAccessor { [ClassificationProvider.CodePropertyAlias] = code } };
 
+    // A one-step decision stores only the final code; its folders still nest by main class.
+    [Theory]
+    [InlineData("910", new[] { "History", "Geography and Travels" })]
+    [InlineData("790", new[] { "Fine Arts", "Amusements" })]
+    [InlineData("385", new[] { "Sociology", "Commerce and Communication", "Railroad Transportation" })]
+    public async Task Final_dewey_codes_nest_under_their_classes(string code, string[] folders)
+    {
+        var result = await Create().ResolveAsync(WithCode(code, ("scheme", "dewey-pd")));
+
+        Assert.Equal(folders, result.Segments.Select(s => s.Name));
+    }
+
     [Fact]
     public async Task Hierarchical_lcc_code_produces_nested_name_folders()
     {
@@ -110,4 +122,28 @@ public class ClassificationProviderTests
         Assert.Equal("dewey-pd", schemeSeen);
         Assert.Equal(["Fine Arts", "Photography"], result.Segments.Select(s => s.Name));
     }
+
+    [Fact]
+    public async Task Stored_codes_are_refreshed_before_use_and_the_updated_code_is_used()
+    {
+        var accessor = new DictAccessor { [ClassificationProvider.CodePropertyAlias] = "390" };
+        string? refreshedFor = null;
+        var context = TestContext.Create(settings: TestContext.Settings(("scheme", "dewey-pd")))
+            with
+            {
+                Properties = accessor,
+                RefreshClassificationAsync = (scheme, _) =>
+                {
+                    refreshedFor = scheme;
+                    accessor[ClassificationProvider.CodePropertyAlias] = "910";
+                    return Task.FromResult<RecognitionResult?>(null);
+                },
+            };
+
+        var result = await Create().ResolveAsync(context);
+
+        Assert.Equal("dewey-pd", refreshedFor);
+        Assert.Equal(["History", "Geography and Travels"], result.Segments.Select(s => s.Name));
+    }
 }
+

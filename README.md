@@ -28,8 +28,8 @@ for the full product scope.
   undo, exclusions/pinning, image-only filtering, and all moves through `IMediaService`
   so references and UDIs stay intact.
 - **AI on your terms** — recognition runs on the [Umbraco.AI](https://www.nuget.org/packages/Umbraco.AI)
-  abstractions (any configured provider), results are cached per image, and a
-  metadata-only mode disables AI calls entirely (`MediaCurator:MetadataOnly`).
+  abstractions (any configured provider), results are cached per image, and AI can be
+  switched off entirely in the setup. Classification decisions can optionally use TypeSafe's Jev.
 
 ## Built-in providers
 
@@ -81,16 +81,24 @@ is the reference "hello world" implementation.
 
 ## Configuration
 
-```json
-{
-  "MediaCurator": {
-    "MetadataOnly": false,
-    "RecognitionProfileAlias": null,
-    "ClassificationSchemeAlias": "dewey-pd",
-    "MaxRecognitionEdgePixels": 1024
-  }
-}
-```
+Everything is configured in the backoffice under **Settings › Media Curator › Setup** and stored in
+the database; Media Curator reads no app settings:
+
+- AI on/off, saving image descriptions, image size, images analyzed at once.
+- The Umbraco.AI profile and reasoning effort for describing images and for decisions.
+- How codes are chosen (one step, level by level, or a single call with the image) and the decision
+  engine (Umbraco.AI or Jev, with the TypeSafe API key stored encrypted).
+- Diagnostics: saving the prepared images sent to the AI.
+
+The one exception is the TypeSafe API key, which can instead come from server configuration as
+`MediaCurator:Secrets:TypeSafeApiKey`: app settings, user secrets, an environment variable
+(`MediaCurator__Secrets__TypeSafeApiKey`) or Azure Key Vault (`MediaCurator--Secrets--TypeSafeApiKey`).
+When set, it wins over a key saved in the backoffice, and the setup's key field is locked.
+
+The classification scheme is not a site setting: each ruleset's Library Classification rule sets it,
+and analysis uses the scheme of the ruleset that curates the image. Sites upgrading from versions that
+read a `"MediaCurator"` app settings section have its values imported into the setup once; the section
+can then be removed.
 
 ## Development
 

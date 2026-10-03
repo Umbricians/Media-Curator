@@ -121,4 +121,92 @@ public class HierarchicalClassificationResolverTests
 
         Assert.Equal("G", code);
     }
+
+    [Fact]
+    public void Final_codes_are_entries_without_sub_categories_or_at_the_depth_limit()
+    {
+        var dewey = new DeweyPublicDomainScheme();
+        var lcc = new LccOutlineScheme();
+
+        var deep = HierarchicalClassificationResolver.FinalEntries(dewey, maxDepth: 4).Select(e => e.Code).ToList();
+        Assert.Contains("385", deep);
+        Assert.Contains("910", deep);
+        Assert.DoesNotContain("380", deep); // has sub-categories
+        Assert.DoesNotContain("300", deep);
+
+        var shallow = HierarchicalClassificationResolver.FinalEntries(dewey, maxDepth: 2).Select(e => e.Code).ToList();
+        Assert.Contains("380", shallow);
+        Assert.DoesNotContain("385", shallow);
+
+        // LCC main classes without sub-classes are final codes too.
+        var lccFinals = HierarchicalClassificationResolver.FinalEntries(lcc, maxDepth: 4);
+        Assert.Contains(lccFinals, e => lcc.GetChildren(null).Contains(e));
+    }
+
+    [Fact]
+    public async Task Small_schemes_are_decided_in_one_step_with_ancestors_as_context()
+    {
+        var scheme = new DeweyPublicDomainScheme();
+        var choices = new List<ClassificationChoice>();
+
+        var code = await HierarchicalClassificationResolver.ResolveAsync(
+            scheme,
+            "friends taking a selfie in an airport",
+            [],
+            (choice, _) =>
+            {
+                choices.Add(choice);
+                return Task.FromResult<string?>("910");
+            },
+            maxDepth: 4,
+            CancellationToken.None,
+            oneStepLimit: 255);
+
+        Assert.Equal("910", code);
+        var only = Assert.Single(choices);
+        Assert.Null(only.Parent);
+        Assert.Equal("History", only.CandidateNotes!["910"]);
+        Assert.Equal("790 Amusements (Fine Arts)", only.Label(only.Candidates.Single(c => c.Code == "790")));
+    }
+
+    [Fact]
+    public async Task One_step_pick_outside_the_list_resolves_to_nothing()
+    {
+        var code = await HierarchicalClassificationResolver.ResolveAsync(
+            new DeweyPublicDomainScheme(),
+            "x",
+            [],
+            (_, _) => Task.FromResult<string?>("300"), // a class, not a final code
+            maxDepth: 4,
+            CancellationToken.None,
+            oneStepLimit: 255);
+
+        Assert.Null(code);
+    }
+
+    [Fact]
+    public async Task Larger_schemes_drill_down_with_what_each_class_includes()
+    {
+        var choices = new List<ClassificationChoice>();
+        var picks = new Queue<string>(["700", "790"]);
+
+        var code = await HierarchicalClassificationResolver.ResolveAsync(
+            new DeweyPublicDomainScheme(),
+            "a nightclub",
+            [],
+            (choice, _) =>
+            {
+                choices.Add(choice);
+                return Task.FromResult<string?>(picks.Dequeue());
+            },
+            maxDepth: 4,
+            CancellationToken.None,
+            oneStepLimit: 10); // fewer than Dewey's final codes
+
+        Assert.Equal("790", code);
+        Assert.StartsWith("includes Landscape Gardening, Architecture", choices[0].CandidateNotes!["700"]);
+        Assert.Contains("Amusements", choices[0].CandidateNotes!["700"]);
+        Assert.Contains("700|Fine Arts (includes Landscape Gardening", ClassificationPromptBuilder.BuildRefinePrompt(choices[0]));
+    }
 }
+

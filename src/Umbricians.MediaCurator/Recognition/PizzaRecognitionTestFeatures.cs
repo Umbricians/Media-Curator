@@ -2,12 +2,12 @@ using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp;
 using Umbraco.AI.Core.Chat;
 using Umbraco.AI.Core.EditableModels;
 using Umbraco.AI.Core.Tests;
 using Umbraco.Cms.Core.Composing;
+using Umbricians.MediaCurator.Settings;
 
 namespace Umbricians.MediaCurator.Recognition;
 
@@ -17,16 +17,16 @@ internal abstract class PizzaRecognitionTestFeature : IAITestFeature, IDiscovera
 
     private readonly IAIChatService _chatService;
     private readonly IWebHostEnvironment _environment;
-    private readonly IOptionsMonitor<MediaCuratorOptions> _options;
+    private readonly IMediaCuratorSettingsService _settings;
 
     protected PizzaRecognitionTestFeature(
         IAIChatService chatService,
         IWebHostEnvironment environment,
-        IOptionsMonitor<MediaCuratorOptions> options)
+        IMediaCuratorSettingsService settings)
     {
         _chatService = chatService;
         _environment = environment;
-        _options = options;
+        _settings = settings;
     }
 
     public abstract string Id { get; }
@@ -132,11 +132,13 @@ internal abstract class PizzaRecognitionTestFeature : IAITestFeature, IDiscovera
         throw new FileNotFoundException($"Could not find '{TestImagePath}'.");
     }
 
-    protected int MaxEdgePixels => _options.CurrentValue.MaxRecognitionEdgePixels;
+    protected async Task<int> MaxEdgePixelsAsync(CancellationToken cancellationToken)
+        => (await _settings.GetAsync(cancellationToken)).RecognitionImageSize;
 
-    protected string? PreparedImageTestFolder => RecognitionImagePreparer.ResolveTestOutputFolder(
-        _options.CurrentValue.RecognitionPreparedImageTestFolder,
-        _environment.ContentRootPath);
+    protected async Task<string?> PreparedImageTestFolderAsync(CancellationToken cancellationToken)
+        => (await _settings.GetAsync(cancellationToken)).SavePreparedImages
+            ? RecognitionImagePreparer.ResolveTestOutputFolder(MediaCuratorDefaults.PreparedImagesFolder, _environment.ContentRootPath)
+            : null;
 
     private static (int Width, int Height) ReadDimensions(byte[] imageBytes)
     {
@@ -151,8 +153,8 @@ internal sealed class PizzaOriginalRecognitionTestFeature : PizzaRecognitionTest
     public PizzaOriginalRecognitionTestFeature(
         IAIChatService chatService,
         IWebHostEnvironment environment,
-        IOptionsMonitor<MediaCuratorOptions> options)
-        : base(chatService, environment, options)
+        IMediaCuratorSettingsService settings)
+        : base(chatService, environment, settings)
     {
     }
 
@@ -168,8 +170,8 @@ internal sealed class PizzaPreparedRecognitionTestFeature : PizzaRecognitionTest
     public PizzaPreparedRecognitionTestFeature(
         IAIChatService chatService,
         IWebHostEnvironment environment,
-        IOptionsMonitor<MediaCuratorOptions> options)
-        : base(chatService, environment, options)
+        IMediaCuratorSettingsService settings)
+        : base(chatService, environment, settings)
     {
     }
 
@@ -178,15 +180,14 @@ internal sealed class PizzaPreparedRecognitionTestFeature : PizzaRecognitionTest
     public override string Description => "Tests the bundled pizza image after MediaCurator resize preparation.";
     protected override string Variant => "prepared";
 
-    protected override Task<(byte[] Bytes, string MediaType)> LoadImageAsync(CancellationToken cancellationToken)
+    protected override async Task<(byte[] Bytes, string MediaType)> LoadImageAsync(CancellationToken cancellationToken)
     {
-        var original = File.ReadAllBytes(ResolveTestImagePath());
-        var prepared = RecognitionImagePreparer.Prepare(
+        var original = await File.ReadAllBytesAsync(ResolveTestImagePath(), cancellationToken);
+        return RecognitionImagePreparer.Prepare(
             original,
             "image/jpeg",
-            MaxEdgePixels,
-            PreparedImageTestFolder,
+            await MaxEdgePixelsAsync(cancellationToken),
+            await PreparedImageTestFolderAsync(cancellationToken),
             "test-pizza-ai-feature");
-        return Task.FromResult(prepared);
     }
 }

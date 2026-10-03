@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Umbraco.AI.Core.Chat;
 using Umbricians.MediaCurator.Engine;
 using Umbricians.MediaCurator.Providers;
@@ -38,7 +37,6 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
     private readonly IMediaOperations _media;
     private readonly ClassificationSchemeCollection _schemes;
     private readonly RecognitionEnricherCollection _enrichers;
-    private readonly IOptionsMonitor<MediaCuratorOptions> _options;
     private readonly IMediaCuratorSettingsService _settings;
     private readonly ILogger<UmbracoAiRecognitionService> _logger;
     private readonly IJevClassificationDecider? _jev;
@@ -48,7 +46,6 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         IMediaOperations media,
         ClassificationSchemeCollection schemes,
         RecognitionEnricherCollection enrichers,
-        IOptionsMonitor<MediaCuratorOptions> options,
         IMediaCuratorSettingsService settings,
         ILogger<UmbracoAiRecognitionService> logger,
         IJevClassificationDecider? jev = null)
@@ -57,7 +54,6 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         _media = media;
         _schemes = schemes;
         _enrichers = enrichers;
-        _options = options;
         _settings = settings;
         _logger = logger;
         _jev = jev;
@@ -75,7 +71,8 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
             return cached;
         }
 
-        if (_options.CurrentValue.MetadataOnly)
+        var siteSettings = await _settings.GetAsync(cancellationToken);
+        if (!siteSettings.AiEnabled)
         {
             return null;
         }
@@ -89,15 +86,14 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         }
 
         var scheme = ResolveScheme(classificationSchemeAlias);
-        var siteSettings = await _settings.GetAsync(cancellationToken);
-        var ai = AiStepSettings.From(siteSettings, _options.CurrentValue);
+        var ai = AiStepSettings.From(siteSettings);
         RecognitionResult? result;
 
         try
         {
             if (!force &&
                 scheme is not null &&
-                _options.CurrentValue.ClassificationMode == RecognitionClassificationMode.Hierarchical &&
+                ai.Method != ClassificationMethod.SingleCall &&
                 siteSettings.PersistImageDescription &&
                 TryGetStoredRecognitionContext(mediaKey, cached, out var description, out var tags))
             {
@@ -151,7 +147,11 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         }
 
         var finalCode = ClassificationCodeValidator.Validate(scheme, context.ClassificationCode);
-        result = StampSourceUpdateDate(mediaKey, new RecognitionResult(context.Tags, context.Description, finalCode));
+        result = StampSourceUpdateDate(mediaKey, new RecognitionResult(
+            context.Tags,
+            context.Description,
+            finalCode,
+            ClassificationMethod: scheme is not null && finalCode is not null ? CurrentMethod(scheme, ai) : null));
         Persist(mediaKey, result);
         if (siteSettings.PersistImageDescription)
         {
@@ -161,6 +161,111 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         PersistClassificationCode(mediaKey, finalCode, force);
         return result;
     }
+
+    public async Task<RecognitionResult?> RefreshClassificationAsync(
+        Guid mediaKey,
+        string classificationSchemeAlias,
+        CancellationToken cancellationToken = default)
+    {
+        var cached = ReadCached(mediaKey);
+        var scheme = ResolveScheme(classificationSchemeAlias);
+        var existing = _media.GetPropertyValue(mediaKey, ClassificationProvider.CodePropertyAlias)?.Trim();
+        var siteSettings = await _settings.GetAsync(cancellationToken);
+        var ai = AiStepSettings.From(siteSettings);
+        if (scheme is null
+            || string.IsNullOrEmpty(existing)
+            || ai.Method == ClassificationMethod.SingleCall
+            || !siteSettings.AiEnabled)
+        {
+            return cached;
+        }
+
+        var description = ReadPersistedDescription(mediaKey)?.Trim();
+        if (string.IsNullOrEmpty(description))
+        {
+            description = cached?.Description?.Trim();
+        }
+
+        if (string.IsNullOrEmpty(description))
+        {
+            // Nothing to decide from without sending the image again.
+            return cached;
+        }
+
+        if (cached is null)
+        {
+            // An AI description but no recognition cache: the code dates from before codes recorded how
+            // they were chosen (or the cache property was added later). Treat it as an AI code decided the
+            // old way. Saving the cache first also proves the property exists, so a site without it does
+            // not pay for a decision on every run that it could never record.
+            cached = StampSourceUpdateDate(mediaKey, new RecognitionResult([], description, existing));
+            if (!Persist(mediaKey, cached))
+            {
+                return null;
+            }
+        }
+
+        // Only a code the AI chose (the stored code still matches the AI's) is ours to change; a code an
+        // editor entered or edited stays. Codes decided the current way stay too, whichever engine chose them.
+        if (!string.Equals(existing, cached.ClassificationCode?.Trim(), StringComparison.OrdinalIgnoreCase)
+            || string.Equals(cached.ClassificationMethod, CurrentMethod(scheme, ai), StringComparison.Ordinal))
+        {
+            return cached;
+        }
+
+        var chatService = _services.GetService<IAIChatService>();
+        if (chatService is null)
+        {
+            return cached;
+        }
+
+        try
+        {
+            // Re-decide from the saved description and tags only: the image is never sent again.
+            var code = ClassificationCodeValidator.Validate(
+                scheme,
+                await ClassifyFromDescriptionAsync(chatService, ai, scheme, description, cached.Tags, cancellationToken));
+            if (code is null)
+            {
+                return cached;
+            }
+
+            var refreshed = cached with { ClassificationCode = code, ClassificationMethod = CurrentMethod(scheme, ai) };
+            if (!Persist(mediaKey, refreshed))
+            {
+                return cached;
+            }
+
+            if (!string.Equals(code, existing, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInformation(
+                    "MediaCurator: reclassified {MediaKey} from {OldCode} to {NewCode} ({Method}).",
+                    mediaKey,
+                    existing,
+                    code,
+                    refreshed.ClassificationMethod);
+                PersistClassificationCode(mediaKey, code, force: true);
+            }
+
+            return refreshed;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "MediaCurator: could not refresh the classification of {MediaKey}; keeping its code.", mediaKey);
+            return cached;
+        }
+    }
+
+    private static string CurrentMethod(IClassificationScheme scheme, AiStepSettings ai)
+        => HierarchicalClassificationResolver.MethodFor(
+            scheme,
+            ai.Method,
+            MediaCuratorDefaults.MaxClassificationDepth,
+            ai.OneStepLimit);
 
     private async Task<RecognitionResult?> AnalyzeWithVisionAsync(
         IAIChatService chatService,
@@ -190,9 +295,11 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         }
 
         var mediaType = GuessMediaType(mediaKey, imageBytes);
-        var testOutputFolder = RecognitionImagePreparer.ResolveTestOutputFolder(
-            _options.CurrentValue.RecognitionPreparedImageTestFolder,
-            _services.GetService<IWebHostEnvironment>()?.ContentRootPath);
+        var testOutputFolder = ai.SavePreparedImages
+            ? RecognitionImagePreparer.ResolveTestOutputFolder(
+                MediaCuratorDefaults.PreparedImagesFolder,
+                _services.GetService<IWebHostEnvironment>()?.ContentRootPath)
+            : null;
         (imageBytes, mediaType) = RecognitionImagePreparer.Prepare(
             imageBytes,
             mediaType,
@@ -200,8 +307,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
             testOutputFolder,
             mediaKey.ToString("N"));
 
-        if (scheme is not null &&
-            _options.CurrentValue.ClassificationMode == RecognitionClassificationMode.Hierarchical)
+        if (scheme is not null && ai.Method != ClassificationMethod.SingleCall)
         {
             return await AnalyzeHierarchicalWithVisionAsync(
                 chatService,
@@ -281,11 +387,12 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
             description,
             tags,
             (choice, ct) => DecideAsync(chatService, ai, choice, ct),
-            _options.CurrentValue.MaxClassificationDepth,
-            cancellationToken);
+            MediaCuratorDefaults.MaxClassificationDepth,
+            cancellationToken,
+            ai.OneStepLimit);
 
-    /// <summary>One drill-down decision: Jev when chosen and configured, otherwise (or when Jev fails)
-    /// the Umbraco.AI decision profile.</summary>
+    /// <summary>One classification decision: Jev when chosen, otherwise (or when Jev has no API key or
+    /// fails) the Umbraco.AI decision profile.</summary>
     private async Task<string?> DecideAsync(
         IAIChatService chatService,
         AiStepSettings ai,
@@ -294,18 +401,13 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
     {
         if (ai.DecisionEngine == DecisionEngine.Jev)
         {
-            if (_jev is { IsConfigured: true })
+            var picked = _jev is null ? null : await _jev.ChooseAsync(choice, cancellationToken);
+            if (picked is not null)
             {
-                var picked = await _jev.ChooseAsync(choice, cancellationToken);
-                if (picked is not null)
-                {
-                    return picked;
-                }
+                return picked;
             }
-            else
-            {
-                _logger.LogDebug("MediaCurator: Jev is selected but no TypeSafe API key is configured; using Umbraco.AI.");
-            }
+
+            _logger.LogDebug("MediaCurator: no Jev decision (no TypeSafe API key, or the call failed); using Umbraco.AI.");
         }
 
         var responseText = await RefineClassificationAsync(
@@ -337,12 +439,30 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
     private RecognitionResult StampSourceUpdateDate(Guid mediaKey, RecognitionResult result)
     {
         var updateDate = _media.GetItem(mediaKey)?.UpdateDate;
+        result = result with { SourceFile = CurrentSourceFile(mediaKey) };
         return updateDate is null ? result : result with { SourceUpdateDate = updateDate };
     }
 
+    /// <summary>
+    /// Whether the cached result still describes the item's file. It is tied to the file path, which
+    /// Umbraco changes whenever the file is replaced, not to the item's update date: saving the cache,
+    /// the description or the code, or moving the item, all bump that date, so a date check made every
+    /// cache stale at once on a real site.
+    /// </summary>
     private bool IsRecognitionFresh(Guid mediaKey, RecognitionResult? cached)
     {
-        if (cached?.SourceUpdateDate is null)
+        if (cached is null)
+        {
+            return false;
+        }
+
+        var source = CurrentSourceFile(mediaKey);
+        if (cached.SourceFile is not null || source is not null)
+        {
+            return string.Equals(cached.SourceFile, source, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (cached.SourceUpdateDate is null)
         {
             // Legacy cache entries have no file version — treat as stale so vision re-runs.
             return false;
@@ -350,6 +470,33 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
 
         var item = _media.GetItem(mediaKey);
         return item is null || item.UpdateDate <= cached.SourceUpdateDate;
+    }
+
+    /// <summary>The media file's path ("src" of the umbracoFile value), or null when there is none.</summary>
+    private string? CurrentSourceFile(Guid mediaKey)
+    {
+        var value = _media.GetPropertyValue(mediaKey, global::Umbraco.Cms.Core.Constants.Conventions.Media.File)?.Trim();
+        if (string.IsNullOrEmpty(value))
+        {
+            return null;
+        }
+
+        if (!value.StartsWith('{'))
+        {
+            return value;
+        }
+
+        try
+        {
+            using var json = JsonDocument.Parse(value);
+            return json.RootElement.TryGetProperty("src", out var src) && src.ValueKind == JsonValueKind.String
+                ? src.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private async Task<RecognitionResult?> AnalyzeSingleShotAsync(
@@ -433,26 +580,65 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
 
         async Task<string?> SendAsync(ReasoningEffort? requestedEffort)
         {
-            var response = await chatService.GetChatResponseAsync(
-                chat =>
+            void Configure(Umbraco.AI.Core.InlineChat.AIChatBuilder chat)
+            {
+                chat.WithAlias(inlineChatAlias);
+                if (!string.IsNullOrWhiteSpace(profileAlias))
                 {
-                    chat.WithAlias(inlineChatAlias);
-                    if (!string.IsNullOrWhiteSpace(profileAlias))
-                    {
-                        chat.WithProfile(profileAlias);
-                    }
+                    chat.WithProfile(profileAlias);
+                }
+            }
 
-                    if (requestedEffort is { } value)
-                    {
-                        // A reasoning effort set on the Umbraco.AI profile itself still wins.
-                        chat.WithChatOptions(new ChatOptions { Reasoning = new ReasoningOptions { Effort = value } });
-                    }
-                },
-                messages,
-                cancellationToken);
+            if (requestedEffort is not { } value)
+            {
+                return (await chatService.GetChatResponseAsync(Configure, messages, cancellationToken)).Text;
+            }
 
-            return response.Text;
+            // Umbraco.AI's GetChatResponseAsync rebuilds the chat options from the profile and drops
+            // ChatOptions.Reasoning, so the effort never reached the model. A client from
+            // CreateChatClientAsync passes the caller's options through (audit, profile and capability
+            // settings still apply), so send the effort there, with the profile's own temperature and
+            // token limit copied across. A reasoning effort set on the profile itself still wins.
+            using var client = await chatService.CreateChatClientAsync(Configure, cancellationToken);
+            var options = await ProfileChatOptionsAsync(profileAlias, cancellationToken);
+            options.Reasoning = new ReasoningOptions { Effort = value };
+            return (await client.GetResponseAsync(messages, options, cancellationToken)).Text;
         }
+    }
+
+    /// <summary>The options Umbraco.AI would have built from the profile (model, temperature, max tokens).</summary>
+    private async Task<ChatOptions> ProfileChatOptionsAsync(string? profileAlias, CancellationToken cancellationToken)
+    {
+        var options = new ChatOptions();
+        var profiles = _services.GetService<Umbraco.AI.Core.Profiles.IAIProfileService>();
+        if (profiles is null)
+        {
+            return options;
+        }
+
+        try
+        {
+            var profile = !string.IsNullOrWhiteSpace(profileAlias)
+                ? await profiles.GetProfileByAliasAsync(profileAlias, cancellationToken)
+                : await profiles.HasDefaultProfileAsync(Umbraco.AI.Core.Models.AICapability.Chat, cancellationToken)
+                    ? await profiles.GetDefaultProfileAsync(Umbraco.AI.Core.Models.AICapability.Chat, cancellationToken)
+                    : null;
+            if (profile is not null)
+            {
+                options.ModelId = profile.Model.ModelId;
+                if (profile.Settings is Umbraco.AI.Core.Profiles.AIChatProfileSettings settings)
+                {
+                    options.Temperature = settings.Temperature;
+                    options.MaxOutputTokens = settings.MaxTokens;
+                }
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogDebug(ex, "MediaCurator: could not read Umbraco.AI profile {Profile}; using model defaults.", profileAlias);
+        }
+
+        return options;
     }
 
     internal static ReasoningEffort? ToReasoningEffort(AiReasoningEffort effort) => effort switch
@@ -471,18 +657,25 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         AiReasoningEffort DescriptionReasoning,
         DecisionEngine DecisionEngine,
         string? DecisionProfileAlias,
-        AiReasoningEffort DecisionReasoning)
+        AiReasoningEffort DecisionReasoning,
+        ClassificationMethod Method,
+        bool SavePreparedImages)
     {
-        public static AiStepSettings From(MediaCuratorSiteSettings settings, MediaCuratorOptions options)
+        /// <summary>Final codes up to which a decision is made in one step (0: always level by level).</summary>
+        public int OneStepLimit => Method == ClassificationMethod.OneStep ? MediaCuratorDefaults.OneStepClassificationLimit : 0;
+
+        public static AiStepSettings From(MediaCuratorSiteSettings settings)
         {
-            var descriptionProfile = Blank(settings.DescriptionProfileAlias) ?? Blank(options.RecognitionProfileAlias);
+            var descriptionProfile = Blank(settings.DescriptionProfileAlias);
             return new AiStepSettings(
                 settings.RecognitionImageSize,
                 descriptionProfile,
                 settings.DescriptionReasoningEffort,
                 settings.DecisionEngine,
-                Blank(settings.DecisionProfileAlias) ?? Blank(options.DecisionProfileAlias) ?? descriptionProfile,
-                settings.DecisionReasoningEffort);
+                Blank(settings.DecisionProfileAlias) ?? descriptionProfile,
+                settings.DecisionReasoningEffort,
+                settings.ClassificationMethod,
+                settings.SavePreparedImages);
         }
 
         private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
@@ -533,17 +726,20 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         }
     }
 
-    private void Persist(Guid mediaKey, RecognitionResult result)
+    /// <summary>Caches the result on the item; false when it could not be saved.</summary>
+    private bool Persist(Guid mediaKey, RecognitionResult result)
     {
         try
         {
             _media.SetPropertyValue(mediaKey, TagsPropertyAlias, JsonSerializer.Serialize(result, _json));
+            return true;
         }
         catch (Exception ex)
         {
             // The cache property may not be provisioned (degraded mode): recognition then
             // re-runs per request instead of failing (§7 partial consent).
             _logger.LogDebug(ex, "MediaCurator: could not cache recognition result for {MediaKey}.", mediaKey);
+            return false;
         }
     }
 

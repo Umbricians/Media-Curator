@@ -2,7 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
+using Umbricians.MediaCurator.Settings;
 using Umbricians.MediaCurator.Recognition;
 using Umbricians.MediaCurator.Schemes;
 
@@ -27,11 +27,16 @@ public class JevClassificationDeciderTests
         public HttpClient CreateClient(string name) => new(handler, disposeHandler: false);
     }
 
-    private sealed class Options(MediaCuratorOptions value) : IOptionsMonitor<MediaCuratorOptions>
+    private sealed class KeySettings(string? apiKey, string model = "jev-latest") : IMediaCuratorSettingsService
     {
-        public MediaCuratorOptions CurrentValue => value;
-        public MediaCuratorOptions Get(string? name) => value;
-        public IDisposable? OnChange(Action<MediaCuratorOptions, string?> listener) => null;
+        public Task<MediaCuratorSiteSettings> GetAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(new MediaCuratorSiteSettings { JevModel = model, JevApiKeyConfigured = apiKey is not null });
+
+        public Task SaveAsync(MediaCuratorSiteSettings settings, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<string?> GetTypeSafeApiKeyAsync(CancellationToken cancellationToken = default) => Task.FromResult(apiKey);
+
+        public Task SetTypeSafeApiKeyAsync(string? key, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     private static HttpResponseMessage Answer(string choice) => new(HttpStatusCode.OK)
@@ -49,7 +54,7 @@ public class JevClassificationDeciderTests
         var delays = new List<TimeSpan>();
         var decider = new JevClassificationDecider(
             new Factory(handler),
-            new Options(new MediaCuratorOptions { TypeSafe = { ApiKey = apiKey } }),
+            new KeySettings(string.IsNullOrWhiteSpace(apiKey) ? null : apiKey),
             NullLogger<JevClassificationDecider>.Instance,
             (delay, _) =>
             {
@@ -134,8 +139,24 @@ public class JevClassificationDeciderTests
     {
         var (decider, handler, _) = Create(apiKey: " ");
 
-        Assert.False(decider.IsConfigured);
         Assert.Null(await decider.ChooseAsync(TopLevel()));
         Assert.Empty(handler.Requests);
     }
+
+    [Fact]
+    public async Task One_step_choices_label_each_option_with_its_classes()
+    {
+        var (decider, handler, _) = Create();
+        handler.Responses.Enqueue(Answer("910"));
+        var scheme = new DeweyPublicDomainScheme();
+        var finals = HierarchicalClassificationResolver.FinalEntries(scheme, 4);
+        var notes = finals.ToDictionary(f => f.Code, f => string.Join(" › ", scheme.GetPath(f.Code).SkipLast(1).Select(e => e.Name)));
+
+        await decider.ChooseAsync(new ClassificationChoice(scheme, "a selfie at an airport", [], null, finals, notes));
+
+        var criteria = JsonNode.Parse(handler.Requests[0].Body)!["questions"]!["classification"]!["criteria"]!.AsObject();
+        Assert.Equal(finals.Count, criteria.Count);
+        Assert.Equal("910 Geography and Travels (History)", (string?)criteria["910"]);
+    }
 }
+
