@@ -44,3 +44,7 @@ appsettings.Development.json
 
 # Jev decision logs (contain prompt text)
 tools/jev/.log/
+
+# Local Claude Code hooks and Jev prompt routing
+.claude/settings.json
+tools/jev/
