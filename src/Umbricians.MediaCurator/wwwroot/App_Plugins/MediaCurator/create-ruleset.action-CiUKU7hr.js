@@ -1,5 +1,5 @@
 import { UmbEntityActionBase as e } from "@umbraco-cms/backoffice/entity-action";
-import { c as a, a as n } from "./bundle.manifests-BZeTU5LM.js";
+import { c as a, a as n } from "./bundle.manifests-DGmFItzI.js";
 class r extends e {
   async execute() {
     const t = a.generateAbsolute({
@@ -13,4 +13,4 @@ export {
   r as McCreateRulesetEntityAction,
   r as api
 };
-//# sourceMappingURL=create-ruleset.action-DXdbW8D8.js.map
+//# sourceMappingURL=create-ruleset.action-CiUKU7hr.js.map

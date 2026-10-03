@@ -2,7 +2,7 @@ import { UmbDetailRepositoryBase as n } from "@umbraco-cms/backoffice/repository
 import { tryExecute as a } from "@umbraco-cms/backoffice/resources";
 import { UmbId as c } from "@umbraco-cms/backoffice/id";
 import { M as s } from "./sdk.gen-Bq8ZVkDW.js";
-import { s as u, a as o, b as l } from "./ruleset.mapper-B7mZF1kB.js";
+import { s as u, a as o, b as l } from "./ruleset.mapper-ZhNFEs-C.js";
 import { MC_RULESET_DETAIL_STORE_CONTEXT as d } from "./ruleset-detail.store-CPa94nJU.js";
 class m {
   #e;
@@ -42,4 +42,4 @@ export {
   w as McRulesetDetailRepository,
   w as api
 };
-//# sourceMappingURL=ruleset-detail.repository-Cf0TlDn0.js.map
+//# sourceMappingURL=ruleset-detail.repository-D7Vukr8D.js.map

@@ -16,6 +16,7 @@ public class CurationController : MediaCuratorApiControllerBase
     private readonly ICurationUndoService _undoService;
     private readonly IExclusionRepository _exclusions;
     private readonly Rules.IRulesetTransferService _transfer;
+    private readonly IMediaChangeTracker? _changes;
 
     public CurationController(
         ICurationEngine engine,
@@ -23,8 +24,10 @@ public class CurationController : MediaCuratorApiControllerBase
         IBulkCurationQueue bulkQueue,
         ICurationUndoService undoService,
         IExclusionRepository exclusions,
-        Rules.IRulesetTransferService transfer)
+        Rules.IRulesetTransferService transfer,
+        IMediaChangeTracker? changes = null)
     {
+        _changes = changes;
         _engine = engine;
         _runLog = runLog;
         _bulkQueue = bulkQueue;
@@ -124,7 +127,15 @@ public class CurationController : MediaCuratorApiControllerBase
             // Then, once, put the clicked folder's tree (or a single image's new path) in order.
             await _engine.SortFoldersForMediaAsync(mediaKey, executed, ct);
 
-            return Ok(new MediaCurationSummaryModel { Moved = moved, AlreadyInPlace = inPlace, Failed = failed, FoldersRemoved = foldersRemoved, RunKeys = runKeys });
+            return Ok(new MediaCurationSummaryModel
+            {
+                Moved = moved,
+                AlreadyInPlace = inPlace,
+                Failed = failed,
+                FoldersRemoved = foldersRemoved,
+                RunKeys = runKeys,
+                ChangedFolderKeys = _changes?.ChangedFolders.ToList() ?? [],
+            });
         }
         catch (MediaNotFoundException ex)
         {

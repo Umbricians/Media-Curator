@@ -95,6 +95,23 @@ public class CurationControllerTests
     }
 
     [Fact]
+    public async Task Execute_reports_the_folders_the_run_changed_so_the_tree_can_reload_them()
+    {
+        var (engine, key) = TwoPlanEngine();
+        var changes = new MediaChangeTracker();
+        var moved = Guid.NewGuid();
+        changes.FolderChanged(moved);
+        changes.FolderChanged(Guid.Empty);
+        changes.FolderChanged(moved);
+
+        var result = await new CurationController(engine, null!, null!, null!, null!, null!, changes)
+            .ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: false, CancellationToken.None);
+
+        var model = Assert.IsType<MediaCurationSummaryModel>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.Equal(new[] { moved, Guid.Empty }.Order(), model.ChangedFolderKeys.Order());
+    }
+
+    [Fact]
     public async Task Execute_runs_each_plan_manually_and_sums_the_results()
     {
         var (engine, key) = TwoPlanEngine();

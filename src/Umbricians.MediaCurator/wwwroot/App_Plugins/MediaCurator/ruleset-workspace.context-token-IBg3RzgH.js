@@ -1,5 +1,5 @@
 import { UmbContextToken as t } from "@umbraco-cms/backoffice/context-api";
-import { M as E } from "./bundle.manifests-BZeTU5LM.js";
+import { M as E } from "./bundle.manifests-DGmFItzI.js";
 const m = new t(
   "UmbWorkspaceContext",
   void 0,
@@ -8,4 +8,4 @@ const m = new t(
 export {
   m as M
 };
-//# sourceMappingURL=ruleset-workspace.context-token-Cq6qQl2g.js.map
+//# sourceMappingURL=ruleset-workspace.context-token-IBg3RzgH.js.map

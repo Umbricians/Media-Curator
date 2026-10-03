@@ -2,7 +2,7 @@ import { html as o, nothing as q, css as T, state as g, customElement as C } fro
 import { UmbLitElement as P } from "@umbraco-cms/backoffice/lit-element";
 import { UMB_NOTIFICATION_CONTEXT as E } from "@umbraco-cms/backoffice/notification";
 import { M as w } from "./sdk.gen-Bq8ZVkDW.js";
-import { M as S } from "./ruleset-workspace.context-token-Cq6qQl2g.js";
+import { M as S } from "./ruleset-workspace.context-token-IBg3RzgH.js";
 var O = Object.defineProperty, R = Object.getOwnPropertyDescriptor, A = (t) => {
   throw TypeError(t);
 }, f = (t, e, i, s) => {
@@ -178,4 +178,4 @@ export {
   u as McRulesetRequirementsViewElement,
   K as default
 };
-//# sourceMappingURL=ruleset-requirements-view.element-Bb5EvU37.js.map
+//# sourceMappingURL=ruleset-requirements-view.element-BDwNaFe9.js.map

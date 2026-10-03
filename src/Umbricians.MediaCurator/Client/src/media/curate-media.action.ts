@@ -5,7 +5,7 @@ import {
   UmbRequestReloadChildrenOfEntityEvent,
   UmbRequestReloadStructureForEntityEvent,
 } from "@umbraco-cms/backoffice/entity-action";
-import { UmbMediaItemRepository } from "@umbraco-cms/backoffice/media";
+import { UMB_MEDIA_ROOT_ENTITY_TYPE, UmbMediaItemRepository } from "@umbraco-cms/backoffice/media";
 import { umbConfirmModal } from "@umbraco-cms/backoffice/modal";
 import { UMB_NOTIFICATION_CONTEXT } from "@umbraco-cms/backoffice/notification";
 import { tryExecute } from "@umbraco-cms/backoffice/resources";
@@ -21,6 +21,7 @@ import {
   type MediaPlanCounts,
 } from "./curate-media.summary.js";
 import "./empty-folders-option.element.js";
+import { treeReloadTargets } from "./tree-reload.js";
 import type { McEmptyFoldersOptionElement } from "./empty-folders-option.element.js";
 
 const MEDIA_ENTITY_TYPE = "media";
@@ -78,7 +79,7 @@ export class McCurateMediaEntityAction extends UmbEntityActionBase<never> {
     if (!result) return;
 
     await this.#notify(result.failed > 0 ? "warning" : "positive", resultMessage(result, permanentlyDelete));
-    await this.#reloadTrees(unique, plan);
+    await this.#reloadTrees(unique, plan, result.changedFolderKeys ?? []);
   }
 
   async #itemName(unique: string): Promise<string> {
@@ -91,13 +92,17 @@ export class McCurateMediaEntityAction extends UmbEntityActionBase<never> {
     notifications?.peek(color, { data: { headline: "Curate images", message } });
   }
 
-  // Images move under their ruleset's scope folder, which may sit above the clicked folder.
-  async #reloadTrees(unique: string, plan: MediaCurationPlanModel) {
+  /**
+   * Reloads every tree branch the run changed (reported by the server), plus the clicked folder and each
+   * ruleset's scope folder: images move under their ruleset's scope, which may sit above the clicked folder.
+   */
+  async #reloadTrees(unique: string, plan: MediaCurationPlanModel, changedFolderKeys: readonly string[]) {
     const actionEvents = await this.getContext(UMB_ACTION_EVENT_CONTEXT);
     if (!actionEvents) return;
     actionEvents.dispatchEvent(new UmbRequestReloadStructureForEntityEvent({ unique, entityType: MEDIA_ENTITY_TYPE }));
-    for (const scope of new Set(plan.plans.map((p) => p.scopeFolderKey))) {
-      actionEvents.dispatchEvent(new UmbRequestReloadChildrenOfEntityEvent({ unique: scope, entityType: MEDIA_ENTITY_TYPE }));
+    const keys = [unique, ...plan.plans.map((p) => p.scopeFolderKey), ...changedFolderKeys];
+    for (const target of treeReloadTargets(keys, MEDIA_ENTITY_TYPE, UMB_MEDIA_ROOT_ENTITY_TYPE)) {
+      actionEvents.dispatchEvent(new UmbRequestReloadChildrenOfEntityEvent(target));
     }
   }
 }

@@ -54,6 +54,7 @@ public static class MediaCuratorBuilderExtensions
             builder.Services.AddSingleton<IMediaTypeSchema, UmbracoMediaTypeSchema>();
             builder.Services.AddSingleton<IPropertyProvisioningService, PropertyProvisioningService>();
             builder.Services.AddSingleton<Exif.IExifReader, Exif.MetadataExtractorExifReader>();
+            builder.Services.AddScoped<Engine.IMediaChangeTracker, Engine.MediaChangeTracker>();
             builder.Services.AddScoped<Engine.IMediaOperations, Engine.UmbracoMediaOperations>();
             builder.Services.AddSingleton<Engine.ICurationRunLog, Engine.CurationRunLog>();
             builder.Services.AddScoped<Engine.ICurationEngine, Engine.CurationEngine>();

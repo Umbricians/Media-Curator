@@ -77,6 +77,10 @@ public class MediaCurationSummaryModel
     public required int Failed { get; init; }
     public int FoldersRemoved { get; init; }
     public List<Guid> RunKeys { get; init; } = [];
+
+    /// <summary>Folders whose children changed (moved in or out, created, removed or sorted), for the
+    /// backoffice to reload. <see cref="Guid.Empty"/> is the media root.</summary>
+    public List<Guid> ChangedFolderKeys { get; init; } = [];
 }
 
 public class CurationRunSummaryModel

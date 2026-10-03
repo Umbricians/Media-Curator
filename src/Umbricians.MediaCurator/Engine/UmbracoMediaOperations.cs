@@ -14,6 +14,7 @@ internal sealed class UmbracoMediaOperations : IMediaOperations
     private readonly IEntityService _entityService;
     private readonly MediaFileManager _mediaFileManager;
     private readonly IJsonSerializer _jsonSerializer;
+    private readonly IMediaChangeTracker? _changes;
 
     // Defensive lock for simultaneous runs racing to create the same folder (§13).
     // Process-local; load-balanced setups elect a single worker for background runs.
@@ -23,8 +24,10 @@ internal sealed class UmbracoMediaOperations : IMediaOperations
         IMediaService mediaService,
         IEntityService entityService,
         MediaFileManager mediaFileManager,
-        IJsonSerializer jsonSerializer)
+        IJsonSerializer jsonSerializer,
+        IMediaChangeTracker? changes = null)
     {
+        _changes = changes;
         _mediaService = mediaService;
         _entityService = entityService;
         _mediaFileManager = mediaFileManager;
@@ -172,6 +175,7 @@ internal sealed class UmbracoMediaOperations : IMediaOperations
                 {
                     existing = _mediaService.CreateMedia(segment, parent.Id, FolderTypeAlias);
                     _mediaService.Save(existing);
+                    _changes?.FolderChanged(parent.Key);
                 }
 
                 parent = existing;
@@ -215,7 +219,10 @@ internal sealed class UmbracoMediaOperations : IMediaOperations
             return;
         }
 
+        var fromParent = ParentKeyOf(media);
         _mediaService.Move(media, target.Id);
+        _changes?.FolderChanged(fromParent);
+        _changes?.FolderChanged(target.Key);
     }
 
     public void SortChildren(Guid folderKey, IReadOnlyList<Guid> orderedChildKeys)
@@ -251,28 +258,36 @@ internal sealed class UmbracoMediaOperations : IMediaOperations
         {
             throw new InvalidOperationException($"The children of folder '{folderKey}' could not be sorted.");
         }
+
+        _changes?.FolderChanged(folderKey);
     }
 
     public void MoveToRecycleBin(Guid mediaKey)
     {
         var media = _mediaService.GetById(mediaKey)
             ?? throw new InvalidOperationException($"Media '{mediaKey}' not found.");
+        var parentKey = ParentKeyOf(media);
         var result = _mediaService.MoveToRecycleBin(media);
         if (!result.Success)
         {
             throw new InvalidOperationException($"Media '{mediaKey}' could not be moved to the Recycle Bin.");
         }
+
+        _changes?.FolderChanged(parentKey);
     }
 
     public void Delete(Guid mediaKey)
     {
         var media = _mediaService.GetById(mediaKey)
             ?? throw new InvalidOperationException($"Media '{mediaKey}' not found.");
+        var parentKey = ParentKeyOf(media);
         var result = _mediaService.Delete(media);
         if (!result.Success)
         {
             throw new InvalidOperationException($"Media '{mediaKey}' could not be deleted.");
         }
+
+        _changes?.FolderChanged(parentKey);
     }
 
     public void RestoreFromRecycleBin(Guid mediaKey, Guid parentKey)
@@ -298,6 +313,20 @@ internal sealed class UmbracoMediaOperations : IMediaOperations
         {
             throw new InvalidOperationException($"Media '{mediaKey}' could not be restored from the Recycle Bin.");
         }
+
+        _changes?.FolderChanged(parentKey);
+    }
+
+    /// <summary>The key of the item's parent folder; <see cref="Guid.Empty"/> for the media root.</summary>
+    private Guid ParentKeyOf(IMedia media)
+    {
+        if (media.ParentId <= 0)
+        {
+            return Guid.Empty;
+        }
+
+        var attempt = _entityService.GetKey(media.ParentId, UmbracoObjectTypes.Media);
+        return attempt.Success ? attempt.Result : Guid.Empty;
     }
 
     private MediaItemInfo Map(IMedia media)

@@ -111,6 +111,7 @@ export type MediaCurationSummaryModel = {
     failed: number;
     foldersRemoved: number;
     runKeys: Array<string>;
+    changedFolderKeys: Array<string>;
 };
 
 export type MediaCuratorSiteSettingsModel = {
