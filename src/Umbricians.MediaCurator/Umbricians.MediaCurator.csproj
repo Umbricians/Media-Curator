@@ -14,7 +14,7 @@
     <Title>Umbricians.MediaCurator</Title>
     <Version>0.1.0</Version>
     <Authors>Chris (Umbricians)</Authors>
-    <Description>Automatically categorizes and organizes images in the Umbraco Media section. Pluggable curation providers (date, EXIF, AI tags, color, library classification and more), scoped and nested rulesets with a visual designer, consent-based media type provisioning, dry-run preview, activity log with undo.</Description>
+    <Description>Automatically categorizes and organizes images in the Umbraco Media section. Pluggable curation providers (date, EXIF, AI tags, color, classification by subject, format or web role and more), scoped and nested rulesets with a visual designer, consent-based media type provisioning, dry-run preview, activity log with undo.</Description>
     <PackageTags>umbraco;umbraco-marketplace;media;ai</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>

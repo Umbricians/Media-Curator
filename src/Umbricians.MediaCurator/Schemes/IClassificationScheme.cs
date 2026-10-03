@@ -163,3 +163,42 @@ public sealed class LccOutlineScheme : ResourceFileScheme
 
     public override string Name => "Library of Congress Classification (outline)";
 }
+
+/// <summary>What an image is for on a website (logo, hero banner, product shot, headshot, …): Media
+/// Curator's own licence-free, two-level scheme. Codes contain no separators, so filename prefixes such
+/// as "BRD1 acme logo.png" resolve.</summary>
+public sealed class WebAssetRoleScheme : ResourceFileScheme
+{
+    public WebAssetRoleScheme()
+        : base("Umbricians.MediaCurator.Schemes.Resources.web-asset-role.txt")
+    {
+    }
+
+    public override string Alias => "web-asset-role";
+
+    public override string Name => "Web asset role";
+
+    public override string DecisionGuidance =>
+        "Classify the ROLE the image plays on a website, what it is used for (e.g. a logo, a hero banner, " +
+        "a product shot, a staff headshot), judging from what it shows and how it is composed.";
+}
+
+/// <summary>The genre/format terms of the Library of Congress Thesaurus for Graphic Materials (TGM): what
+/// kind of picture an item is (photographs, posters, drawings, maps, …). A US government work in the public
+/// domain; the resource file is generated from the official bulk download by
+/// tools/schemes/build_tgm_genre_format.py, which also documents how one parent is picked per term.</summary>
+public sealed class TgmGenreFormatScheme : ResourceFileScheme
+{
+    public TgmGenreFormatScheme()
+        : base("Umbricians.MediaCurator.Schemes.Resources.tgm-genre-format.txt")
+    {
+    }
+
+    public override string Alias => "tgm-genre-format";
+
+    public override string Name => "Thesaurus for Graphic Materials (genre/format)";
+
+    public override string DecisionGuidance =>
+        "Classify the image's GENRE or FORMAT, what kind of picture it is (e.g. a photograph, poster, " +
+        "drawing, map or diagram), not what it depicts.";
+}
