@@ -5,24 +5,27 @@ import {
   openMediaCuratorRoot,
   openRulesetFromTree,
   runDryRun,
+  createTestFolder,
+  createTestImage,
+  removeTestMedia,
 } from './util';
 
 const folderName = 'MC Classify Folder';
-const imageName = 'NA modern building'; // leading LCC code "NA" = Fine Arts / Architecture
+const imageName = 'NA MC modern building'; // leading LCC code "NA" = Fine Arts / Architecture; "MC" marks it test-owned
 const rulesetName = 'MC Classify Ruleset';
 const base = () => process.env.UMBRACO_URL || process.env.URL || 'http://localhost:40264';
 
 test.describe('MediaCurator library classification', () => {
   test.beforeEach(async ({ umbracoApi }) => {
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
-    await umbracoApi.media.ensureNameNotExists(imageName);
-    await umbracoApi.media.ensureNameNotExists(folderName);
+    await removeTestMedia(umbracoApi, imageName);
+    await removeTestMedia(umbracoApi, folderName);
   });
 
   test.afterEach(async ({ umbracoApi }) => {
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
-    await umbracoApi.media.ensureNameNotExists(imageName);
-    await umbracoApi.media.ensureNameNotExists(folderName);
+    await removeTestMedia(umbracoApi, imageName);
+    await removeTestMedia(umbracoApi, folderName);
   });
 
   test('curates an image into nested LCC outline folders from its filename code', async ({
@@ -31,8 +34,8 @@ test.describe('MediaCurator library classification', () => {
   }) => {
     const page = umbracoUi.page;
 
-    const folderId = await umbracoApi.media.createDefaultMediaFolderAndParentId(folderName, null);
-    await umbracoApi.media.createDefaultMediaWithImageAndParentId(imageName, folderId);
+    const folderId = await createTestFolder(umbracoApi, folderName, null);
+    await createTestImage(umbracoApi, imageName, folderId);
     const folder = await umbracoApi.media.getByName(folderName);
 
     await umbracoApi.put(`${base()}/umbraco/mediacurator/api/v1/rulesets`, {

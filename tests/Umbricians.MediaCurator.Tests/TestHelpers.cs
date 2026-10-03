@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Umbricians.MediaCurator.Core;
@@ -63,4 +64,56 @@ internal sealed class FakeProvider : ICurationProvider
 
     public static FakeProvider Unresolvable(string alias)
         => new(alias, _ => CurationResult.Unresolved());
+}
+
+/// <summary>Runs parallel media work concurrently, handing every item the same service provider.</summary>
+internal sealed class TestParallelWork : Umbricians.MediaCurator.Engine.IParallelMediaWork
+{
+    private readonly IServiceProvider _services;
+
+    public TestParallelWork(int parallelism = 4, IServiceProvider? services = null)
+    {
+        Parallelism = parallelism;
+        _services = services ?? new ServiceCollection().BuildServiceProvider();
+    }
+
+    public int Parallelism { get; set; }
+
+    public int Runs { get; private set; }
+
+    public int MaxConcurrentSeen { get; private set; }
+
+    private int _running;
+
+    public Task<int> GetMaxParallelismAsync(CancellationToken cancellationToken = default) => Task.FromResult(Parallelism);
+
+    public async Task<TResult[]> RunAsync<TItem, TResult>(
+        IReadOnlyList<TItem> items,
+        Func<IServiceProvider, TItem, CancellationToken, Task<TResult>> body,
+        CancellationToken cancellationToken = default)
+    {
+        Runs++;
+        var results = new TResult[items.Count];
+        await Parallel.ForEachAsync(
+            Enumerable.Range(0, items.Count),
+            new ParallelOptions { MaxDegreeOfParallelism = Parallelism, CancellationToken = cancellationToken },
+            async (i, ct) =>
+            {
+                var now = Interlocked.Increment(ref _running);
+                lock (this)
+                {
+                    MaxConcurrentSeen = Math.Max(MaxConcurrentSeen, now);
+                }
+
+                try
+                {
+                    results[i] = await body(_services, items[i], ct);
+                }
+                finally
+                {
+                    Interlocked.Decrement(ref _running);
+                }
+            });
+        return results;
+    }
 }

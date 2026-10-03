@@ -19,6 +19,13 @@ internal static class ClassificationPromptBuilder
         "Do not use bare color names (e.g. \"black\", \"white\") unless the image is primarily a color study. " +
         "Confidence between 0 and 1.";
 
+    /// <summary>Stops decisions filing ordinary photos under the medium (Photography, Painting) instead of
+    /// the subject. Benchmarked: with reasoning off, agreement with the full-reasoning path rose from 12/20
+    /// to 16/20 images (19/20 top level).</summary>
+    internal const string DepictsNotMediumGuidance =
+        "Classify what the image DEPICTS, not the medium: every item is a photo or image, so only use " +
+        "photography/painting/drawing codes when the picture is about that art itself.";
+
     /// <summary>Vision step: description and tags only (no classification codes).</summary>
     public static string BuildDescribePrompt() => BasePrompt;
 
@@ -59,6 +66,10 @@ internal static class ClassificationPromptBuilder
     }
 
     /// <summary>Text-only drill-down step: pick one code from direct children of the current level.</summary>
+    public static string BuildRefinePrompt(ClassificationChoice choice)
+        => BuildRefinePrompt(choice.Scheme, choice.Description, choice.Tags, choice.Parent, choice.Candidates);
+
+    /// <summary>Text-only drill-down step: pick one code from direct children of the current level.</summary>
     public static string BuildRefinePrompt(
         IClassificationScheme scheme,
         string description,
@@ -87,6 +98,7 @@ internal static class ClassificationPromptBuilder
         }
 
         builder.AppendLine();
+        builder.AppendLine(DepictsNotMediumGuidance);
         builder.AppendLine("Pick the single best code for the PRIMARY SUBJECT from ONLY this list:");
         foreach (var entry in candidates)
         {

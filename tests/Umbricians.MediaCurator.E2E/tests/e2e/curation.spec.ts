@@ -5,6 +5,9 @@ import {
   openMediaCuratorRoot,
   openRulesetFromTree,
   runDryRun,
+  createTestFolder,
+  createTestImage,
+  removeTestMedia,
 } from './util';
 
 const folderName = 'MC Curate Folder';
@@ -15,14 +18,14 @@ const base = () => process.env.UMBRACO_URL || process.env.URL || 'http://localho
 test.describe('MediaCurator curate now (MVP)', () => {
   test.beforeEach(async ({ umbracoApi }) => {
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
-    await umbracoApi.media.ensureNameNotExists(imageName);
-    await umbracoApi.media.ensureNameNotExists(folderName);
+    await removeTestMedia(umbracoApi, imageName);
+    await removeTestMedia(umbracoApi, folderName);
   });
 
   test.afterEach(async ({ umbracoApi }) => {
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
-    await umbracoApi.media.ensureNameNotExists(imageName);
-    await umbracoApi.media.ensureNameNotExists(folderName);
+    await removeTestMedia(umbracoApi, imageName);
+    await removeTestMedia(umbracoApi, folderName);
   });
 
   test('dry run previews moves, execute moves image into date tree, run is logged', async ({
@@ -32,8 +35,8 @@ test.describe('MediaCurator curate now (MVP)', () => {
     const page = umbracoUi.page;
 
     // Arrange: folder with one image inside, and a Date ruleset attached via API
-    const folderId = await umbracoApi.media.createDefaultMediaFolderAndParentId(folderName, null);
-    await umbracoApi.media.createDefaultMediaWithImageAndParentId(imageName, folderId);
+    const folderId = await createTestFolder(umbracoApi, folderName, null);
+    await createTestImage(umbracoApi, imageName, folderId);
     const folder = await umbracoApi.media.getByName(folderName);
 
     const saveResponse = await umbracoApi.put(`${base()}/umbraco/mediacurator/api/v1/rulesets`, {

@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ApplyRequirementsData, ApplyRequirementsErrors, ApplyRequirementsResponses, CheckRequirementsData, CheckRequirementsErrors, CheckRequirementsResponses, CountMediaImagesData, CountMediaImagesErrors, CountMediaImagesResponses, DeleteRulesetData, DeleteRulesetErrors, DeleteRulesetResponses, ExecuteCurationData, ExecuteCurationErrors, ExecuteCurationResponses, ExecuteMediaCurationData, ExecuteMediaCurationErrors, ExecuteMediaCurationResponses, ExportRulesetsData, ExportRulesetsErrors, ExportRulesetsResponses, GetExclusionsData, GetExclusionsErrors, GetExclusionsResponses, GetProvidersData, GetProvidersErrors, GetProvidersResponses, GetQueueStatusData, GetQueueStatusErrors, GetQueueStatusResponses, GetRulesetByScopeData, GetRulesetByScopeErrors, GetRulesetByScopeResponses, GetRulesetData, GetRulesetErrors, GetRulesetResponses, GetRulesetsData, GetRulesetsErrors, GetRulesetsResponses, GetRunItemsData, GetRunItemsErrors, GetRunItemsResponses, GetRunsData, GetRunsErrors, GetRunsResponses, GetSettingsData, GetSettingsErrors, GetSettingsResponses, ImportRulesetsData, ImportRulesetsErrors, ImportRulesetsResponses, PlanCurationData, PlanCurationErrors, PlanCurationResponses, PlanMediaCurationData, PlanMediaCurationErrors, PlanMediaCurationResponses, QueueCurationData, QueueCurationErrors, QueueCurationResponses, ReanalyzeImagesData, ReanalyzeImagesErrors, ReanalyzeImagesResponses, ReanalyzeMediaImagesData, ReanalyzeMediaImagesErrors, ReanalyzeMediaImagesResponses, SaveRulesetData, SaveRulesetErrors, SaveRulesetResponses, SaveSettingsData, SaveSettingsErrors, SaveSettingsResponses, SetExclusionData, SetExclusionErrors, SetExclusionResponses, TestPizzaOriginalData, TestPizzaOriginalErrors, TestPizzaOriginalResponses, TestPizzaPreparedData, TestPizzaPreparedErrors, TestPizzaPreparedResponses, UndoRunData, UndoRunErrors, UndoRunResponses } from './types.gen';
+import type { AnalyzeMediaImagesData, AnalyzeMediaImagesErrors, AnalyzeMediaImagesResponses, ApplyRequirementsData, ApplyRequirementsErrors, ApplyRequirementsResponses, CheckRequirementsData, CheckRequirementsErrors, CheckRequirementsResponses, CountMediaImagesData, CountMediaImagesErrors, CountMediaImagesResponses, DeleteRulesetData, DeleteRulesetErrors, DeleteRulesetResponses, ExecuteCurationData, ExecuteCurationErrors, ExecuteCurationResponses, ExecuteMediaCurationData, ExecuteMediaCurationErrors, ExecuteMediaCurationResponses, ExportRulesetsData, ExportRulesetsErrors, ExportRulesetsResponses, GetAiOptionsData, GetAiOptionsErrors, GetAiOptionsResponses, GetExclusionsData, GetExclusionsErrors, GetExclusionsResponses, GetProvidersData, GetProvidersErrors, GetProvidersResponses, GetQueueStatusData, GetQueueStatusErrors, GetQueueStatusResponses, GetRulesetByScopeData, GetRulesetByScopeErrors, GetRulesetByScopeResponses, GetRulesetData, GetRulesetErrors, GetRulesetResponses, GetRulesetsData, GetRulesetsErrors, GetRulesetsResponses, GetRunItemsData, GetRunItemsErrors, GetRunItemsResponses, GetRunsData, GetRunsErrors, GetRunsResponses, GetSettingsData, GetSettingsErrors, GetSettingsResponses, ImportRulesetsData, ImportRulesetsErrors, ImportRulesetsResponses, ListImagesToAnalyzeData, ListImagesToAnalyzeErrors, ListImagesToAnalyzeResponses, PlanCurationData, PlanCurationErrors, PlanCurationResponses, PlanMediaCurationData, PlanMediaCurationErrors, PlanMediaCurationResponses, QueueCurationData, QueueCurationErrors, QueueCurationResponses, ReanalyzeImagesData, ReanalyzeImagesErrors, ReanalyzeImagesResponses, SaveRulesetData, SaveRulesetErrors, SaveRulesetResponses, SaveSettingsData, SaveSettingsErrors, SaveSettingsResponses, SetExclusionData, SetExclusionErrors, SetExclusionResponses, TestPizzaOriginalData, TestPizzaOriginalErrors, TestPizzaOriginalResponses, TestPizzaPreparedData, TestPizzaPreparedErrors, TestPizzaPreparedResponses, UndoRunData, UndoRunErrors, UndoRunResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -127,18 +127,26 @@ export class MediaCuratorService {
         });
     }
     
-    public static countMediaImages<ThrowOnError extends boolean = false>(options: Options<CountMediaImagesData, ThrowOnError>): RequestResult<CountMediaImagesResponses, CountMediaImagesErrors, ThrowOnError> {
-        return (options.client ?? client).get<CountMediaImagesResponses, CountMediaImagesErrors, ThrowOnError>({
+    public static analyzeMediaImages<ThrowOnError extends boolean = false>(options: Options<AnalyzeMediaImagesData, ThrowOnError>): RequestResult<AnalyzeMediaImagesResponses, AnalyzeMediaImagesErrors, ThrowOnError> {
+        return (options.client ?? client).post<AnalyzeMediaImagesResponses, AnalyzeMediaImagesErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/recognition/media/{mediaKey}/images/count',
+            url: '/umbraco/mediacurator/api/v1/recognition/media/{mediaKey}/analyze',
             ...options
         });
     }
     
-    public static reanalyzeMediaImages<ThrowOnError extends boolean = false>(options: Options<ReanalyzeMediaImagesData, ThrowOnError>): RequestResult<ReanalyzeMediaImagesResponses, ReanalyzeMediaImagesErrors, ThrowOnError> {
-        return (options.client ?? client).post<ReanalyzeMediaImagesResponses, ReanalyzeMediaImagesErrors, ThrowOnError>({
+    public static listImagesToAnalyze<ThrowOnError extends boolean = false>(options: Options<ListImagesToAnalyzeData, ThrowOnError>): RequestResult<ListImagesToAnalyzeResponses, ListImagesToAnalyzeErrors, ThrowOnError> {
+        return (options.client ?? client).get<ListImagesToAnalyzeResponses, ListImagesToAnalyzeErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/recognition/media/{mediaKey}/reanalyze',
+            url: '/umbraco/mediacurator/api/v1/recognition/media/{mediaKey}/images',
+            ...options
+        });
+    }
+    
+    public static countMediaImages<ThrowOnError extends boolean = false>(options: Options<CountMediaImagesData, ThrowOnError>): RequestResult<CountMediaImagesResponses, CountMediaImagesErrors, ThrowOnError> {
+        return (options.client ?? client).get<CountMediaImagesResponses, CountMediaImagesErrors, ThrowOnError>({
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/umbraco/mediacurator/api/v1/recognition/media/{mediaKey}/images/count',
             ...options
         });
     }
@@ -280,6 +288,14 @@ export class MediaCuratorService {
                 'Content-Type': 'application/json',
                 ...options?.headers
             }
+        });
+    }
+    
+    public static getAiOptions<ThrowOnError extends boolean = false>(options?: Options<GetAiOptionsData, ThrowOnError>): RequestResult<GetAiOptionsResponses, GetAiOptionsErrors, ThrowOnError> {
+        return (options?.client ?? client).get<GetAiOptionsResponses, GetAiOptionsErrors, ThrowOnError>({
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/umbraco/mediacurator/api/v1/settings/ai-options',
+            ...options
         });
     }
 }

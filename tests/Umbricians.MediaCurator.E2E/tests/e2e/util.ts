@@ -21,8 +21,9 @@ interface MediaTypeModel {
   [key: string]: unknown;
 }
 
-/** Deletes every MediaCurator ruleset whose name starts with the given prefix. */
+/** Deletes every MediaCurator ruleset whose name starts with the given prefix. The prefix must start with "MC ". */
 export async function deleteRulesetsByPrefix(umbracoApi: UmbracoApi, prefix: string): Promise<void> {
+  if (!prefix.startsWith('MC ')) throw new Error(`Refusing to delete rulesets for non-test prefix "${prefix}"; test-owned names start with "MC ".`);
   const response = await umbracoApi.get(`${base()}/umbraco/mediacurator/api/v1/rulesets`);
   const rulesets = (await response.json()) as Array<{ key: string; name: string }>;
   for (const ruleset of rulesets ?? []) {
@@ -83,7 +84,11 @@ export async function addRuleViaPanel(page: Page, rule: RuleInput): Promise<void
   const panel = page.locator('mc-rule-settings-modal').last();
   await panel.getByTestId('mc:settings-provider').locator('select').selectOption(rule.providerAlias);
   for (const [alias, value] of Object.entries(rule.settings ?? {})) {
-    await panel.getByTestId(`mc:setting-${alias}`).locator('input, textarea').first().fill(value);
+    // Type key by key like an editor: re-renders between keystrokes once reset these fields.
+    const field = panel.getByTestId(`mc:setting-${alias}`).locator('input, textarea').first();
+    await field.fill('');
+    await field.pressSequentially(value);
+    await expect(field).toHaveValue(value);
   }
   if (rule.condition !== undefined) {
     await panel.getByTestId('mc:settings-condition').locator('input').fill(rule.condition);
@@ -253,4 +258,99 @@ export async function executePlan(page: Page): Promise<void> {
   await page.getByTestId('mc:plan-execute').click();
   await expect(page.getByTestId('mc:plan-summary')).toHaveCount(0, { timeout: 30000 });
   await expect(page.getByTestId('mc:ruleset-run').first()).toBeVisible({ timeout: 15000 });
+}
+
+/**
+ * Permanently deletes Recycle Bin items whose name starts with a test prefix. Leftovers from earlier
+ * runs make Umbraco rename same-named items ("Name (1)") when they are recycled again. The prefix must
+ * start with "MC " so this can never touch an editor's media.
+ */
+export async function purgeRecycleBinByPrefix(
+  umbracoApi: { get(url: string): Promise<{ json(): Promise<unknown> }>; delete(url: string): Promise<unknown> },
+  prefix: string,
+): Promise<void> {
+  if (!prefix.startsWith('MC ')) throw new Error(`Refusing to purge the Recycle Bin for non-test prefix "${prefix}".`);
+  const response = await umbracoApi.get(`${base()}/umbraco/management/api/v1/recycle-bin/media/root?skip=0&take=10000`);
+  const { items = [] } = (await response.json()) as { items?: Array<{ id: string; variants: Array<{ name: string }> }> };
+  for (const item of items) {
+    if (item.variants[0]?.name?.startsWith(prefix)) {
+      await umbracoApi.delete(`${base()}/umbraco/management/api/v1/recycle-bin/media/${item.id}`);
+    }
+  }
+}
+
+/**
+ * Creates a folder under a parent WITHOUT deleting anything first. The acceptance-test helpers'
+ * createDefaultMediaFolder*(name) call ensureNameNotExists(name), which deletes every media item
+ * with that name anywhere in the library — never use them with a generic name like a year or month.
+ */
+export async function createFolderUnder(
+  umbracoApi: {
+    mediaType: { getByName(name: string): Promise<{ id: string }> };
+    post(url: string, data?: object): Promise<{ status(): number; headers(): Record<string, string> }>;
+  },
+  name: string,
+  parentId: string,
+): Promise<string> {
+  const folderType = await umbracoApi.mediaType.getByName('Folder');
+  const response = await umbracoApi.post(`${base()}/umbraco/management/api/v1/media`, {
+    parent: { id: parentId },
+    mediaType: { id: folderType.id },
+    variants: [{ culture: null, segment: null, name }],
+    values: [],
+  });
+  if (response.status() !== 201) throw new Error(`Could not create folder "${name}" (HTTP ${response.status()}).`);
+  return response.headers()['location'].split('/').pop()!;
+}
+
+/* ---------- Guarded media helpers ---------- */
+
+/**
+ * The acceptance-test helpers' ensureNameNotExists(name) and createDefaultMedia*(name, ...) PERMANENTLY
+ * delete every media item with that exact name anywhere in the library (including its subtree). Specs must
+ * only call them through the wrappers below, which refuse any name that is not test-owned. Test-owned names
+ * start with "MC ", optionally after a classification-code token (e.g. "NA MC modern building"), because the
+ * server reads the code from the first token of the media name.
+ */
+export function isTestOwnedName(name: string): boolean {
+  return /^(?:[A-Z0-9.]{1,6} )?MC /.test(name);
+}
+
+export function assertTestOwnedName(name: string): void {
+  if (!isTestOwnedName(name)) {
+    throw new Error(`Refusing to delete or recreate media with non-test name "${name}"; test-owned names start with "MC ".`);
+  }
+}
+
+type MediaApiWith<K extends string, F> = { media: { [P in K]: F } };
+type ParentFn = (name: string, parentId: string) => Promise<string>;
+
+/** Permanently deletes all media named `name` (library-wide). Name must be test-owned. */
+export async function removeTestMedia(umbracoApi: MediaApiWith<'ensureNameNotExists', (name: string) => Promise<unknown>>, name: string): Promise<void> {
+  assertTestOwnedName(name);
+  await umbracoApi.media.ensureNameNotExists(name);
+}
+
+/** Creates a root folder, first deleting any same-named media. Name must be test-owned. */
+export async function createTestRootFolder(umbracoApi: MediaApiWith<'createDefaultMediaFolder', (name: string) => Promise<string>>, name: string): Promise<string> {
+  assertTestOwnedName(name);
+  return umbracoApi.media.createDefaultMediaFolder(name);
+}
+
+/** Creates a folder under a parent (null = root), first deleting any same-named media. Name must be test-owned. */
+export async function createTestFolder(umbracoApi: MediaApiWith<'createDefaultMediaFolderAndParentId', ParentFn>, name: string, parentId: string | null): Promise<string> {
+  assertTestOwnedName(name);
+  return umbracoApi.media.createDefaultMediaFolderAndParentId(name, parentId as string);
+}
+
+/** Creates an image under a parent, first deleting any same-named media. Name must be test-owned. */
+export async function createTestImage(umbracoApi: MediaApiWith<'createDefaultMediaWithImageAndParentId', ParentFn>, name: string, parentId: string): Promise<string> {
+  assertTestOwnedName(name);
+  return umbracoApi.media.createDefaultMediaWithImageAndParentId(name, parentId);
+}
+
+/** Creates a file under a parent, first deleting any same-named media. Name must be test-owned. */
+export async function createTestFile(umbracoApi: MediaApiWith<'createDefaultMediaFileAndParentId', ParentFn>, name: string, parentId: string): Promise<string> {
+  assertTestOwnedName(name);
+  return umbracoApi.media.createDefaultMediaFileAndParentId(name, parentId);
 }

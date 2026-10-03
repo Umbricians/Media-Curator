@@ -62,7 +62,8 @@ public sealed class BulkCurationJob : IRecurringBackgroundJob
                 var plan = await engine.PlanAsync(scope, request.Recursive);
                 _queue.Report(scope, new BulkRunStatus(scope, BulkRunState.Running, 0, plan.MoveCount, null, null));
 
-                var summary = await engine.ExecuteAsync(plan, trigger: "background");
+                // Empty sub-folders go to the Recycle Bin (recoverable); the queue request carries no delete option.
+                var summary = await engine.ExecuteAsync(plan, trigger: "background", EmptyFolderRemoval.RecycleBin);
                 _queue.Report(scope, new BulkRunStatus(scope, BulkRunState.Completed, summary.Moved, plan.MoveCount, null, summary.RunKey));
             }
             catch (Exception ex)

@@ -65,6 +65,27 @@ internal sealed class UmbracoMediaOperations : IMediaOperations
         } while ((page * pageSize) < total);
     }
 
+    public IReadOnlyList<MediaItemInfo> GetChildren(Guid folderKey)
+    {
+        var parent = _mediaService.GetById(folderKey);
+        if (parent is null)
+        {
+            return [];
+        }
+
+        const int pageSize = 500;
+        var items = new List<MediaItemInfo>();
+        long page = 0;
+        long total;
+        do
+        {
+            items.AddRange(_mediaService.GetPagedChildren(parent.Id, page, pageSize, out total).Select(Map));
+            page++;
+        } while ((page * pageSize) < total);
+
+        return items;
+    }
+
     public MediaItemInfo? GetItem(Guid mediaKey)
     {
         var media = _mediaService.GetById(mediaKey);
@@ -195,6 +216,88 @@ internal sealed class UmbracoMediaOperations : IMediaOperations
         }
 
         _mediaService.Move(media, target.Id);
+    }
+
+    public void SortChildren(Guid folderKey, IReadOnlyList<Guid> orderedChildKeys)
+    {
+        var parent = _mediaService.GetById(folderKey)
+            ?? throw new InvalidOperationException($"Folder '{folderKey}' not found.");
+
+        // Current children in their current order, so any not listed (e.g. added meanwhile) keep
+        // their relative order after the listed ones.
+        const int pageSize = 500;
+        var current = new List<(Guid Key, int Id)>();
+        long page = 0;
+        long total;
+        do
+        {
+            current.AddRange(_mediaService.GetPagedChildren(parent.Id, page, pageSize, out total).Select(c => (c.Key, c.Id)));
+            page++;
+        } while ((page * pageSize) < total);
+
+        var idByKey = current.ToDictionary(c => c.Key, c => c.Id);
+        var listed = orderedChildKeys.Where(idByKey.ContainsKey).Distinct().ToList();
+        var listedSet = listed.ToHashSet();
+        var orderedIds = listed.Select(k => idByKey[k])
+            .Concat(current.Where(c => !listedSet.Contains(c.Key)).Select(c => c.Id))
+            .ToList();
+
+        // SortChildren, NOT IMediaService.Sort(items): Sort saves every item and publishes a
+        // MediaSavedNotification for each, which would re-trigger "Media Saved" automations (and
+        // their AI calls) for every image in the folder. SortChildren only persists the sort order
+        // and publishes a single MediaTreeChangeNotification.
+        var result = _mediaService.SortChildren(parent.Id, orderedIds);
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"The children of folder '{folderKey}' could not be sorted.");
+        }
+    }
+
+    public void MoveToRecycleBin(Guid mediaKey)
+    {
+        var media = _mediaService.GetById(mediaKey)
+            ?? throw new InvalidOperationException($"Media '{mediaKey}' not found.");
+        var result = _mediaService.MoveToRecycleBin(media);
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Media '{mediaKey}' could not be moved to the Recycle Bin.");
+        }
+    }
+
+    public void Delete(Guid mediaKey)
+    {
+        var media = _mediaService.GetById(mediaKey)
+            ?? throw new InvalidOperationException($"Media '{mediaKey}' not found.");
+        var result = _mediaService.Delete(media);
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Media '{mediaKey}' could not be deleted.");
+        }
+    }
+
+    public void RestoreFromRecycleBin(Guid mediaKey, Guid parentKey)
+    {
+        var media = _mediaService.GetById(mediaKey)
+            ?? throw new InvalidOperationException($"Media '{mediaKey}' not found.");
+
+        var parentId = global::Umbraco.Cms.Core.Constants.System.Root;
+        if (parentKey != Guid.Empty)
+        {
+            parentId = (_mediaService.GetById(parentKey)
+                ?? throw new InvalidOperationException($"Parent folder '{parentKey}' not found.")).Id;
+        }
+
+        if (media.ParentId == parentId && !media.Trashed)
+        {
+            return;
+        }
+
+        // Moving a trashed item to a normal parent is how Umbraco restores it from the bin.
+        var result = _mediaService.Move(media, parentId);
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Media '{mediaKey}' could not be restored from the Recycle Bin.");
+        }
     }
 
     private MediaItemInfo Map(IMedia media)

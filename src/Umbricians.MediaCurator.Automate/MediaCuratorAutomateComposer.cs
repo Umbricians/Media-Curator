@@ -1,8 +1,10 @@
+using Microsoft.Extensions.DependencyInjection;
 using Umbraco.Automate.Extensions;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbricians.MediaCurator.Automate.Actions;
 using Umbricians.MediaCurator.Automate.Triggers;
+using Engine = Umbricians.MediaCurator.Engine;
 
 namespace Umbricians.MediaCurator.Automate;
 
@@ -19,5 +21,7 @@ public class MediaCuratorAutomateComposer : IComposer
             .Add<AnalyzeImageAction>()
             .Add<CategorizeMediaAction>()
             .Add<CurateFolderAction>();
+
+        builder.Services.AddSingleton<Engine.IParallelContextFlow, Execution.AutomationOriginContextFlow>();
     }
 }

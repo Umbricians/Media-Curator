@@ -14,12 +14,12 @@ export const manifests: Array<UmbExtensionManifest> = [
   {
     type: "entityAction",
     kind: "default",
-    alias: "Umbricians.MediaCurator.EntityAction.Media.Reanalyze",
-    name: "Re-analyze Images Entity Action",
+    alias: "Umbricians.MediaCurator.EntityAction.Media.Analyze",
+    name: "Analyze Images Entity Action",
     weight: 40,
-    api: () => import("./reanalyze-media.action.js"),
+    api: () => import("./analyze-media.action.js"),
     forEntityTypes: ["media"],
-    meta: { icon: "icon-refresh", label: "Re-analyze images" },
+    meta: { icon: "icon-refresh", label: "Analyze images" },
     conditions: [{ alias: "Umb.Condition.SectionUserPermission", match: "Umb.Section.Settings" }],
   },
 ];

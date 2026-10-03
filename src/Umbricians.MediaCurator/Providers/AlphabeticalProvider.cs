@@ -5,9 +5,9 @@ namespace Umbricians.MediaCurator.Providers;
 /// <summary>
 /// Simple A–Z bucketing by item name (§6) — useful for very large flat libraries, and the
 /// documented "hello world" reference provider for the developer tutorial. Names that do
-/// not start with a letter go into a configurable fallback bucket.
+/// not start with a letter go into a configurable fallback bucket, which is ordered after the letters.
 /// </summary>
-public sealed class AlphabeticalProvider : ICurationProvider
+public sealed class AlphabeticalProvider : ICurationProvider, ICurationFolderOrder
 {
     public const string ProviderAlias = "Umbricians.MediaCurator.Alphabetical";
 
@@ -49,5 +49,19 @@ public sealed class AlphabeticalProvider : ICurationProvider
             : context.GetSetting("otherBucket", DefaultOtherBucket);
 
         return Task.FromResult(CurationResult.Resolved(bucket, new FolderSegment(bucket)));
+    }
+
+    /// <summary>Letters A→Z (naturally, in the ruleset culture), the non-letter bucket last.</summary>
+    public IComparer<string>? GetFolderComparer(FolderOrderContext context)
+    {
+        var otherBucket = context.GetSetting("otherBucket", DefaultOtherBucket).Trim();
+        return context.SegmentIndex == 0
+            ? new RankedFolderNameComparer(
+                name => name.Trim().Equals(otherBucket, StringComparison.OrdinalIgnoreCase)
+                        || name.Trim().Equals(Engine.CurationEngine.SanitizeFolderName(otherBucket), StringComparison.OrdinalIgnoreCase)
+                    ? null
+                    : 0,
+                new NaturalFolderNameComparer(context.Culture))
+            : null;
     }
 }

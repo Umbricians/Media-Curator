@@ -5,6 +5,9 @@ import {
   openMediaCuratorRoot,
   openRulesetFromTree,
   runDryRun,
+  createTestFolder,
+  createTestImage,
+  removeTestMedia,
 } from './util';
 
 const folderName = 'MC Undo Folder';
@@ -15,21 +18,21 @@ const base = () => process.env.UMBRACO_URL || process.env.URL || 'http://localho
 test.describe('MediaCurator undo', () => {
   test.beforeEach(async ({ umbracoApi }) => {
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
-    await umbracoApi.media.ensureNameNotExists(imageName);
-    await umbracoApi.media.ensureNameNotExists(folderName);
+    await removeTestMedia(umbracoApi, imageName);
+    await removeTestMedia(umbracoApi, folderName);
   });
 
   test.afterEach(async ({ umbracoApi }) => {
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
-    await umbracoApi.media.ensureNameNotExists(imageName);
-    await umbracoApi.media.ensureNameNotExists(folderName);
+    await removeTestMedia(umbracoApi, imageName);
+    await removeTestMedia(umbracoApi, folderName);
   });
 
   test('curate then undo restores the original tree', async ({ umbracoUi, umbracoApi }) => {
     const page = umbracoUi.page;
 
-    const folderId = await umbracoApi.media.createDefaultMediaFolderAndParentId(folderName, null);
-    await umbracoApi.media.createDefaultMediaWithImageAndParentId(imageName, folderId);
+    const folderId = await createTestFolder(umbracoApi, folderName, null);
+    await createTestImage(umbracoApi, imageName, folderId);
     const folder = await umbracoApi.media.getByName(folderName);
 
     await umbracoApi.put(`${base()}/umbraco/mediacurator/api/v1/rulesets`, {

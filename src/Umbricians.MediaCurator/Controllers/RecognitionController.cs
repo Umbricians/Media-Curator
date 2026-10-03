@@ -8,7 +8,9 @@ using Microsoft.Extensions.Options;
 using Umbraco.AI.Core.Chat;
 using Umbricians.MediaCurator.Controllers.ViewModels;
 using Umbricians.MediaCurator.Engine;
+using Umbricians.MediaCurator.Providers;
 using Umbricians.MediaCurator.Recognition;
+using Umbricians.MediaCurator.Settings;
 using SixLabors.ImageSharp;
 
 namespace Umbricians.MediaCurator.Controllers;
@@ -17,8 +19,8 @@ namespace Umbricians.MediaCurator.Controllers;
 [ApiExplorerSettings(GroupName = "MediaCurator")]
 public class RecognitionController : MediaCuratorApiControllerBase
 {
-    /// <summary>Most images one folder re-analysis will process (each is an AI request).</summary>
-    public const int MaxReanalyzeImages = 200;
+    /// <summary>Most images one folder analysis will send to the AI.</summary>
+    public const int MaxAnalyzeImages = 200;
 
     private const string PizzaTestImagePath = "tests/images/test-pizza.jpg";
     private const string OriginalPizzaTestAlias = "media-curator-pizza-original-test";
@@ -27,19 +29,25 @@ public class RecognitionController : MediaCuratorApiControllerBase
     private readonly IRecognitionService _recognition;
     private readonly IMediaOperations _media;
     private readonly IOptionsMonitor<MediaCuratorOptions> _options;
+    private readonly IMediaCuratorSettingsService _settings;
     private readonly IServiceProvider _services;
     private readonly IWebHostEnvironment _environment;
+    private readonly IParallelMediaWork? _parallel;
 
     public RecognitionController(
         IRecognitionService recognition,
         IMediaOperations media,
         IOptionsMonitor<MediaCuratorOptions> options,
+        IMediaCuratorSettingsService settings,
         IServiceProvider services,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IParallelMediaWork? parallel = null)
     {
+        _parallel = parallel;
         _recognition = recognition;
         _media = media;
         _options = options;
+        _settings = settings;
         _services = services;
         _environment = environment;
     }
@@ -57,22 +65,20 @@ public class RecognitionController : MediaCuratorApiControllerBase
 
         var scheme = ResolveScheme(request.ClassificationSchemeAlias);
 
-        var results = new List<ReanalyzeImageResultModel>(request.MediaKeys.Count);
-        foreach (var mediaKey in request.MediaKeys.Distinct())
-        {
-            results.Add(await ReanalyzeOneAsync(mediaKey, scheme, cancellationToken));
-        }
-
+        var results = await ReanalyzeManyAsync(request.MediaKeys.Distinct().ToList(), scheme, cancellationToken);
         return Ok(new ReanalyzeImagesResponseModel { Results = results });
     }
 
     /// <summary>Re-runs AI recognition (ignoring cached results) for one image, or for every image
     /// under a folder and its subfolders.</summary>
-    [HttpPost("recognition/media/{mediaKey:guid}/reanalyze")]
-    [ProducesResponseType<ReanalyzeImagesResponseModel>(StatusCodes.Status200OK)]
+    /// <summary>Analyzes the images under a media folder (recursively), or a single image.
+    /// By default only images not analyzed yet are sent; <paramref name="all"/> re-does every one.
+    /// Each image sent is analyzed from scratch, replacing its stored description and code.</summary>
+    [HttpPost("recognition/media/{mediaKey:guid}/analyze")]
+    [ProducesResponseType<AnalyzeMediaImagesResponseModel>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> ReanalyzeMediaImages(Guid mediaKey, CancellationToken cancellationToken)
+    public async Task<IActionResult> AnalyzeMediaImages(Guid mediaKey, [FromQuery] bool all, CancellationToken cancellationToken)
     {
         var images = CollectImages(mediaKey);
         if (images is null)
@@ -80,33 +86,69 @@ public class RecognitionController : MediaCuratorApiControllerBase
             return NotFound(Error("Media item not found."));
         }
 
-        if (images.Count > MaxReanalyzeImages)
+        var toAnalyze = all ? images : await NotAnalyzedAsync(images, cancellationToken);
+        if (toAnalyze.Count > MaxAnalyzeImages)
         {
             return BadRequest(Error(
-                $"This folder contains {images.Count} images; re-analyze at most {MaxReanalyzeImages} at a time."));
+                $"This folder has {toAnalyze.Count} images to analyze; analyze at most {MaxAnalyzeImages} at a time."));
         }
 
         var scheme = ResolveScheme(null);
-        var results = new List<ReanalyzeImageResultModel>(images.Count);
-        foreach (var image in images)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            results.Add(await ReanalyzeOneAsync(image.Key, scheme, cancellationToken));
-        }
+        var results = await ReanalyzeManyAsync(toAnalyze.Select(i => i.Key).ToList(), scheme, cancellationToken);
 
-        return Ok(new ReanalyzeImagesResponseModel { Results = results });
+        return Ok(new AnalyzeMediaImagesResponseModel
+        {
+            Results = results,
+            AlreadyAnalyzedCount = images.Count - toAnalyze.Count,
+        });
     }
 
-    /// <summary>Counts the images a re-analysis of this media item would process.</summary>
+    /// <summary>The images an analyze run would send (all of them, or only those not analyzed yet),
+    /// so the backoffice can analyze them one at a time and report progress.</summary>
+    [HttpGet("recognition/media/{mediaKey:guid}/images")]
+    [ProducesResponseType<MediaImagesToAnalyzeModel>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ListImagesToAnalyze(Guid mediaKey, [FromQuery] bool all, CancellationToken cancellationToken)
+    {
+        var images = CollectImages(mediaKey);
+        if (images is null)
+        {
+            return NotFound(Error("Media item not found."));
+        }
+
+        var toAnalyze = all ? images : await NotAnalyzedAsync(images, cancellationToken);
+        return Ok(new MediaImagesToAnalyzeModel
+        {
+            Images = toAnalyze.Select(i => new MediaImageModel { MediaKey = i.Key, MediaName = i.Name }).ToList(),
+            AlreadyAnalyzedCount = images.Count - toAnalyze.Count,
+        });
+    }
+
+    /// <summary>How many images are under a media folder, and how many are not analyzed yet.</summary>
     [HttpGet("recognition/media/{mediaKey:guid}/images/count")]
     [ProducesResponseType<MediaImageCountModel>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public IActionResult CountMediaImages(Guid mediaKey)
+    public async Task<IActionResult> CountMediaImages(Guid mediaKey, CancellationToken cancellationToken)
     {
         var images = CollectImages(mediaKey);
-        return images is null
-            ? NotFound(Error("Media item not found."))
-            : Ok(new MediaImageCountModel { Count = images.Count });
+        if (images is null)
+        {
+            return NotFound(Error("Media item not found."));
+        }
+
+        var notAnalyzed = await NotAnalyzedAsync(images, cancellationToken);
+        return Ok(new MediaImageCountModel { Count = images.Count, NotAnalyzedCount = notAnalyzed.Count });
+    }
+
+    /// <summary>Images with no stored AI description. A classification code alone doesn't count:
+    /// editors can enter codes by hand. When descriptions aren't stored, a code is all there is.</summary>
+    private async Task<List<MediaItemInfo>> NotAnalyzedAsync(List<MediaItemInfo> images, CancellationToken cancellationToken)
+    {
+        var descriptionsStored = (await _settings.GetAsync(cancellationToken)).PersistImageDescription;
+        var marker = descriptionsStored
+            ? UmbracoAiRecognitionService.DescriptionPropertyAlias
+            : ClassificationProvider.CodePropertyAlias;
+        return images.Where(i => string.IsNullOrWhiteSpace(_media.GetPropertyValue(i.Key, marker))).ToList();
     }
 
     // The backoffice shows a problem's title in its error notification, so the reason goes there.
@@ -138,10 +180,39 @@ public class RecognitionController : MediaCuratorApiControllerBase
             .ToList();
     }
 
-    private async Task<ReanalyzeImageResultModel> ReanalyzeOneAsync(
-        Guid mediaKey, string? scheme, CancellationToken cancellationToken)
+    /// <summary>Analyzes the images concurrently (up to the configured number at a time); results keep
+    /// the order of <paramref name="mediaKeys"/>.</summary>
+    private async Task<List<ReanalyzeImageResultModel>> ReanalyzeManyAsync(
+        IReadOnlyList<Guid> mediaKeys, string? scheme, CancellationToken cancellationToken)
     {
-        var item = _media.GetItem(mediaKey);
+        if (_parallel is null || mediaKeys.Count <= 1)
+        {
+            var results = new List<ReanalyzeImageResultModel>(mediaKeys.Count);
+            foreach (var mediaKey in mediaKeys)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                results.Add(await ReanalyzeOneAsync(_recognition, _media, mediaKey, scheme, cancellationToken));
+            }
+
+            return results;
+        }
+
+        var parallelResults = await _parallel.RunAsync(
+            mediaKeys,
+            (services, mediaKey, ct) => ReanalyzeOneAsync(
+                services.GetRequiredService<IRecognitionService>(),
+                services.GetRequiredService<IMediaOperations>(),
+                mediaKey,
+                scheme,
+                ct),
+            cancellationToken);
+        return parallelResults.ToList();
+    }
+
+    private static async Task<ReanalyzeImageResultModel> ReanalyzeOneAsync(
+        IRecognitionService recognition, IMediaOperations media, Guid mediaKey, string? scheme, CancellationToken cancellationToken)
+    {
+        var item = media.GetItem(mediaKey);
         if (item is null)
         {
             return new ReanalyzeImageResultModel { MediaKey = mediaKey, Analyzed = false, Error = "Media item not found." };
@@ -160,7 +231,7 @@ public class RecognitionController : MediaCuratorApiControllerBase
 
         try
         {
-            var result = await _recognition.AnalyzeAsync(mediaKey, force: true, scheme, cancellationToken);
+            var result = await recognition.AnalyzeAsync(mediaKey, force: true, scheme, cancellationToken);
             if (result is null)
             {
                 return new ReanalyzeImageResultModel

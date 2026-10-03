@@ -7,6 +7,8 @@ import {
   rulesetTreeItem,
   saveRuleset,
   startNewRuleset,
+  createTestRootFolder,
+  removeTestMedia,
 } from './util';
 
 const folderName = 'MC Test Folder';
@@ -14,13 +16,13 @@ const rulesetName = 'MC Date Ruleset';
 
 test.describe('MediaCurator ruleset editor', () => {
   test.beforeEach(async ({ umbracoApi }) => {
-    await umbracoApi.media.ensureNameNotExists(folderName);
-    await umbracoApi.media.createDefaultMediaFolder(folderName);
+    await removeTestMedia(umbracoApi, folderName);
+    await createTestRootFolder(umbracoApi, folderName);
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
   });
 
   test.afterEach(async ({ umbracoApi }) => {
-    await umbracoApi.media.ensureNameNotExists(folderName);
+    await removeTestMedia(umbracoApi, folderName);
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
   });
 

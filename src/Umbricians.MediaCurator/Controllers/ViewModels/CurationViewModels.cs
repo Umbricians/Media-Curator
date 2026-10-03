@@ -6,6 +6,10 @@ public class CurationRequestModel
 {
     public required Guid ScopeFolderKey { get; init; }
     public bool Recursive { get; init; } = true;
+
+    /// <summary>On execute: delete empty sub-folders permanently instead of moving them to the
+    /// Recycle Bin. Ignored by plan.</summary>
+    public bool PermanentlyDeleteEmptyFolders { get; init; }
 }
 
 public class PlannedMoveModel
@@ -32,6 +36,9 @@ public class CurationPlanModel
     public List<PlannedMoveModel> Moves { get; init; } = [];
     public List<string> SkippedItems { get; init; } = [];
 
+    /// <summary>Empty sub-folders a run would remove right now (more may empty during the run).</summary>
+    public int EmptyFolderCount { get; set; }
+
     public static CurationPlanModel From(CurationPlan plan) => new()
     {
         ScopeFolderKey = plan.ScopeFolderKey,
@@ -50,6 +57,9 @@ public class MediaCurationPlanModel
     public List<CurationPlanModel> Plans { get; init; } = [];
     public List<string> SkippedItems { get; init; } = [];
 
+    /// <summary>Empty sub-folders below the media item a run would remove right now.</summary>
+    public int EmptyFolderCount { get; set; }
+
     public static MediaCurationPlanModel From(MediaCurationPlan plan) => new()
     {
         MediaKey = plan.MediaKey,
@@ -65,6 +75,7 @@ public class MediaCurationSummaryModel
     public required int Moved { get; init; }
     public required int AlreadyInPlace { get; init; }
     public required int Failed { get; init; }
+    public int FoldersRemoved { get; init; }
     public List<Guid> RunKeys { get; init; } = [];
 }
 
@@ -74,6 +85,7 @@ public class CurationRunSummaryModel
     public required int Moved { get; init; }
     public required int AlreadyInPlace { get; init; }
     public required int Failed { get; init; }
+    public int FoldersRemoved { get; init; }
 
     public static CurationRunSummaryModel From(CurationRunSummary summary) => new()
     {
@@ -81,6 +93,7 @@ public class CurationRunSummaryModel
         Moved = summary.Moved,
         AlreadyInPlace = summary.AlreadyInPlace,
         Failed = summary.Failed,
+        FoldersRemoved = summary.FoldersRemoved,
     };
 }
 

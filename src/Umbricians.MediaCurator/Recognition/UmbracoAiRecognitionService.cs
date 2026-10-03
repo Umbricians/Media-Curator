@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.AI;
@@ -30,6 +31,9 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
 
     private static readonly JsonSerializerOptions _json = new() { PropertyNameCaseInsensitive = true };
 
+    /// <summary>Profiles whose model rejected a reasoning effort; later calls skip it instead of failing twice.</summary>
+    private static readonly ConcurrentDictionary<string, bool> _reasoningUnsupported = new(StringComparer.OrdinalIgnoreCase);
+
     private readonly IServiceProvider _services;
     private readonly IMediaOperations _media;
     private readonly ClassificationSchemeCollection _schemes;
@@ -37,6 +41,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
     private readonly IOptionsMonitor<MediaCuratorOptions> _options;
     private readonly IMediaCuratorSettingsService _settings;
     private readonly ILogger<UmbracoAiRecognitionService> _logger;
+    private readonly IJevClassificationDecider? _jev;
 
     public UmbracoAiRecognitionService(
         IServiceProvider services,
@@ -45,7 +50,8 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         RecognitionEnricherCollection enrichers,
         IOptionsMonitor<MediaCuratorOptions> options,
         IMediaCuratorSettingsService settings,
-        ILogger<UmbracoAiRecognitionService> logger)
+        ILogger<UmbracoAiRecognitionService> logger,
+        IJevClassificationDecider? jev = null)
     {
         _services = services;
         _media = media;
@@ -54,6 +60,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         _options = options;
         _settings = settings;
         _logger = logger;
+        _jev = jev;
     }
 
     public async Task<RecognitionResult?> AnalyzeAsync(
@@ -83,6 +90,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
 
         var scheme = ResolveScheme(classificationSchemeAlias);
         var siteSettings = await _settings.GetAsync(cancellationToken);
+        var ai = AiStepSettings.From(siteSettings, _options.CurrentValue);
         RecognitionResult? result;
 
         try
@@ -98,6 +106,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
                     mediaKey);
                 var code = await ClassifyFromDescriptionAsync(
                     chatService,
+                    ai,
                     scheme,
                     description,
                     tags,
@@ -108,6 +117,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
             {
                 result = await AnalyzeWithVisionAsync(
                     chatService,
+                    ai,
                     scheme,
                     mediaKey,
                     siteSettings.PersistImageDescription,
@@ -154,6 +164,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
 
     private async Task<RecognitionResult?> AnalyzeWithVisionAsync(
         IAIChatService chatService,
+        AiStepSettings ai,
         IClassificationScheme? scheme,
         Guid mediaKey,
         bool persistImageDescription,
@@ -185,7 +196,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         (imageBytes, mediaType) = RecognitionImagePreparer.Prepare(
             imageBytes,
             mediaType,
-            _options.CurrentValue.MaxRecognitionEdgePixels,
+            ai.ImageSize,
             testOutputFolder,
             mediaKey.ToString("N"));
 
@@ -194,6 +205,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         {
             return await AnalyzeHierarchicalWithVisionAsync(
                 chatService,
+                ai,
                 scheme,
                 imageBytes,
                 mediaType,
@@ -202,7 +214,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
                 cancellationToken);
         }
 
-        var result = await AnalyzeSingleShotAsync(chatService, scheme, imageBytes, mediaType, cancellationToken);
+        var result = await AnalyzeSingleShotAsync(chatService, ai, scheme, imageBytes, mediaType, cancellationToken);
         if (result is not null && persistImageDescription)
         {
             PersistDescription(mediaKey, result.Description);
@@ -213,6 +225,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
 
     private async Task<RecognitionResult?> AnalyzeHierarchicalWithVisionAsync(
         IAIChatService chatService,
+        AiStepSettings ai,
         IClassificationScheme scheme,
         byte[] imageBytes,
         string mediaType,
@@ -230,6 +243,8 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         var describeResponse = await GetChatResponseAsync(
             chatService,
             RecognitionChatAlias,
+            ai.DescriptionProfileAlias,
+            ai.DescriptionReasoning,
             [describeMessage],
             cancellationToken);
         var described = RecognitionResponseParser.Parse(describeResponse);
@@ -245,6 +260,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
 
         var code = await ClassifyFromDescriptionAsync(
             chatService,
+            ai,
             scheme,
             described.Description ?? string.Empty,
             described.Tags,
@@ -255,6 +271,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
 
     private async Task<string?> ClassifyFromDescriptionAsync(
         IAIChatService chatService,
+        AiStepSettings ai,
         IClassificationScheme scheme,
         string description,
         IReadOnlyList<AiTag> tags,
@@ -263,9 +280,41 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
             scheme,
             description,
             tags,
-            (prompt, ct) => RefineClassificationAsync(chatService, prompt, ct),
+            (choice, ct) => DecideAsync(chatService, ai, choice, ct),
             _options.CurrentValue.MaxClassificationDepth,
             cancellationToken);
+
+    /// <summary>One drill-down decision: Jev when chosen and configured, otherwise (or when Jev fails)
+    /// the Umbraco.AI decision profile.</summary>
+    private async Task<string?> DecideAsync(
+        IAIChatService chatService,
+        AiStepSettings ai,
+        ClassificationChoice choice,
+        CancellationToken cancellationToken)
+    {
+        if (ai.DecisionEngine == DecisionEngine.Jev)
+        {
+            if (_jev is { IsConfigured: true })
+            {
+                var picked = await _jev.ChooseAsync(choice, cancellationToken);
+                if (picked is not null)
+                {
+                    return picked;
+                }
+            }
+            else
+            {
+                _logger.LogDebug("MediaCurator: Jev is selected but no TypeSafe API key is configured; using Umbraco.AI.");
+            }
+        }
+
+        var responseText = await RefineClassificationAsync(
+            chatService,
+            ai,
+            ClassificationPromptBuilder.BuildRefinePrompt(choice),
+            cancellationToken);
+        return RecognitionResponseParser.ParseClassificationCode(responseText);
+    }
 
     private bool TryGetStoredRecognitionContext(
         Guid mediaKey,
@@ -305,6 +354,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
 
     private async Task<RecognitionResult?> AnalyzeSingleShotAsync(
         IAIChatService chatService,
+        AiStepSettings ai,
         IClassificationScheme? scheme,
         byte[] imageBytes,
         string mediaType,
@@ -323,6 +373,8 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         var responseText = await GetChatResponseAsync(
             chatService,
             RecognitionChatAlias,
+            ai.DescriptionProfileAlias,
+            ai.DescriptionReasoning,
             [message],
             cancellationToken);
         return RecognitionResponseParser.Parse(responseText);
@@ -330,6 +382,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
 
     private async Task<string?> RefineClassificationAsync(
         IAIChatService chatService,
+        AiStepSettings ai,
         string prompt,
         CancellationToken cancellationToken)
     {
@@ -337,6 +390,8 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         return await GetChatResponseAsync(
             chatService,
             ClassificationRefineChatAlias,
+            ai.DecisionProfileAlias,
+            ai.DecisionReasoning,
             [message],
             cancellationToken);
     }
@@ -344,23 +399,93 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
     private async Task<string?> GetChatResponseAsync(
         IAIChatService chatService,
         string inlineChatAlias,
+        string? profileAlias,
+        AiReasoningEffort reasoning,
         IReadOnlyList<ChatMessage> messages,
         CancellationToken cancellationToken)
     {
-        var profileAlias = _options.CurrentValue.RecognitionProfileAlias?.Trim();
-        var response = await chatService.GetChatResponseAsync(
-            chat =>
-            {
-                chat.WithAlias(inlineChatAlias);
-                if (!string.IsNullOrWhiteSpace(profileAlias))
-                {
-                    chat.WithProfile(profileAlias);
-                }
-            },
-            messages,
-            cancellationToken);
+        var profileKey = profileAlias ?? string.Empty;
+        var effort = ToReasoningEffort(reasoning);
+        if (effort is not null && _reasoningUnsupported.ContainsKey(profileKey))
+        {
+            effort = null;
+        }
 
-        return response.Text;
+        try
+        {
+            return await SendAsync(effort);
+        }
+        catch (Exception ex) when (effort is not null
+            && !cancellationToken.IsCancellationRequested
+            && ex.ToString().Contains("reasoning", StringComparison.OrdinalIgnoreCase))
+        {
+            // Not every model takes a reasoning effort (e.g. gpt-4o rejects it). Retry once without it
+            // and remember, so the setting degrades to "model default" instead of breaking recognition.
+            _logger.LogInformation(
+                ex,
+                "MediaCurator: the AI call with reasoning effort {Effort} failed for profile {Profile}; retrying without it.",
+                reasoning,
+                string.IsNullOrEmpty(profileKey) ? "(default)" : profileKey);
+            var text = await SendAsync(null);
+            _reasoningUnsupported[profileKey] = true;
+            return text;
+        }
+
+        async Task<string?> SendAsync(ReasoningEffort? requestedEffort)
+        {
+            var response = await chatService.GetChatResponseAsync(
+                chat =>
+                {
+                    chat.WithAlias(inlineChatAlias);
+                    if (!string.IsNullOrWhiteSpace(profileAlias))
+                    {
+                        chat.WithProfile(profileAlias);
+                    }
+
+                    if (requestedEffort is { } value)
+                    {
+                        // A reasoning effort set on the Umbraco.AI profile itself still wins.
+                        chat.WithChatOptions(new ChatOptions { Reasoning = new ReasoningOptions { Effort = value } });
+                    }
+                },
+                messages,
+                cancellationToken);
+
+            return response.Text;
+        }
+    }
+
+    internal static ReasoningEffort? ToReasoningEffort(AiReasoningEffort effort) => effort switch
+    {
+        AiReasoningEffort.None => ReasoningEffort.None,
+        AiReasoningEffort.Low => ReasoningEffort.Low,
+        AiReasoningEffort.Medium => ReasoningEffort.Medium,
+        AiReasoningEffort.High => ReasoningEffort.High,
+        _ => null,
+    };
+
+    /// <summary>The resolved per-step AI settings for one analysis.</summary>
+    internal sealed record AiStepSettings(
+        int ImageSize,
+        string? DescriptionProfileAlias,
+        AiReasoningEffort DescriptionReasoning,
+        DecisionEngine DecisionEngine,
+        string? DecisionProfileAlias,
+        AiReasoningEffort DecisionReasoning)
+    {
+        public static AiStepSettings From(MediaCuratorSiteSettings settings, MediaCuratorOptions options)
+        {
+            var descriptionProfile = Blank(settings.DescriptionProfileAlias) ?? Blank(options.RecognitionProfileAlias);
+            return new AiStepSettings(
+                settings.RecognitionImageSize,
+                descriptionProfile,
+                settings.DescriptionReasoningEffort,
+                settings.DecisionEngine,
+                Blank(settings.DecisionProfileAlias) ?? Blank(options.DecisionProfileAlias) ?? descriptionProfile,
+                settings.DecisionReasoningEffort);
+        }
+
+        private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     private bool NeedsClassificationRun(Guid mediaKey, RecognitionResult cached, string? classificationSchemeAlias)

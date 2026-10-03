@@ -8,11 +8,14 @@ import {
   openRulesetTab,
   rulesetTreeItem,
   runDryRun,
+  createTestFolder,
+  createTestImage,
+  removeTestMedia,
 } from './util';
 
-const folderName = 'Demo Media Folder';
-const imageName = 'Demo Photo';
-const rulesetName = 'Demo Date Ruleset';
+const folderName = 'MC Demo Media Folder';
+const imageName = 'MC Demo Photo';
+const rulesetName = 'MC Demo Date Ruleset';
 const base = () => process.env.UMBRACO_URL || process.env.URL || 'http://localhost:40264';
 
 async function pause(ms = 1500) {
@@ -23,12 +26,12 @@ test.describe('MediaCurator demo walkthrough', () => {
   test('record backoffice demo video', async ({ umbracoUi, umbracoApi }) => {
     const page = umbracoUi.page;
 
-    await deleteRulesetsByPrefix(umbracoApi, 'Demo ');
-    await umbracoApi.media.ensureNameNotExists(imageName);
-    await umbracoApi.media.ensureNameNotExists(folderName);
+    await deleteRulesetsByPrefix(umbracoApi, 'MC Demo ');
+    await removeTestMedia(umbracoApi, imageName);
+    await removeTestMedia(umbracoApi, folderName);
 
-    const folderId = await umbracoApi.media.createDefaultMediaFolderAndParentId(folderName, null);
-    await umbracoApi.media.createDefaultMediaWithImageAndParentId(imageName, folderId);
+    const folderId = await createTestFolder(umbracoApi, folderName, null);
+    await createTestImage(umbracoApi, imageName, folderId);
     const folder = await umbracoApi.media.getByName(folderName);
 
     await umbracoApi.put(`${base()}/umbraco/mediacurator/api/v1/rulesets`, {

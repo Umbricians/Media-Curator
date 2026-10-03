@@ -9,6 +9,9 @@ import {
   runDryRun,
   saveRuleset,
   startNewRuleset,
+  createTestFolder,
+  createTestImage,
+  removeTestMedia,
 } from './util';
 
 const folderName = 'MC Designer Folder';
@@ -18,14 +21,14 @@ const rulesetName = 'MC Designer Ruleset';
 test.describe('MediaCurator visual designer (nesting + conditions)', () => {
   test.beforeEach(async ({ umbracoApi }) => {
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
-    await umbracoApi.media.ensureNameNotExists(imageName);
-    await umbracoApi.media.ensureNameNotExists(folderName);
+    await removeTestMedia(umbracoApi, imageName);
+    await removeTestMedia(umbracoApi, folderName);
   });
 
   test.afterEach(async ({ umbracoApi }) => {
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
-    await umbracoApi.media.ensureNameNotExists(imageName);
-    await umbracoApi.media.ensureNameNotExists(folderName);
+    await removeTestMedia(umbracoApi, imageName);
+    await removeTestMedia(umbracoApi, folderName);
   });
 
   test('nested conditional ruleset built on the canvas drives curation', async ({ umbracoUi, umbracoApi }) => {
@@ -33,8 +36,8 @@ test.describe('MediaCurator visual designer (nesting + conditions)', () => {
     const year = String(new Date().getFullYear());
 
     // Arrange: folder with one image
-    const folderId = await umbracoApi.media.createDefaultMediaFolderAndParentId(folderName, null);
-    await umbracoApi.media.createDefaultMediaWithImageAndParentId(imageName, folderId);
+    const folderId = await createTestFolder(umbracoApi, folderName, null);
+    await createTestImage(umbracoApi, imageName, folderId);
 
     // Build the ruleset in the designer (Settings section > Media Curator > create ruleset)
     await umbracoUi.goToBackOffice();

@@ -7,9 +7,10 @@ namespace Umbricians.MediaCurator.Providers;
 /// Sorts images by a recognized classification scheme (§5.2). The code for an image is
 /// resolved from a configurable source: a media type property, an administrator-defined
 /// custom code table, or a filename convention (leading code). Hierarchical codes produce
-/// nested folders; naming is code-only, name-only, or "code – name".
+/// nested folders; naming is code-only, name-only, or "code – name". Folders are ordered by
+/// classification code (see <see cref="GetFolderComparer"/>).
 /// </summary>
-public sealed class ClassificationProvider : ICurationProvider
+public sealed class ClassificationProvider : ICurationProvider, ICurationFolderOrder
 {
     public const string ProviderAlias = "Umbricians.MediaCurator.Classification";
 
@@ -179,10 +180,97 @@ public sealed class ClassificationProvider : ICurationProvider
         return CurationResult.Unresolved();
     }
 
+    private const string CodeNameSeparator = " – ";
+
     private static string Format(ClassificationEntry entry, string naming) => naming switch
     {
         "code" => entry.Code,
-        "codeName" => $"{entry.Code} – {entry.Name}",
+        "codeName" => $"{entry.Code}{CodeNameSeparator}{entry.Name}",
         _ => entry.Name,
     };
+
+    /// <summary>Orders folders by classification code (codes compared naturally, so numeric codes
+    /// sort numerically: "010" before "100"). Folder names are mapped back to codes through the
+    /// scheme for every naming — names via the entries at this depth first — and, for "code – name"
+    /// folders whose name is not in the scheme, through their code prefix. With the custom code table
+    /// a folder takes the code of the first table line that produces it at this level. Names that
+    /// cannot be mapped go last, naturally.</summary>
+    public IComparer<string>? GetFolderComparer(FolderOrderContext context)
+    {
+        var natural = new NaturalFolderNameComparer(context.Culture);
+        var schemeAlias = context.GetSetting("scheme", "lcc");
+        var codeByName = new Dictionary<string, string>(StringComparer.Create(context.Culture, ignoreCase: true));
+        var codes = new List<string>();
+
+        void Register(string name, string code)
+        {
+            codeByName.TryAdd(name.Trim(), code);
+            codeByName.TryAdd(Engine.CurationEngine.SanitizeFolderName(name), code);
+        }
+
+        if (schemeAlias.Equals("custom", StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (var line in context.GetSetting("customTable", string.Empty).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var separator = line.IndexOf('=');
+                if (separator <= 0)
+                {
+                    continue;
+                }
+
+                var code = line[..separator].Trim();
+                var segments = line[(separator + 1)..].Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (context.SegmentIndex < segments.Length)
+                {
+                    Register(segments[context.SegmentIndex], code);
+                    codes.Add(code);
+                }
+            }
+        }
+        else
+        {
+            if (_schemes.GetByAlias(schemeAlias) is not { } scheme)
+            {
+                return null;
+            }
+
+            var naming = context.GetSetting("naming", "name");
+            var entries = scheme.GetAllEntries();
+            // Names can repeat across branches; prefer the entry at this folder depth.
+            foreach (var entry in entries.OrderBy(e => scheme.GetPath(e.Code).Count - 1 == context.SegmentIndex ? 0 : 1))
+            {
+                Register(Format(entry, naming), entry.Code);
+                codes.Add(entry.Code);
+            }
+
+            if (naming == "codeName")
+            {
+                var known = entries.Select(e => e.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                return Ranked(name =>
+                {
+                    if (codeByName.TryGetValue(name.Trim(), out var code))
+                    {
+                        return code;
+                    }
+
+                    var at = name.IndexOf(CodeNameSeparator, StringComparison.Ordinal);
+                    return at > 0 && known.Contains(name[..at].Trim()) ? name[..at].Trim() : null;
+                });
+            }
+        }
+
+        return Ranked(name => codeByName.TryGetValue(name.Trim(), out var code) ? code : null);
+
+        RankedFolderNameComparer Ranked(Func<string, string?> codeFor)
+        {
+            var rankByCode = codes
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(NaturalFolderNameComparer.Invariant)
+                .Select((code, index) => (code, index))
+                .ToDictionary(x => x.code, x => (long)x.index, StringComparer.OrdinalIgnoreCase);
+            return new RankedFolderNameComparer(
+                name => codeFor(name) is { } code && rankByCode.TryGetValue(code, out var rank) ? rank : null,
+                natural);
+        }
+    }
 }

@@ -17,9 +17,45 @@ file static class AutomateGuidParsing
 
 file static class AutomateActionConcurrency
 {
+    // Actions that move media or create folders run one at a time, so simultaneous runs never race
+    // to create the same folder.
     private static readonly SemaphoreSlim _gate = new(1, 1);
 
-    internal static async Task<ActionResult> RunSeriallyAsync(
+    // Analysis only writes to the analysed item, so several images can be analysed at once. The gate
+    // follows the "parallel analyses" setting; a change takes effect for analyses that start after it.
+    private static (int Size, SemaphoreSlim Gate) _analysis = (0, new SemaphoreSlim(1, 1));
+    private static readonly object _analysisLock = new();
+
+    internal static Task<ActionResult> RunSeriallyAsync(
+        IAutomationOriginAccessor originAccessor,
+        Func<Task<ActionResult>> action,
+        CancellationToken cancellationToken)
+        => RunGatedAsync(_gate, originAccessor, action, cancellationToken);
+
+    /// <summary>Runs analysis alongside other analyses, up to the configured number at a time.</summary>
+    internal static async Task<ActionResult> RunAnalysisAsync(
+        IParallelMediaWork parallel,
+        IAutomationOriginAccessor originAccessor,
+        Func<Task<ActionResult>> action,
+        CancellationToken cancellationToken)
+    {
+        var size = await parallel.GetMaxParallelismAsync(cancellationToken);
+        SemaphoreSlim gate;
+        lock (_analysisLock)
+        {
+            if (_analysis.Size != size)
+            {
+                _analysis = (size, new SemaphoreSlim(size, size));
+            }
+
+            gate = _analysis.Gate;
+        }
+
+        return await RunGatedAsync(gate, originAccessor, action, cancellationToken);
+    }
+
+    private static async Task<ActionResult> RunGatedAsync(
+        SemaphoreSlim gate,
         IAutomationOriginAccessor originAccessor,
         Func<Task<ActionResult>> action,
         CancellationToken cancellationToken)
@@ -28,7 +64,7 @@ file static class AutomateActionConcurrency
         // automation is running. Carry it across so media saves made by this action count as
         // automation-originated, letting "Media Saved" triggers skip their own cycle.
         var origin = originAccessor.Current;
-        await _gate.WaitAsync(cancellationToken);
+        await gate.WaitAsync(cancellationToken);
         try
         {
             return await RunWithoutAmbientExecutionContextAsync(
@@ -41,7 +77,7 @@ file static class AutomateActionConcurrency
         }
         finally
         {
-            _gate.Release();
+            gate.Release();
         }
     }
 
@@ -103,21 +139,25 @@ public class AnalyzeImageAction : ActionBase<AnalyzeImageSettings, AnalyzeImageO
     private readonly IAutomationOriginAccessor _originAccessor;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IOptionsMonitor<MediaCuratorOptions> _options;
+    private readonly IParallelMediaWork _parallel;
 
     public AnalyzeImageAction(
         ActionInfrastructure infrastructure,
         IAutomationOriginAccessor originAccessor,
         IServiceScopeFactory scopeFactory,
-        IOptionsMonitor<MediaCuratorOptions> options)
+        IOptionsMonitor<MediaCuratorOptions> options,
+        IParallelMediaWork parallel)
         : base(infrastructure)
     {
+        _parallel = parallel;
         _originAccessor = originAccessor;
         _scopeFactory = scopeFactory;
         _options = options;
     }
 
     public override async Task<ActionResult> ExecuteAsync(ActionContext context, CancellationToken cancellationToken)
-        => await AutomateActionConcurrency.RunSeriallyAsync(
+        => await AutomateActionConcurrency.RunAnalysisAsync(
+            _parallel,
             _originAccessor,
             () => ExecuteCoreAsync(context, cancellationToken),
             cancellationToken);
@@ -241,9 +281,14 @@ public class CategorizeMediaAction : ActionBase<CategorizeMediaSettings, Categor
             return Success(new CategorizeMediaOutput { Moved = false, TargetPath = move.TargetPath, Reason = "Dry run." });
         }
 
-        // Execute a single-item plan so only this item moves.
+        // Execute a single-item plan so only this item moves, then put the folders along its new
+        // path in order (the rest of the scope is not touched).
         var singleItemPlan = plan with { Moves = [move] };
-        var summary = await engine.ExecuteAsync(singleItemPlan, trigger: "automate", cancellationToken);
+        var summary = await engine.ExecuteAsync(
+            singleItemPlan,
+            trigger: "automate",
+            new CurationExecutionOptions { Sorting = FolderSorting.TargetPaths },
+            cancellationToken);
         return Success(new CategorizeMediaOutput { Moved = summary.Moved > 0, TargetPath = move.TargetPath });
     }
 }
@@ -258,6 +303,11 @@ public class CurateFolderSettings
 
     [Field(SortOrder = 2)]
     public bool DryRun { get; set; }
+
+    /// <summary>Empty sub-folders are removed at the end of a real run: to the Recycle Bin by
+    /// default, permanently when this is set.</summary>
+    [Field(SortOrder = 3)]
+    public bool PermanentlyDeleteEmptyFolders { get; set; }
 }
 
 public class CurateFolderOutput
@@ -265,6 +315,7 @@ public class CurateFolderOutput
     public int Planned { get; set; }
     public int Moved { get; set; }
     public int Failed { get; set; }
+    public int FoldersRemoved { get; set; }
     public Guid RunKey { get; set; }
 }
 
@@ -318,12 +369,17 @@ public class CurateFolderAction : ActionBase<CurateFolderSettings, CurateFolderO
             return Success(new CurateFolderOutput { Planned = plan.MoveCount });
         }
 
-        var summary = await engine.ExecuteAsync(plan, trigger: "automate", cancellationToken);
+        var summary = await engine.ExecuteAsync(
+            plan,
+            trigger: "automate",
+            settings.PermanentlyDeleteEmptyFolders ? EmptyFolderRemoval.Delete : EmptyFolderRemoval.RecycleBin,
+            cancellationToken);
         return Success(new CurateFolderOutput
         {
             Planned = plan.MoveCount,
             Moved = summary.Moved,
             Failed = summary.Failed,
+            FoldersRemoved = summary.FoldersRemoved,
             RunKey = summary.RunKey,
         });
     }

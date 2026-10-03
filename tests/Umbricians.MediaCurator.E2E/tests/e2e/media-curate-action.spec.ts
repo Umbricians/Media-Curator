@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures';
-import { deleteRulesetsByPrefix } from './util';
+import { deleteRulesetsByPrefix, createTestFolder, createTestImage, removeTestMedia } from './util';
 
 const rootFolderName = 'MC Action Root';
 const subFolderName = 'MC Action Sub';
@@ -10,16 +10,16 @@ const base = () => process.env.UMBRACO_URL || process.env.URL || 'http://localho
 test.describe('MediaCurator "Curate images" media action', () => {
   test.beforeEach(async ({ umbracoApi }) => {
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
-    await umbracoApi.media.ensureNameNotExists(imageName);
-    await umbracoApi.media.ensureNameNotExists(subFolderName);
-    await umbracoApi.media.ensureNameNotExists(rootFolderName);
+    await removeTestMedia(umbracoApi, imageName);
+    await removeTestMedia(umbracoApi, subFolderName);
+    await removeTestMedia(umbracoApi, rootFolderName);
   });
 
   test.afterEach(async ({ umbracoApi }) => {
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
-    await umbracoApi.media.ensureNameNotExists(imageName);
-    await umbracoApi.media.ensureNameNotExists(subFolderName);
-    await umbracoApi.media.ensureNameNotExists(rootFolderName);
+    await removeTestMedia(umbracoApi, imageName);
+    await removeTestMedia(umbracoApi, subFolderName);
+    await removeTestMedia(umbracoApi, rootFolderName);
   });
 
   test('curating a subfolder moves its images relative to the ruleset scope root', async ({
@@ -29,9 +29,9 @@ test.describe('MediaCurator "Curate images" media action', () => {
     const page = umbracoUi.page;
 
     // Arrange: ruleset scoped to the root folder; the image sits in a subfolder below it
-    const rootId = await umbracoApi.media.createDefaultMediaFolderAndParentId(rootFolderName, null);
-    const subId = await umbracoApi.media.createDefaultMediaFolderAndParentId(subFolderName, rootId);
-    await umbracoApi.media.createDefaultMediaWithImageAndParentId(imageName, subId);
+    const rootId = await createTestFolder(umbracoApi, rootFolderName, null);
+    const subId = await createTestFolder(umbracoApi, subFolderName, rootId);
+    await createTestImage(umbracoApi, imageName, subId);
     const saveResponse = await umbracoApi.put(`${base()}/umbraco/mediacurator/api/v1/rulesets`, {
       scopeRootKey: rootId,
       name: rulesetName,

@@ -20,10 +20,10 @@ public class HierarchicalClassificationResolverTests
             scheme,
             "high-speed train at a railway station",
             [new AiTag("train", 0.95), new AiTag("railway-station", 0.9)],
-            (prompt, _) =>
+            (choice, _) =>
             {
-                prompts.Add(prompt);
-                return Task.FromResult<string?>(responses.Dequeue());
+                prompts.Add(ClassificationPromptBuilder.BuildRefinePrompt(choice));
+                return Task.FromResult(RecognitionResponseParser.ParseClassificationCode(responses.Dequeue()));
             },
             maxDepth: 4,
             CancellationToken.None);
@@ -52,7 +52,7 @@ public class HierarchicalClassificationResolverTests
             (_, _) =>
             {
                 calls++;
-                return Task.FromResult<string?>(responses.Dequeue());
+                return Task.FromResult(RecognitionResponseParser.ParseClassificationCode(responses.Dequeue()));
             },
             maxDepth: 4,
             CancellationToken.None);
@@ -74,10 +74,51 @@ public class HierarchicalClassificationResolverTests
             scheme,
             "train at station",
             [new AiTag("train", 0.9)],
-            (_, _) => Task.FromResult<string?>(responses.Dequeue()),
+            (_, _) => Task.FromResult(RecognitionResponseParser.ParseClassificationCode(responses.Dequeue())),
             maxDepth: 4,
             CancellationToken.None);
 
         Assert.Equal("300", code);
+    }
+
+    [Fact]
+    public async Task Each_decision_gets_the_parent_and_only_its_direct_children()
+    {
+        var scheme = new DeweyPublicDomainScheme();
+        var choices = new List<ClassificationChoice>();
+        var picks = new Queue<string>(["300", "380"]);
+
+        var code = await HierarchicalClassificationResolver.ResolveAsync(
+            scheme,
+            "train",
+            [],
+            (choice, _) =>
+            {
+                choices.Add(choice);
+                return Task.FromResult<string?>(picks.Count > 0 ? picks.Dequeue() : null);
+            },
+            maxDepth: 4,
+            CancellationToken.None);
+
+        Assert.Equal("380", code);
+        Assert.Null(choices[0].Parent);
+        Assert.Contains(choices[0].Candidates, c => c.Code == "300");
+        Assert.Equal("300", choices[1].Parent!.Code);
+        Assert.All(choices[1].Candidates, c => Assert.StartsWith("3", c.Code));
+    }
+
+    [Fact]
+    public async Task Picks_are_matched_ignoring_case_and_whitespace()
+    {
+        var scheme = new LccOutlineScheme();
+        var code = await HierarchicalClassificationResolver.ResolveAsync(
+            scheme,
+            "a map",
+            [],
+            (_, _) => Task.FromResult<string?>(" g "),
+            maxDepth: 1,
+            CancellationToken.None);
+
+        Assert.Equal("G", code);
     }
 }

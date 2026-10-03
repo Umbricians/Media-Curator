@@ -18,6 +18,25 @@ public class MediaCuratorMigrationPlan : PackageMigrationPlan
         To<CreateRunLogTablesMigration>("mediacurator-create-run-log-tables");
         To<CreateExclusionTableMigration>("mediacurator-create-exclusion-table");
         To<CreateSiteSettingsTableMigration>("mediacurator-create-site-settings-table");
+        To<AddSiteSettingsAiColumnMigration>("mediacurator-add-site-settings-ai-column");
+    }
+}
+
+public class AddSiteSettingsAiColumnMigration : AsyncMigrationBase
+{
+    public AddSiteSettingsAiColumnMigration(IMigrationContext context)
+        : base(context)
+    {
+    }
+
+    protected override Task MigrateAsync()
+    {
+        if (TableExists(SiteSettingsDto.TableName) && !ColumnExists(SiteSettingsDto.TableName, "aiSettings"))
+        {
+            AddColumn<SiteSettingsDto>(SiteSettingsDto.TableName, "aiSettings");
+        }
+
+        return Task.CompletedTask;
     }
 }
 

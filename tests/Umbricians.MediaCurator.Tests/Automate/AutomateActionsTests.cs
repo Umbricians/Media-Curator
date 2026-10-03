@@ -122,6 +122,9 @@ public class AutomateActionsTests
         public bool PlannedWholeScope;
         public CurationPlan? ExecutedPlan;
         public string? ExecutedTrigger;
+        public EmptyFolderRemoval? ExecutedRemoval;
+        public FolderSorting? ExecutedSorting;
+        public int FoldersRemoved;
 
         public Task<CurationPlan> PlanAsync(Guid scope, bool recursive, CancellationToken ct = default)
         {
@@ -134,12 +137,23 @@ public class AutomateActionsTests
         public Task<MediaCurationPlan> PlanForMediaAsync(Guid mediaKey, CancellationToken ct = default)
             => Task.FromResult(MediaPlan ?? new MediaCurationPlan(mediaKey, [], [$"{mediaKey}: no ruleset applies"]));
 
-        public Task<CurationRunSummary> ExecuteAsync(CurationPlan plan, string trigger, CancellationToken ct = default)
+        public Task<CurationRunSummary> ExecuteAsync(CurationPlan plan, string trigger, CurationExecutionOptions options, CancellationToken ct = default)
         {
             ExecutedPlan = plan;
             ExecutedTrigger = trigger;
-            return Task.FromResult(new CurationRunSummary(Guid.NewGuid(), plan.Moves.Count(m => !m.AlreadyInPlace), 0, 0));
+            ExecutedRemoval = options.EmptyFolders;
+            ExecutedSorting = options.Sorting;
+            return Task.FromResult(new CurationRunSummary(Guid.NewGuid(), plan.Moves.Count(m => !m.AlreadyInPlace), 0, 0, FoldersRemoved));
         }
+
+        public Task<int> RemoveEmptyFoldersForMediaAsync(Guid mediaKey, IReadOnlyList<ExecutedPlan> executed, EmptyFolderRemoval emptyFolders, CancellationToken ct = default)
+            => throw new NotSupportedException("The single-item action does no cleanup.");
+
+        public Task<int> SortFoldersForMediaAsync(Guid mediaKey, IReadOnlyList<ExecutedPlan> executed, CancellationToken ct = default)
+            => throw new NotSupportedException("Actions sort through their execution options.");
+
+        public Task<int> CountEmptyFoldersAsync(Guid folderKey, CancellationToken ct = default)
+            => Task.FromResult(0);
     }
 
     private sealed class FakeResolver : IRulesetResolver
@@ -197,7 +211,31 @@ public class AutomateActionsTests
 
         Assert.Equal(ActionResultStatus.Success, result.Status);
         Assert.Null(engine.ExecutedPlan);
+        Assert.Null(engine.ExecutedRemoval);
         Assert.Equal(1, ((CurateFolderOutput)result.OutputData!).Planned);
+        Assert.Equal(0, ((CurateFolderOutput)result.OutputData!).FoldersRemoved);
+    }
+
+    [Theory]
+    [InlineData(false, EmptyFolderRemoval.RecycleBin)]
+    [InlineData(true, EmptyFolderRemoval.Delete)]
+    public async Task CurateFolder_removes_empty_folders_per_setting_and_outputs_the_count(bool permanent, EmptyFolderRemoval expected)
+    {
+        var engine = new FakeEngine
+        {
+            Plan = PlanWith(new PlannedMove(Guid.NewGuid(), "a.jpg", Guid.NewGuid(), ["2026"], false, null)),
+            FoldersRemoved = 2,
+        };
+        var action = new CurateFolderAction(Infrastructure(), Origins, ScopeFactory(engine));
+
+        var result = await action.ExecuteAsync(
+            Context(new CurateFolderSettings { ScopeFolderKey = Guid.NewGuid().ToString(), PermanentlyDeleteEmptyFolders = permanent }),
+            CancellationToken.None);
+
+        Assert.Equal(expected, engine.ExecutedRemoval);
+        // A whole-scope run sorts the whole scope tree.
+        Assert.Equal(FolderSorting.Subtree, engine.ExecutedSorting);
+        Assert.Equal(2, ((CurateFolderOutput)result.OutputData!).FoldersRemoved);
     }
 
     [Fact]
@@ -255,6 +293,9 @@ public class AutomateActionsTests
         Assert.Equal(mediaKey, Assert.Single(engine.ExecutedPlan!.Moves).MediaKey);
         // Planning the whole scope runs every rule (and AI recognition) for every image in it.
         Assert.False(engine.PlannedWholeScope);
+        // Single-item action: no empty-folder cleanup; only the folders along its new path are sorted.
+        Assert.Equal(EmptyFolderRemoval.None, engine.ExecutedRemoval);
+        Assert.Equal(FolderSorting.TargetPaths, engine.ExecutedSorting);
     }
 
     [Fact]
@@ -303,7 +344,8 @@ public class AutomateActionsTests
             Infrastructure(),
             Origins,
             ScopeFactory(recognition),
-            new OptionsMonitorStub(new MediaCuratorOptions()));
+            new OptionsMonitorStub(new MediaCuratorOptions()),
+            new TestParallelWork());
         var origin = new AutomationOrigin(Guid.NewGuid(), Guid.NewGuid(), [Guid.NewGuid()]);
 
         using (Origins.Push(origin))
@@ -341,7 +383,8 @@ public class AutomateActionsTests
             Infrastructure(),
             Origins,
             ScopeFactory(recognition),
-            new OptionsMonitorStub(new MediaCuratorOptions()));
+            new OptionsMonitorStub(new MediaCuratorOptions()),
+            new TestParallelWork());
 
         var result = await action.ExecuteAsync(
             Context(new AnalyzeImageSettings { MediaKey = Guid.NewGuid().ToString(), Force = true }),
@@ -364,7 +407,8 @@ public class AutomateActionsTests
             Infrastructure(),
             Origins,
             ScopeFactory(recognition),
-            new OptionsMonitorStub(new MediaCuratorOptions { ClassificationSchemeAlias = "lcc" }));
+            new OptionsMonitorStub(new MediaCuratorOptions { ClassificationSchemeAlias = "lcc" }),
+            new TestParallelWork());
 
         var result = await action.ExecuteAsync(
             Context(new AnalyzeImageSettings
@@ -387,7 +431,8 @@ public class AutomateActionsTests
             Infrastructure(),
             Origins,
             ScopeFactory(recognition),
-            new OptionsMonitorStub(new MediaCuratorOptions { ClassificationSchemeAlias = "dewey-pd" }));
+            new OptionsMonitorStub(new MediaCuratorOptions { ClassificationSchemeAlias = "dewey-pd" }),
+            new TestParallelWork());
 
         await action.ExecuteAsync(
             Context(new AnalyzeImageSettings { MediaKey = Guid.NewGuid().ToString() }),

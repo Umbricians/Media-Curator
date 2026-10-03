@@ -27,6 +27,33 @@ public class ReanalyzeImagesResponseModel
 public class MediaImageCountModel
 {
     public required int Count { get; init; }
+
+    /// <summary>Images with no stored AI analysis yet.</summary>
+    public required int NotAnalyzedCount { get; init; }
+}
+
+public class MediaImageModel
+{
+    public required Guid MediaKey { get; init; }
+
+    public required string MediaName { get; init; }
+}
+
+public class MediaImagesToAnalyzeModel
+{
+    public List<MediaImageModel> Images { get; init; } = [];
+
+    /// <summary>Images left out because they were already analyzed.</summary>
+    public int AlreadyAnalyzedCount { get; init; }
+}
+
+public class AnalyzeMediaImagesResponseModel
+{
+    /// <summary>One entry per image sent to the AI.</summary>
+    public List<ReanalyzeImageResultModel> Results { get; init; } = [];
+
+    /// <summary>Images skipped because they were already analyzed.</summary>
+    public int AlreadyAnalyzedCount { get; init; }
 }
 
 public class PizzaRecognitionTestRequestModel

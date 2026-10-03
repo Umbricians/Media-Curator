@@ -18,6 +18,12 @@ internal sealed class SiteSettingsDto
     [Column("persistImageDescription")]
     public bool PersistImageDescription { get; set; } = true;
 
+    /// <summary>AI settings as JSON (<see cref="Settings.StoredAiSettings"/>); null until first saved.</summary>
+    [Column("aiSettings")]
+    [NullSetting(NullSetting = NullSettings.Null)]
+    [SpecialDbType(SpecialDbTypes.NVARCHARMAX)]
+    public string? AiSettings { get; set; }
+
     [Column("dateUpdated")]
     public DateTime DateUpdated { get; set; }
 }

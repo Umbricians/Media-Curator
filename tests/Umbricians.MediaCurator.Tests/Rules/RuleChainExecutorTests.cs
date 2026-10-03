@@ -160,4 +160,38 @@ public class RuleChainExecutorTests
 
         Assert.Equal("vanilla", seen);
     }
+
+    [Fact]
+    public async Task Records_which_rule_and_provider_segment_produced_each_folder_level()
+    {
+        var multi = new FakeProvider("p.date", _ => CurationResult.Resolved("2026/06", ["2026", "06"]));
+        var executor = Executor(multi, FakeProvider.Unresolvable("p.color"), FakeProvider.Fixed("p.tag", "A"));
+        var dateSettings = TestContext.Settings(("format", "yyyy/MM"));
+        var rules = new List<RuleNode>
+        {
+            new()
+            {
+                ProviderAlias = "p.date",
+                Settings = dateSettings,
+                Children =
+                [
+                    new RuleNode
+                    {
+                        ProviderAlias = "p.color",
+                        Fallback = UnresolvedBehavior.Unsorted,
+                        Children = [new RuleNode { ProviderAlias = "p.tag" }],
+                    },
+                ],
+            },
+        };
+
+        var result = await executor.ExecuteAsync(rules, TestContext.Create());
+
+        Assert.Equal(["2026", "06", RuleChainExecutor.UnsortedFolderName, "A"], result.Segments.Select(s => s.Name));
+        var origins = result.SegmentOrigins!;
+        Assert.Equal(["p.date", "p.date", "p.color", "p.tag"], origins.Select(o => o.ProviderAlias));
+        // The Unsorted fallback stands in for the provider's first segment.
+        Assert.Equal([0, 1, 0, 0], origins.Select(o => o.SegmentIndex));
+        Assert.Same(dateSettings, origins[0].Settings);
+    }
 }

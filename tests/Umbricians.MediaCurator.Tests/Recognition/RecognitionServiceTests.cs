@@ -47,8 +47,35 @@ public class RecognitionServiceTests
         public IAsyncEnumerable<ChatResponseUpdate> GetStreamingChatResponseAsync(Guid profileId, IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
+        /// <summary>Profile alias and requested reasoning effort of every inline chat call, in order.</summary>
+        public List<(string? Profile, ReasoningEffort? Effort)> Requests = [];
+
+        /// <summary>When set, a call that asks for a reasoning effort fails like a model that rejects it.</summary>
+        public bool RejectReasoning;
+
+        private static T? ReadBuilder<T>(Umbraco.AI.Core.InlineChat.AIChatBuilder builder, string property)
+            => (T?)typeof(Umbraco.AI.Core.InlineChat.AIChatBuilder)
+                .GetProperty(property, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)!
+                .GetValue(builder);
+
         public Task<ChatResponse> GetChatResponseAsync(Action<Umbraco.AI.Core.InlineChat.AIChatBuilder> configure, IEnumerable<ChatMessage> messages, CancellationToken cancellationToken = default)
-            => GetChatResponseAsync(messages, null, cancellationToken);
+        {
+            var builder = new Umbraco.AI.Core.InlineChat.AIChatBuilder();
+            configure(builder);
+            // The builder's state is internal to Umbraco.AI; read it the way its chat service would.
+            var effort = ReadBuilder<ChatOptions>(builder, "ChatOptions")?.Reasoning?.Effort;
+            lock (Requests)
+            {
+                Requests.Add((ReadBuilder<string>(builder, "ProfileAlias"), effort));
+            }
+
+            if (RejectReasoning && effort is not null)
+            {
+                throw new InvalidOperationException("HTTP 400: Unsupported parameter: 'reasoning.effort' is not supported with this model.");
+            }
+
+            return GetChatResponseAsync(messages, null, cancellationToken);
+        }
 
         public IAsyncEnumerable<ChatResponseUpdate> StreamChatResponseAsync(Action<Umbraco.AI.Core.InlineChat.AIChatBuilder> configure, IEnumerable<ChatMessage> messages, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
@@ -87,6 +114,13 @@ public class RecognitionServiceTests
         public Guid EnsureFolderPath(Guid p, IReadOnlyList<string> s) => p;
 
         public void Move(Guid m, Guid t) { }
+
+        public IReadOnlyList<MediaItemInfo> GetChildren(Guid folderKey) => [];
+        public void MoveToRecycleBin(Guid mediaKey) { }
+        public void Delete(Guid mediaKey) { }
+        public void RestoreFromRecycleBin(Guid mediaKey, Guid parentKey) { }
+
+        public void SortChildren(Guid folderKey, IReadOnlyList<Guid> orderedChildKeys) { }
     }
 
     private sealed class UppercaseEnricher : IRecognitionEnricher
@@ -132,7 +166,8 @@ public class RecognitionServiceTests
         bool metadataOnly = false,
         IRecognitionEnricher? enricher = null,
         Action<MediaCuratorOptions>? configureOptions = null,
-        FakeSettingsService? settings = null)
+        FakeSettingsService? settings = null,
+        IJevClassificationDecider? jev = null)
     {
         var services = new ServiceCollection();
         if (chat is not null)
@@ -152,8 +187,27 @@ public class RecognitionServiceTests
             enrichers,
             options,
             settings,
-            NullLogger<UmbracoAiRecognitionService>.Instance);
+            NullLogger<UmbracoAiRecognitionService>.Instance,
+            jev);
     }
+
+    private sealed class FakeJev : IJevClassificationDecider
+    {
+        public bool IsConfigured { get; set; } = true;
+
+        public Queue<string?> Picks = new();
+
+        public List<ClassificationChoice> Choices = [];
+
+        public Task<string?> ChooseAsync(ClassificationChoice choice, CancellationToken cancellationToken = default)
+        {
+            Choices.Add(choice);
+            return Task.FromResult(Picks.Count > 0 ? Picks.Dequeue() : null);
+        }
+    }
+
+    private const string DescribeResponse =
+        """{"description":"a high-speed train at a station","tags":[{"name":"train","confidence":0.95}]}""";
 
     private sealed class OptionsMonitorStub : IOptionsMonitor<MediaCuratorOptions>
     {
@@ -541,5 +595,144 @@ public class RecognitionServiceTests
         Assert.Equal("385", media.Properties[ClassificationProvider.CodePropertyAlias]);
         Assert.Equal(4, chat.Calls);
         Assert.Equal("train", result.Tags[0].Name);
+    }
+
+    [Fact]
+    public async Task Resizes_to_the_image_size_setting()
+    {
+        var media = new FakeMediaOps { Name = "wide.png", FileBytes = CreatePng(2000, 1000) };
+        var chat = new FakeChatService();
+        var settings = new FakeSettingsService { Value = new MediaCuratorSiteSettings { RecognitionImageSize = 512 } };
+        var service = Create(media, chat, configureOptions: o => o.MaxRecognitionEdgePixels = 1024, settings: settings);
+
+        await service.AnalyzeAsync(Guid.NewGuid(), force: true);
+
+        var sent = chat.ReceivedMessages.SelectMany(m => m.Contents).OfType<DataContent>().Single();
+        using var image = Image.Load(sent.Data.ToArray());
+        Assert.Equal(512, image.Width);
+    }
+
+    [Fact]
+    public async Task Description_and_decisions_use_their_own_profile_and_reasoning_effort()
+    {
+        var media = new FakeMediaOps();
+        var chat = new FakeChatService();
+        chat.ResponseQueue.Enqueue(DescribeResponse);
+        chat.ResponseQueue.Enqueue("""{"classificationCode":"300"}""");
+        chat.ResponseQueue.Enqueue("""{"classificationCode":"380"}""");
+        chat.ResponseQueue.Enqueue("""{"classificationCode":"385"}""");
+        var settings = new FakeSettingsService
+        {
+            Value = new MediaCuratorSiteSettings
+            {
+                DescriptionProfileAlias = "vision-profile",
+                DescriptionReasoningEffort = AiReasoningEffort.Low,
+                DecisionProfileAlias = "decision-profile",
+                DecisionReasoningEffort = AiReasoningEffort.None,
+            },
+        };
+        var service = Create(media, chat, settings: settings);
+
+        var result = await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
+
+        Assert.Equal("385", result!.ClassificationCode);
+        Assert.Equal(("vision-profile", ReasoningEffort.Low), chat.Requests[0]);
+        Assert.All(chat.Requests.Skip(1), r => Assert.Equal(("decision-profile", ReasoningEffort.None), r));
+    }
+
+    [Fact]
+    public async Task Decisions_fall_back_to_the_description_profile_then_the_configured_recognition_profile()
+    {
+        var media = new FakeMediaOps();
+        var chat = new FakeChatService();
+        chat.ResponseQueue.Enqueue(DescribeResponse);
+        chat.ResponseQueue.Enqueue("""{"classificationCode":"300"}""");
+        var settings = new FakeSettingsService
+        {
+            Value = new MediaCuratorSiteSettings { DescriptionReasoningEffort = AiReasoningEffort.Default },
+        };
+        var service = Create(media, chat, configureOptions: o => { o.RecognitionProfileAlias = "appsettings-profile"; o.MaxClassificationDepth = 1; }, settings: settings);
+
+        await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
+
+        Assert.Equal(("appsettings-profile", (ReasoningEffort?)null), chat.Requests[0]);
+        Assert.Equal("appsettings-profile", chat.Requests[1].Profile);
+    }
+
+    [Fact]
+    public async Task Retries_without_reasoning_effort_when_the_model_rejects_it()
+    {
+        var media = new FakeMediaOps();
+        var chat = new FakeChatService { RejectReasoning = true };
+        var profile = $"no-reasoning-{Guid.NewGuid():N}";
+        var settings = new FakeSettingsService
+        {
+            Value = new MediaCuratorSiteSettings
+            {
+                DescriptionProfileAlias = profile,
+                DescriptionReasoningEffort = AiReasoningEffort.Low,
+            },
+        };
+        var service = Create(media, chat, settings: settings);
+
+        var first = await service.AnalyzeAsync(Guid.NewGuid(), force: true);
+        var second = await service.AnalyzeAsync(Guid.NewGuid(), force: true);
+
+        Assert.NotNull(first);
+        Assert.NotNull(second);
+        // Rejected once, retried without; the next analysis no longer asks for it.
+        Assert.Equal([ReasoningEffort.Low, null, null], chat.Requests.Select(r => r.Effort).ToArray());
+    }
+
+    [Fact]
+    public async Task Jev_makes_the_decisions_when_selected()
+    {
+        var media = new FakeMediaOps();
+        var chat = new FakeChatService();
+        chat.ResponseQueue.Enqueue(DescribeResponse);
+        var jev = new FakeJev { Picks = new Queue<string?>(["300", "380", "385"]) };
+        var settings = new FakeSettingsService { Value = new MediaCuratorSiteSettings { DecisionEngine = DecisionEngine.Jev } };
+        var service = Create(media, chat, settings: settings, jev: jev);
+
+        var result = await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
+
+        Assert.Equal("385", result!.ClassificationCode);
+        Assert.Equal(1, chat.Calls); // only the image description went to Umbraco.AI
+        Assert.Equal("a high-speed train at a station", jev.Choices[0].Description);
+        Assert.Equal("380", jev.Choices[2].Parent!.Code);
+    }
+
+    [Fact]
+    public async Task A_failed_Jev_decision_falls_back_to_Umbraco_AI()
+    {
+        var media = new FakeMediaOps();
+        var chat = new FakeChatService();
+        chat.ResponseQueue.Enqueue(DescribeResponse);
+        chat.ResponseQueue.Enqueue("""{"classificationCode":"380"}""");
+        var jev = new FakeJev { Picks = new Queue<string?>(["300", null]) };
+        var settings = new FakeSettingsService { Value = new MediaCuratorSiteSettings { DecisionEngine = DecisionEngine.Jev } };
+        var service = Create(media, chat, configureOptions: o => o.MaxClassificationDepth = 2, settings: settings, jev: jev);
+
+        var result = await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
+
+        Assert.Equal("380", result!.ClassificationCode);
+        Assert.Equal(2, chat.Calls);
+    }
+
+    [Fact]
+    public async Task Jev_without_an_api_key_uses_Umbraco_AI()
+    {
+        var media = new FakeMediaOps();
+        var chat = new FakeChatService();
+        chat.ResponseQueue.Enqueue(DescribeResponse);
+        chat.ResponseQueue.Enqueue("""{"classificationCode":"300"}""");
+        var jev = new FakeJev { IsConfigured = false, Picks = new Queue<string?>(["900"]) };
+        var settings = new FakeSettingsService { Value = new MediaCuratorSiteSettings { DecisionEngine = DecisionEngine.Jev } };
+        var service = Create(media, chat, configureOptions: o => o.MaxClassificationDepth = 1, settings: settings, jev: jev);
+
+        var result = await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
+
+        Assert.Equal("300", result!.ClassificationCode);
+        Assert.Empty(jev.Choices);
     }
 }

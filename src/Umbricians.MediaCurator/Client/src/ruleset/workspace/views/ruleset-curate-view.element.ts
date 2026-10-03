@@ -4,6 +4,11 @@ import { UMB_NOTIFICATION_CONTEXT } from "@umbraco-cms/backoffice/notification";
 import { MediaCuratorService, type CurationPlanModel, type CurationRunModel } from "../../../api/index.js";
 import { MC_EMPTY_GUID } from "../../entity.js";
 import { MC_RULESET_WORKSPACE_CONTEXT } from "../ruleset-workspace.context-token.js";
+import { emptyFoldersLine, resultMessage } from "../../../media/curate-media.summary.js";
+
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+import "../../../media/empty-folders-option.element.js";
+import type { McEmptyFoldersOptionElement } from "../../../media/empty-folders-option.element.js";
 
 /** Curate tab: dry run the saved ruleset against its scope folder, apply it, and see this folder's runs. */
 @customElement("mc-ruleset-curate-view")
@@ -12,6 +17,7 @@ export class McRulesetCurateViewElement extends UmbLitElement {
   @state() private _plan?: CurationPlanModel;
   @state() private _runs: CurationRunModel[] = [];
   @state() private _busy = false;
+  #permanentlyDeleteEmptyFolders = false;
 
   #context?: typeof MC_RULESET_WORKSPACE_CONTEXT.TYPE;
   #notifications?: typeof UMB_NOTIFICATION_CONTEXT.TYPE;
@@ -57,7 +63,7 @@ export class McRulesetCurateViewElement extends UmbLitElement {
     }
     this._busy = true;
     const response = await MediaCuratorService.planCuration({
-      body: { scopeFolderKey: this._scopeFolderKey, recursive: true },
+      body: { scopeFolderKey: this._scopeFolderKey, recursive: true, permanentlyDeleteEmptyFolders: false },
     });
     this._busy = false;
     if (response.error || !response.data) {
@@ -71,18 +77,18 @@ export class McRulesetCurateViewElement extends UmbLitElement {
     if (!this._scopeFolderKey) return;
     this._busy = true;
     const response = await MediaCuratorService.executeCuration({
-      body: { scopeFolderKey: this._scopeFolderKey, recursive: true },
+      body: {
+        scopeFolderKey: this._scopeFolderKey,
+        recursive: true,
+        permanentlyDeleteEmptyFolders: this.#permanentlyDeleteEmptyFolders,
+      },
     });
     this._busy = false;
     if (response.error || !response.data) {
       this.#notify("danger", `Curation failed: ${JSON.stringify(response.error ?? "no data")}`);
       return;
     }
-    const summary = response.data;
-    this.#notify(
-      "positive",
-      `Curated: ${summary.moved} moved, ${summary.alreadyInPlace} already in place, ${summary.failed} failed.`,
-    );
+    this.#notify("positive", resultMessage(response.data, this.#permanentlyDeleteEmptyFolders));
     this._plan = undefined;
     await this.#loadRuns();
   }
@@ -151,17 +157,26 @@ export class McRulesetCurateViewElement extends UmbLitElement {
                     </ul>
                   </details>`
                 : nothing}
-              ${plan.moveCount > 0
-                ? html`<div class="actions">
-                    <uui-button
-                      data-mark="mc:plan-execute"
-                      label="Move ${plan.moveCount} item(s)"
-                      look="primary"
-                      color="positive"
-                      ?disabled=${this._busy}
-                      @click=${() => this.#execute()}
-                    ></uui-button>
-                  </div>`
+              ${plan.moveCount > 0 || plan.emptyFolderCount > 0
+                ? html`${plan.moveCount > 0
+                      ? html`<p>${emptyFoldersLine(plan.emptyFolderCount)}</p>`
+                      : html`<p data-mark="mc:plan-cleanup-only">${plural(plan.emptyFolderCount, "empty sub-folder", "empty sub-folders")} can be removed.</p>`}
+                    <mc-empty-folders-option
+                      @change=${(event: Event) =>
+                        (this.#permanentlyDeleteEmptyFolders = (event.target as McEmptyFoldersOptionElement).permanentlyDelete)}
+                    ></mc-empty-folders-option>
+                    <div class="actions">
+                      <uui-button
+                        data-mark="mc:plan-execute"
+                        label=${plan.moveCount > 0
+                          ? `Move ${plan.moveCount} item(s)`
+                          : `Remove ${plural(plan.emptyFolderCount, "empty folder", "empty folders")}`}
+                        look="primary"
+                        color="positive"
+                        ?disabled=${this._busy}
+                        @click=${() => this.#execute()}
+                      ></uui-button>
+                    </div>`
                 : nothing}
             `}
       </uui-box>

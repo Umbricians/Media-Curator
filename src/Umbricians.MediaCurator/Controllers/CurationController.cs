@@ -42,7 +42,9 @@ public class CurationController : MediaCuratorApiControllerBase
         try
         {
             var plan = await _engine.PlanAsync(request.ScopeFolderKey, request.Recursive, ct);
-            return Ok(CurationPlanModel.From(plan));
+            var model = CurationPlanModel.From(plan);
+            model.EmptyFolderCount = await _engine.CountEmptyFoldersAsync(plan.ScopeFolderKey, ct);
+            return Ok(model);
         }
         catch (InvalidOperationException ex)
         {
@@ -59,7 +61,7 @@ public class CurationController : MediaCuratorApiControllerBase
         try
         {
             var plan = await _engine.PlanAsync(request.ScopeFolderKey, request.Recursive, ct);
-            var summary = await _engine.ExecuteAsync(plan, trigger: "manual", ct);
+            var summary = await _engine.ExecuteAsync(plan, trigger: "manual", Removal(request.PermanentlyDeleteEmptyFolders), ct);
             return Ok(CurationRunSummaryModel.From(summary));
         }
         catch (InvalidOperationException ex)
@@ -77,7 +79,9 @@ public class CurationController : MediaCuratorApiControllerBase
     {
         try
         {
-            return Ok(MediaCurationPlanModel.From(await _engine.PlanForMediaAsync(mediaKey, ct)));
+            var model = MediaCurationPlanModel.From(await _engine.PlanForMediaAsync(mediaKey, ct));
+            model.EmptyFolderCount = await _engine.CountEmptyFoldersAsync(mediaKey, ct);
+            return Ok(model);
         }
         catch (MediaNotFoundException ex)
         {
@@ -86,20 +90,23 @@ public class CurationController : MediaCuratorApiControllerBase
     }
 
     /// <summary>Plans and executes curation for one media item or folder tree. Each governing
-    /// ruleset runs (and is logged) separately.</summary>
+    /// ruleset runs (and is logged) separately. Afterwards the empty sub-folders below the clicked
+    /// folder are removed (to the Recycle Bin, or permanently when asked), and the folders are sorted.</summary>
     [HttpPost("curation/media/{mediaKey:guid}/execute")]
     [ProducesResponseType<MediaCurationSummaryModel>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> ExecuteMediaCuration(Guid mediaKey, CancellationToken ct)
+    public async Task<IActionResult> ExecuteMediaCuration(Guid mediaKey, [FromQuery] bool permanentlyDeleteEmptyFolders, CancellationToken ct)
     {
         try
         {
             var plan = await _engine.PlanForMediaAsync(mediaKey, ct);
             int moved = 0, inPlace = 0, failed = 0;
             var runKeys = new List<Guid>();
+            var executed = new List<ExecutedPlan>();
             foreach (var p in plan.Plans)
             {
                 var summary = await _engine.ExecuteAsync(p, trigger: "manual", ct);
+                executed.Add(new ExecutedPlan(p, summary.RunKey));
                 moved += summary.Moved;
                 inPlace += summary.AlreadyInPlace;
                 failed += summary.Failed;
@@ -110,13 +117,23 @@ public class CurationController : MediaCuratorApiControllerBase
                 }
             }
 
-            return Ok(new MediaCurationSummaryModel { Moved = moved, AlreadyInPlace = inPlace, Failed = failed, RunKeys = runKeys });
+            // Once, after every plan has run, rooted at the clicked folder (never for a single image).
+            var foldersRemoved = await _engine.RemoveEmptyFoldersForMediaAsync(
+                mediaKey, executed, Removal(permanentlyDeleteEmptyFolders), ct);
+
+            // Then, once, put the clicked folder's tree (or a single image's new path) in order.
+            await _engine.SortFoldersForMediaAsync(mediaKey, executed, ct);
+
+            return Ok(new MediaCurationSummaryModel { Moved = moved, AlreadyInPlace = inPlace, Failed = failed, FoldersRemoved = foldersRemoved, RunKeys = runKeys });
         }
         catch (MediaNotFoundException ex)
         {
             return NotFound(Error(ex.Message));
         }
     }
+
+    private static EmptyFolderRemoval Removal(bool permanentlyDelete)
+        => permanentlyDelete ? EmptyFolderRemoval.Delete : EmptyFolderRemoval.RecycleBin;
 
     // The backoffice shows a problem's title in its error notification, so the reason goes there.
     // It only treats the body as problem details when "type" is present.

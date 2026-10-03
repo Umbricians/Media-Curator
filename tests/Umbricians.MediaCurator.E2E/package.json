@@ -6,6 +6,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
+    "check:names": "node scripts/check-test-names.mjs",
     "record:demo": "playwright test --config=playwright.demo.config.ts"
   },
   "devDependencies": {

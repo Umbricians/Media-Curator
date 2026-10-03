@@ -1,0 +1,1 @@
+Media Curator E2E fixture: a non-image media file.

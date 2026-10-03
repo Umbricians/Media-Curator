@@ -67,6 +67,84 @@ public class UndoAndTransferTests
         Assert.Equal(1, second.AlreadyInPlace);
     }
 
+    [Fact]
+    public async Task Undo_restores_recycled_folders_shallowest_first_before_moving_items_back()
+    {
+        var media = new CurationEngineTests.FakeMedia();
+        var scope = media.AddFolder("Products", Guid.Empty);
+        var a = media.AddFolder("A", scope);
+        var b = media.AddFolder("B", a);
+        var img = media.AddImage("photo.jpg", b);
+        var target = media.EnsureFolderPath(scope, ["2026"]);
+        media.Move(img, target);
+        // The run's cleanup then recycled B and A (deepest first); detach them as the media service would.
+        media.MoveToRecycleBin(b);
+        media.MoveToRecycleBin(a);
+
+        var log = new InMemoryRunLog();
+        var runKey = await log.StartRunAsync(scope, Guid.NewGuid(), "manual");
+        await log.RecordItemAsync(runKey, img, "photo.jpg", b, target, "2026", true, null);
+        await log.RecordItemAsync(runKey, b, "B", a, null, CurationEngine.EmptyFolderRecycledMarker, true, null);
+        await log.RecordItemAsync(runKey, a, "A", scope, null, CurationEngine.EmptyFolderRecycledMarker, true, null);
+        // A failed removal is not undone.
+        await log.RecordItemAsync(runKey, Guid.NewGuid(), "Nope", scope, null, CurationEngine.EmptyFolderRecycledMarker, false, "boom");
+
+        var summary = await new CurationUndoService(log, media, NullLogger<CurationUndoService>.Instance).UndoRunAsync(runKey);
+
+        Assert.Equal([(a, scope), (b, a)], media.Restored);
+        Assert.Equal(b, media.GetItem(img)!.ParentKey);
+        Assert.Equal(1, summary.Moved);
+        Assert.Equal(0, summary.Failed);
+        Assert.Equal(0, summary.FoldersRemoved);
+    }
+
+    [Fact]
+    public async Task Undo_recreates_permanently_deleted_folders_and_moves_items_into_them()
+    {
+        var media = new CurationEngineTests.FakeMedia();
+        var scope = media.AddFolder("Products", Guid.Empty);
+        var a = media.AddFolder("A", scope);
+        var b = media.AddFolder("B", a);
+        var img = media.AddImage("photo.jpg", b);
+        var target = media.EnsureFolderPath(scope, ["2026"]);
+        media.Move(img, target);
+        media.Delete(b);
+        media.Delete(a);
+
+        var log = new InMemoryRunLog();
+        var runKey = await log.StartRunAsync(scope, Guid.NewGuid(), "manual");
+        // Deepest-first removal order, as the engine logs it.
+        await log.RecordItemAsync(runKey, img, "photo.jpg", b, target, "2026", true, null);
+        await log.RecordItemAsync(runKey, b, "B", a, null, CurationEngine.EmptyFolderDeletedMarker, true, null);
+        await log.RecordItemAsync(runKey, a, "A", scope, null, CurationEngine.EmptyFolderDeletedMarker, true, null);
+
+        var summary = await new CurationUndoService(log, media, NullLogger<CurationUndoService>.Instance).UndoRunAsync(runKey);
+
+        var newA = Assert.Single(media.GetChildren(scope), i => i.Name == "A").Key;
+        var newB = Assert.Single(media.GetChildren(newA)).Key;
+        Assert.NotEqual(a, newA);
+        Assert.NotEqual(b, newB);
+        Assert.Equal("B", media.GetItem(newB)!.Name);
+        Assert.Equal(newB, media.GetItem(img)!.ParentKey);
+        Assert.Equal(1, summary.Moved);
+        Assert.Empty(media.Restored);
+    }
+
+    [Fact]
+    public async Task Undo_counts_a_folder_that_cannot_be_restored_as_failed()
+    {
+        var media = new CurationEngineTests.FakeMedia();
+        var scope = media.AddFolder("Products", Guid.Empty);
+        var log = new InMemoryRunLog();
+        var runKey = await log.StartRunAsync(scope, Guid.NewGuid(), "manual");
+        await log.RecordItemAsync(runKey, Guid.NewGuid(), "Gone", scope, null, CurationEngine.EmptyFolderRecycledMarker, true, null);
+
+        var summary = await new CurationUndoService(log, media, NullLogger<CurationUndoService>.Instance).UndoRunAsync(runKey);
+
+        Assert.Equal(1, summary.Failed);
+        Assert.Equal(0, summary.Moved);
+    }
+
     private sealed class InMemoryRulesets : IRulesetRepository
     {
         public readonly Dictionary<Guid, Ruleset> ByScope = [];

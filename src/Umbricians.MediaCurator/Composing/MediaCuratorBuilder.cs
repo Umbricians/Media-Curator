@@ -57,6 +57,9 @@ public static class MediaCuratorBuilderExtensions
             builder.Services.AddSingleton<Engine.ICurationRunLog, Engine.CurationRunLog>();
             builder.Services.AddScoped<Engine.ICurationEngine, Engine.CurationEngine>();
             builder.Services.AddScoped<Recognition.IRecognitionService, Recognition.UmbracoAiRecognitionService>();
+            builder.Services.AddHttpClient(Recognition.JevClassificationDecider.HttpClientName);
+            builder.Services.AddSingleton<Recognition.IJevClassificationDecider, Recognition.JevClassificationDecider>();
+            builder.Services.AddSingleton<Engine.IParallelMediaWork, Engine.ParallelMediaWork>();
             builder.Services.AddSingleton<Engine.IBulkCurationQueue, Engine.BulkCurationQueue>();
             builder.Services.AddScoped<Engine.ICurationUndoService, Engine.CurationUndoService>();
             builder.Services.AddSingleton<Engine.IExclusionRepository, Engine.ExclusionRepository>();

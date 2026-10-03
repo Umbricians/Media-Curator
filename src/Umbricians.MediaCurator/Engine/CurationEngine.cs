@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Globalization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Umbricians.MediaCurator.Core;
 using Umbricians.MediaCurator.Exif;
@@ -6,14 +8,17 @@ using Umbricians.MediaCurator.Rules;
 
 namespace Umbricians.MediaCurator.Engine;
 
-/// <summary>One item's planned (or executed) move.</summary>
+/// <summary>One item's planned (or executed) move. <paramref name="TargetOrigins"/> parallels
+/// <paramref name="TargetSegments"/>: which rule produced each folder level, used to order the
+/// folders after the run (null when unknown, e.g. a plan built outside the engine).</summary>
 public sealed record PlannedMove(
     Guid MediaKey,
     string MediaName,
     Guid FromParentKey,
     IReadOnlyList<string> TargetSegments,
     bool AlreadyInPlace,
-    string? Note)
+    string? Note,
+    IReadOnlyList<FolderSegmentOrigin>? TargetOrigins = null)
 {
     public string TargetPath => string.Join("/", TargetSegments);
 }
@@ -61,16 +66,109 @@ public interface ICurationEngine
     Task<MediaCurationPlan> PlanForMediaAsync(Guid mediaKey, CancellationToken cancellationToken = default);
 
     /// <summary>Executes a plan: idempotent folder creation + moves via the media service,
-    /// recording every move in the activity log.</summary>
-    Task<CurationRunSummary> ExecuteAsync(CurationPlan plan, string trigger, CancellationToken cancellationToken = default);
+    /// recording every move in the activity log. Moves only: removes and sorts no folders.</summary>
+    Task<CurationRunSummary> ExecuteAsync(CurationPlan plan, string trigger, CancellationToken cancellationToken = default)
+        => ExecuteAsync(plan, trigger, CurationExecutionOptions.MovesOnly, cancellationToken);
+
+    /// <summary>A whole-scope run: executes a plan, then (unless <paramref name="emptyFolders"/> is None)
+    /// removes every empty sub-folder below the plan's scope folder, recording each in the same run,
+    /// and finally sorts the scope folder and every folder below it (<see cref="FolderSorting.Subtree"/>).</summary>
+    Task<CurationRunSummary> ExecuteAsync(CurationPlan plan, string trigger, EmptyFolderRemoval emptyFolders, CancellationToken cancellationToken = default)
+        => ExecuteAsync(plan, trigger, new CurationExecutionOptions { EmptyFolders = emptyFolders, Sorting = FolderSorting.Subtree }, cancellationToken);
+
+    /// <summary>Executes a plan (moves), then the end-of-run steps <paramref name="options"/> asks for:
+    /// empty sub-folder removal below the scope folder, then folder sorting. Sorting is not recorded
+    /// in the run log and undo does not restore the previous order; a sorting failure is logged and
+    /// never fails the run.</summary>
+    Task<CurationRunSummary> ExecuteAsync(CurationPlan plan, string trigger, CurationExecutionOptions options, CancellationToken cancellationToken = default);
+
+    /// <summary>Cleanup after a media-action run (<see cref="PlanForMediaAsync"/> + one
+    /// <see cref="ExecuteAsync(CurationPlan, string, CancellationToken)"/> per plan): removes the empty sub-folders
+    /// below the clicked folder, once, after every plan has executed. Does nothing when the
+    /// media is not a folder or nothing executed. Returns the number of folders removed.</summary>
+    Task<int> RemoveEmptyFoldersForMediaAsync(
+        Guid mediaKey,
+        IReadOnlyList<ExecutedPlan> executed,
+        EmptyFolderRemoval emptyFolders,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Sorting after a media-action run (<see cref="PlanForMediaAsync"/> + one
+    /// <see cref="ExecuteAsync(CurationPlan, string, CancellationToken)"/> per plan, then
+    /// <see cref="RemoveEmptyFoldersForMediaAsync"/>): once, using what every executed plan produced.
+    /// For a clicked folder, sorts it and every folder below it, plus the folders along the new paths
+    /// of the images it held (which lie outside it when it is inside a scope: targets are relative to
+    /// the scope root); for a single image, the folders along its new path (scope root down to its parent). Does nothing when nothing executed. Failures are
+    /// logged, never thrown; not recorded in the run log and not restored by undo. Returns the number
+    /// of folders re-ordered.</summary>
+    Task<int> SortFoldersForMediaAsync(
+        Guid mediaKey,
+        IReadOnlyList<ExecutedPlan> executed,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>How many empty sub-folders below <paramref name="folderKey"/> a cleanup would remove
+    /// right now (same rules, nothing removed). Zero when the media is not a folder.</summary>
+    Task<int> CountEmptyFoldersAsync(Guid folderKey, CancellationToken cancellationToken = default);
 }
 
-public sealed record CurationRunSummary(Guid RunKey, int Moved, int AlreadyInPlace, int Failed);
+/// <summary>What happens to empty sub-folders at the end of a run.</summary>
+public enum EmptyFolderRemoval
+{
+    /// <summary>Leave them alone (the default, and always the case for plans/dry runs).</summary>
+    None,
+
+    /// <summary>Move them to the Recycle Bin (recoverable; undo restores them).</summary>
+    RecycleBin,
+
+    /// <summary>Delete them permanently (undo recreates them by name).</summary>
+    Delete,
+}
+
+/// <summary>How folders are put in order at the end of an executed run: child folders first, then
+/// the other media A→Z. Each folder level is ordered by the provider that produced it in the run
+/// (<see cref="ICurationFolderOrder"/>); other levels naturally. Plans/dry runs never sort.</summary>
+public enum FolderSorting
+{
+    /// <summary>Leave the order alone.</summary>
+    None,
+
+    /// <summary>Sort the children of the plan's scope folder and of every folder below it.</summary>
+    Subtree,
+
+    /// <summary>Sort only the folders along each planned move's target path: the scope folder down to
+    /// the item's new parent (e.g. a single item curated by an automation).</summary>
+    TargetPaths,
+}
+
+/// <summary>What happens at the end of an executed run, after the moves.</summary>
+public sealed record CurationExecutionOptions
+{
+    /// <summary>Moves only: no empty-folder removal, no sorting.</summary>
+    public static CurationExecutionOptions MovesOnly { get; } = new();
+
+    /// <summary>Empty sub-folder removal below the plan's scope folder (runs before sorting).</summary>
+    public EmptyFolderRemoval EmptyFolders { get; init; } = EmptyFolderRemoval.None;
+
+    /// <summary>Folder sorting, after removal.</summary>
+    public FolderSorting Sorting { get; init; } = FolderSorting.None;
+}
+
+/// <summary>A plan that was executed, with the run log entry it produced.</summary>
+public sealed record ExecutedPlan(CurationPlan Plan, Guid RunKey);
+
+/// <summary><see cref="FoldersRemoved"/> counts empty folders removed at the end of the run; it is
+/// not part of Moved/AlreadyInPlace/Failed.</summary>
+public sealed record CurationRunSummary(Guid RunKey, int Moved, int AlreadyInPlace, int Failed, int FoldersRemoved = 0);
 
 public sealed class CurationEngine : ICurationEngine
 {
     /// <summary>v1 image filter: items participate only when their media type is in this list (§13).</summary>
     public static readonly string[] ImageMediaTypes = ["Image"];
+
+    /// <summary>Run log <c>targetPath</c> marking an empty folder moved to the Recycle Bin.</summary>
+    public const string EmptyFolderRecycledMarker = "(empty folder recycled)";
+
+    /// <summary>Run log <c>targetPath</c> marking an empty folder deleted permanently.</summary>
+    public const string EmptyFolderDeletedMarker = "(empty folder deleted)";
 
     private readonly IRulesetResolver _resolver;
     private readonly IRulesetRepository _rulesets;
@@ -83,6 +181,15 @@ public sealed class CurationEngine : ICurationEngine
     private readonly IMediaAncestry _ancestry;
     private readonly global::Umbraco.Cms.Core.Events.IEventAggregator _events;
     private readonly ILogger<CurationEngine> _logger;
+    private readonly IParallelMediaWork? _parallel;
+
+    /// <summary>Recognition results for this engine's lifetime (one request or job), keyed by item and
+    /// scheme, so a parallel prefetch and the rule pass that follows share one AI call per image.</summary>
+    private readonly ConcurrentDictionary<RecognitionRequest, Task<Recognition.RecognitionResult?>> _recognitionMemo = new();
+
+    /// <summary>Discovery rounds per plan: each round can uncover recognition needed only once earlier
+    /// results are known (e.g. a conditional rule on a classification code).</summary>
+    private const int MaxPrefetchRounds = 3;
 
     public CurationEngine(
         IRulesetResolver resolver,
@@ -95,8 +202,10 @@ public sealed class CurationEngine : ICurationEngine
         IExclusionRepository exclusions,
         IMediaAncestry ancestry,
         global::Umbraco.Cms.Core.Events.IEventAggregator events,
-        ILogger<CurationEngine> logger)
+        ILogger<CurationEngine> logger,
+        IParallelMediaWork? parallel = null)
     {
+        _parallel = parallel;
         _events = events;
         _resolver = resolver;
         _rulesets = rulesets;
@@ -122,12 +231,13 @@ public sealed class CurationEngine : ICurationEngine
         var moves = new List<PlannedMove>();
         var skipped = new List<string>();
         var excluded = await _exclusions.GetAllAsync(cancellationToken);
+        var outcomes = await EvaluateAllAsync(
+            _media.GetItems(scopeFolderKey, recursive),
+            (item, recognize) => EvaluateItemAsync(item, excluded, ruleset, culture, recognize, cancellationToken),
+            cancellationToken);
 
-        foreach (var item in _media.GetItems(scopeFolderKey, recursive))
+        foreach (var outcome in outcomes)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var outcome = await EvaluateItemAsync(item, excluded, ruleset, culture, cancellationToken);
             if (outcome.Move is not null)
             {
                 moves.Add(outcome.Move);
@@ -153,12 +263,13 @@ public sealed class CurationEngine : ICurationEngine
         // curated by its nearest enabled ruleset and targets are relative to that scope root.
         var groups = new List<(Ruleset Ruleset, CultureInfo Culture, List<PlannedMove> Moves, List<string> Skipped)>();
         var unattributed = new List<string>();
+        var outcomes = await EvaluateAllAsync(
+            items,
+            (item, recognize) => EvaluateItemAsync(item, excluded, expected: null, culture: null, recognize, cancellationToken),
+            cancellationToken);
 
-        foreach (var item in items)
+        foreach (var outcome in outcomes)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var outcome = await EvaluateItemAsync(item, excluded, expected: null, culture: null, cancellationToken);
             if (outcome.Governing is null)
             {
                 if (outcome.Skipped is not null)
@@ -186,6 +297,14 @@ public sealed class CurationEngine : ICurationEngine
             }
         }
 
+        // A folder with no images (e.g. one an earlier run emptied) still belongs to its ruleset: an
+        // empty plan gives the run its empty sub-folders are cleaned up in, and undone from.
+        if (clicked.IsFolder && await _resolver.ResolveForItemAsync(mediaKey, cancellationToken) is { } folderRuleset
+            && groups.All(g => g.Ruleset.Key != folderRuleset.Key))
+        {
+            groups.Add((folderRuleset, ResolveCulture(folderRuleset.CultureName), [], []));
+        }
+
         var plans = groups
             .Select(g => new CurationPlan(g.Ruleset.ScopeRootKey, g.Ruleset.Key, g.Ruleset.Name, g.Moves, g.Skipped))
             .ToList();
@@ -196,6 +315,119 @@ public sealed class CurationEngine : ICurationEngine
     /// <paramref name="Governing"/> is null when the item was ruled out before a ruleset was resolved.</summary>
     private sealed record ItemOutcome(Ruleset? Governing, PlannedMove? Move, string? Skipped);
 
+    /// <summary>One recognition call: an item analysed for a scheme (null for tags only).</summary>
+    private readonly record struct RecognitionRequest(Guid MediaKey, string? SchemeAlias);
+
+    private delegate Task<Recognition.RecognitionResult?> RecognizeFn(Guid mediaKey, string? schemeAlias, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Evaluates every item, analysing images in parallel first. AI recognition dominates planning time
+    /// and each image's call is independent, while rule evaluation and media reads stay sequential (they
+    /// share this request's services). A discovery pass runs the rules with recognition stubbed out to
+    /// learn which images need which analysis, the missing results are fetched concurrently, and only the
+    /// items that asked for recognition are evaluated again. Items whose rules never touched recognition
+    /// keep their first-pass outcome, so date-only rulesets pay nothing extra.
+    /// </summary>
+    private async Task<IReadOnlyList<ItemOutcome>> EvaluateAllAsync(
+        IReadOnlyList<MediaItemInfo> items,
+        Func<MediaItemInfo, RecognizeFn, Task<ItemOutcome>> evaluate,
+        CancellationToken cancellationToken)
+    {
+        var outcomes = new ItemOutcome[items.Count];
+        var pending = Enumerable.Range(0, items.Count).ToList();
+        var prefetch = _parallel is not null
+            && items.Count(i => !i.IsFolder) > 1
+            && await _parallel.GetMaxParallelismAsync(cancellationToken) > 1;
+
+        for (var round = 0; prefetch && round < MaxPrefetchRounds && pending.Count > 0; round++)
+        {
+            var demands = new HashSet<RecognitionRequest>();
+            var waiting = new List<int>();
+            foreach (var index in pending)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var missing = false;
+                outcomes[index] = await evaluate(items[index], (key, scheme, _) =>
+                {
+                    var request = new RecognitionRequest(key, scheme);
+                    if (_recognitionMemo.TryGetValue(request, out var known) && known.IsCompleted)
+                    {
+                        return known;
+                    }
+
+                    missing = true;
+                    demands.Add(request);
+                    return Task.FromResult<Recognition.RecognitionResult?>(null);
+                });
+
+                if (missing)
+                {
+                    waiting.Add(index);
+                }
+            }
+
+            pending = waiting;
+            if (demands.Count == 0)
+            {
+                break;
+            }
+
+            await PrefetchRecognitionAsync(demands, cancellationToken);
+        }
+
+        foreach (var index in pending)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            outcomes[index] = await evaluate(items[index], RecognizeMemoizedAsync);
+        }
+
+        return outcomes;
+    }
+
+    private Task<Recognition.RecognitionResult?> RecognizeMemoizedAsync(Guid mediaKey, string? schemeAlias, CancellationToken cancellationToken)
+        => _recognitionMemo.GetOrAdd(
+            new RecognitionRequest(mediaKey, schemeAlias),
+            request => _recognition.AnalyzeAsync(request.MediaKey, force: false, request.SchemeAlias, cancellationToken));
+
+    /// <summary>Runs the missing recognition calls concurrently. An item's calls stay sequential (and
+    /// scheme-specific ones first) so one image is never analysed twice at the same time; the later
+    /// call then reuses the stored description and tags.</summary>
+    private async Task PrefetchRecognitionAsync(IReadOnlyCollection<RecognitionRequest> demands, CancellationToken cancellationToken)
+    {
+        var perItem = demands
+            .GroupBy(d => d.MediaKey)
+            .Select(g => g.OrderBy(d => d.SchemeAlias is null).ToList())
+            .ToList();
+
+        var results = await _parallel!.RunAsync<List<RecognitionRequest>, (RecognitionRequest Request, Recognition.RecognitionResult? Result)[]>(
+            perItem,
+            async (services, requests, ct) =>
+            {
+                var recognition = services.GetRequiredService<Recognition.IRecognitionService>();
+                var analysed = new List<(RecognitionRequest, Recognition.RecognitionResult?)>();
+                foreach (var request in requests)
+                {
+                    try
+                    {
+                        analysed.Add((request, await recognition.AnalyzeAsync(request.MediaKey, force: false, request.SchemeAlias, ct)));
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        _logger.LogWarning(ex, "MediaCurator: recognition failed for {MediaKey}.", request.MediaKey);
+                        analysed.Add((request, null));
+                    }
+                }
+
+                return analysed.ToArray();
+            },
+            cancellationToken);
+
+        foreach (var (request, result) in results.SelectMany(r => r))
+        {
+            _recognitionMemo[request] = Task.FromResult(result);
+        }
+    }
+
     /// <summary>Shared per-item planning. With <paramref name="expected"/> set (scope runs) the item
     /// must be governed by exactly that ruleset; without it (media runs) the nearest enabled
     /// ruleset is used. Targets are always relative to the governing ruleset's scope root.</summary>
@@ -204,6 +436,7 @@ public sealed class CurationEngine : ICurationEngine
         IReadOnlySet<Guid> excluded,
         Ruleset? expected,
         CultureInfo? culture,
+        RecognizeFn recognize,
         CancellationToken cancellationToken)
     {
         if (item.IsFolder)
@@ -242,7 +475,7 @@ public sealed class CurationEngine : ICurationEngine
 
         var ruleset = governing;
         var scopeFolderKey = ruleset.ScopeRootKey;
-        var context = BuildContext(item, scopeFolderKey, culture ?? ResolveCulture(ruleset.CultureName));
+        var context = BuildContext(item, scopeFolderKey, culture ?? ResolveCulture(ruleset.CultureName), recognize);
         var result = await _executor.ExecuteAsync(ruleset.Rules, context, cancellationToken);
 
         if (result.Stopped || !result.HasTarget)
@@ -253,17 +486,25 @@ public sealed class CurationEngine : ICurationEngine
 
         var segments = result.Segments.Select(s => SanitizeFolderName(s.Name)).ToArray();
         var alreadyInPlace = IsAlreadyInPlace(item, scopeFolderKey, segments);
-        return new ItemOutcome(ruleset, new PlannedMove(item.Key, item.Name, item.ParentKey, segments, alreadyInPlace, null), null);
+        return new ItemOutcome(ruleset, new PlannedMove(item.Key, item.Name, item.ParentKey, segments, alreadyInPlace, null, result.SegmentOrigins), null);
     }
 
-    public async Task<CurationRunSummary> ExecuteAsync(CurationPlan plan, string trigger, CancellationToken cancellationToken = default)
+    public Task<CurationRunSummary> ExecuteAsync(CurationPlan plan, string trigger, CancellationToken cancellationToken = default)
+        => ExecuteAsync(plan, trigger, CurationExecutionOptions.MovesOnly, cancellationToken);
+
+    public Task<CurationRunSummary> ExecuteAsync(CurationPlan plan, string trigger, EmptyFolderRemoval emptyFolders, CancellationToken cancellationToken = default)
+        => ExecuteAsync(plan, trigger, new CurationExecutionOptions { EmptyFolders = emptyFolders, Sorting = FolderSorting.Subtree }, cancellationToken);
+
+    public async Task<CurationRunSummary> ExecuteAsync(CurationPlan plan, string trigger, CurationExecutionOptions options, CancellationToken cancellationToken = default)
     {
+        var emptyFolders = options.EmptyFolders;
+
         // Developers can veto a run before anything moves (§12).
         var curating = new MediaCuratingNotification(plan, trigger);
         await _events.PublishAsync(curating, cancellationToken);
         if (curating.Cancel)
         {
-            return new CurationRunSummary(Guid.Empty, 0, 0, 0);
+            return new CurationRunSummary(Guid.Empty, 0, 0, 0, 0);
         }
 
         var runKey = await _runLog.StartRunAsync(plan.ScopeFolderKey, plan.RulesetKey, trigger, cancellationToken);
@@ -294,9 +535,21 @@ public sealed class CurationEngine : ICurationEngine
             }
         }
 
+        var foldersRemoved = emptyFolders == EmptyFolderRemoval.None
+            ? 0
+            : await RemoveEmptyFoldersAsync(plan.ScopeFolderKey, emptyFolders, _ => runKey, cancellationToken);
+
+        if (options.Sorting != FolderSorting.None)
+        {
+            await SortFoldersAsync(
+                [plan],
+                options.Sorting == FolderSorting.Subtree ? plan.ScopeFolderKey : null,
+                cancellationToken);
+        }
+
         await _runLog.CompleteRunAsync(runKey, moved, inPlace, failed, cancellationToken);
 
-        var summary = new CurationRunSummary(runKey, moved, inPlace, failed);
+        var summary = new CurationRunSummary(runKey, moved, inPlace, failed, foldersRemoved);
         await _events.PublishAsync(new MediaCuratedNotification(plan.ScopeFolderKey, plan.RulesetKey, summary, trigger), cancellationToken);
         if (failed > 0)
         {
@@ -306,7 +559,192 @@ public sealed class CurationEngine : ICurationEngine
         return summary;
     }
 
-    private CurationContext BuildContext(MediaItemInfo item, Guid scopeFolderKey, CultureInfo culture)
+    public async Task<int> RemoveEmptyFoldersForMediaAsync(
+        Guid mediaKey,
+        IReadOnlyList<ExecutedPlan> executed,
+        EmptyFolderRemoval emptyFolders,
+        CancellationToken cancellationToken = default)
+    {
+        // Runs that were vetoed have no log entry; with no run to record in there is nothing to undo from.
+        var runs = executed.Where(e => e.RunKey != Guid.Empty).ToList();
+        if (emptyFolders == EmptyFolderRemoval.None || runs.Count == 0)
+        {
+            return 0;
+        }
+
+        var clicked = _media.GetItem(mediaKey);
+        if (clicked is not { IsFolder: true })
+        {
+            return 0;
+        }
+
+        // A removed folder is logged in the run whose scope contains it (the nearest scope when
+        // nested), else in the last executed run.
+        Guid RunFor(Guid folderKey)
+        {
+            var chain = new[] { folderKey }.Concat(_ancestry.GetAncestorOrSelfFolderKeys(folderKey)).ToList();
+            var match = runs
+                .Select(r => (Run: r, Depth: chain.IndexOf(r.Plan.ScopeFolderKey)))
+                .Where(x => x.Depth >= 0)
+                .OrderBy(x => x.Depth)
+                .Select(x => (ExecutedPlan?)x.Run)
+                .FirstOrDefault();
+            return (match ?? runs[^1]).RunKey;
+        }
+
+        return await RemoveEmptyFoldersAsync(mediaKey, emptyFolders, RunFor, cancellationToken);
+    }
+
+    public async Task<int> SortFoldersForMediaAsync(
+        Guid mediaKey,
+        IReadOnlyList<ExecutedPlan> executed,
+        CancellationToken cancellationToken = default)
+    {
+        // Vetoed runs moved nothing.
+        var plans = executed.Where(e => e.RunKey != Guid.Empty).Select(e => e.Plan).ToList();
+        if (plans.Count == 0 || _media.GetItem(mediaKey) is not { } clicked)
+        {
+            return 0;
+        }
+
+        return await SortFoldersAsync(plans, clicked.IsFolder ? mediaKey : null, cancellationToken);
+    }
+
+    /// <summary>The folder-sorting step: sorts <paramref name="subtreeRoot"/> (when given) and everything
+    /// below it, and the folders along every planned move's target path. Never throws: a failure is
+    /// logged and the run carries on. Returns the number of folders re-ordered.</summary>
+    private async Task<int> SortFoldersAsync(
+        IReadOnlyList<CurationPlan> plans,
+        Guid? subtreeRoot,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var excluded = await _exclusions.GetAllAsync(cancellationToken);
+            var sorter = new CurationFolderSorter(_media, _executor.Providers, excluded, _ancestry, _logger);
+            var cultures = new List<(CurationPlan Plan, CultureInfo Culture)>();
+            foreach (var plan in plans)
+            {
+                var ruleset = await _rulesets.GetAsync(plan.RulesetKey, cancellationToken);
+                var culture = ResolveCulture(ruleset?.CultureName);
+                cultures.Add((plan, culture));
+                sorter.AddProvenance(plan, culture);
+            }
+
+            var sorted = 0;
+            if (subtreeRoot is { } root)
+            {
+                // Unclaimed levels use the culture of the nearest scope containing the root.
+                var chain = new[] { root }.Concat(_ancestry.GetAncestorOrSelfFolderKeys(root)).ToList();
+                var culture = cultures
+                    .Select(c => (c.Culture, Depth: chain.IndexOf(c.Plan.ScopeFolderKey)))
+                    .Where(c => c.Depth >= 0)
+                    .OrderBy(c => c.Depth)
+                    .Select(c => c.Culture)
+                    .FirstOrDefault() ?? cultures[0].Culture;
+                sorted += sorter.SortSubtree(root, culture, cancellationToken);
+            }
+
+            // Moved items may have left the subtree (a media-action folder inside a scope files its
+            // images relative to the scope root): their new paths are sorted too. Folders already
+            // sorted above are not visited again.
+            return sorted + cultures.Sum(c => sorter.SortTargetPaths(c.Plan, c.Culture, cancellationToken));
+        }
+        catch (OperationCanceledException)
+        {
+            // The moves are done; a cancelled sort just leaves the order as it is.
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "MediaCurator: sorting folders after the run failed; the run itself is unaffected.");
+            return 0;
+        }
+    }
+
+    /// <summary>Removes every empty sub-folder below <paramref name="processedFolderKey"/>, deepest first
+    /// (never the folder itself). A folder is empty when it holds no media at all, recursively, so a
+    /// folder whose only descendants are empty folders goes too. Excluded folders (and everything below
+    /// them) and ruleset scope roots are never removed. Each removal is recorded in the run log; a
+    /// failure is logged, recorded as failed, and the cleanup carries on.</summary>
+    public Task<int> CountEmptyFoldersAsync(Guid folderKey, CancellationToken cancellationToken = default)
+        => RemoveEmptyFoldersAsync(folderKey, EmptyFolderRemoval.None, _ => Guid.Empty, cancellationToken);
+
+    /// <param name="mode">None counts what would be removed without touching anything.</param>
+    private async Task<int> RemoveEmptyFoldersAsync(
+        Guid processedFolderKey,
+        EmptyFolderRemoval mode,
+        Func<Guid, Guid> runFor,
+        CancellationToken cancellationToken)
+    {
+        var excluded = await _exclusions.GetAllAsync(cancellationToken);
+        if (excluded.Contains(processedFolderKey)
+            || _ancestry.GetAncestorOrSelfFolderKeys(processedFolderKey).Any(excluded.Contains))
+        {
+            return 0;
+        }
+
+        var scopeRoots = (await _rulesets.GetAllAsync(cancellationToken)).Select(r => r.ScopeRootKey).ToHashSet();
+        var removed = 0;
+
+        // Returns true when the folder no longer exists in the tree (removed), i.e. its parent may still be empty.
+        async Task<bool> VisitAsync(Guid folderKey, string name, Guid parentKey, bool isProcessedFolder)
+        {
+            var hasContent = false;
+            foreach (var child in _media.GetChildren(folderKey))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (!child.IsFolder
+                    || excluded.Contains(child.Key)
+                    || !await VisitAsync(child.Key, child.Name, folderKey, isProcessedFolder: false))
+                {
+                    hasContent = true;
+                }
+            }
+
+            if (hasContent || isProcessedFolder || scopeRoots.Contains(folderKey))
+            {
+                return false;
+            }
+
+            if (mode == EmptyFolderRemoval.None)
+            {
+                removed++;
+                return true;
+            }
+
+            var recycle = mode == EmptyFolderRemoval.RecycleBin;
+            var marker = recycle ? EmptyFolderRecycledMarker : EmptyFolderDeletedMarker;
+            var runKey = runFor(folderKey);
+            try
+            {
+                if (recycle)
+                {
+                    _media.MoveToRecycleBin(folderKey);
+                }
+                else
+                {
+                    _media.Delete(folderKey);
+                }
+
+                await _runLog.RecordItemAsync(runKey, folderKey, name, parentKey, toParentKey: null, marker, success: true, note: null, cancellationToken);
+                removed++;
+                return true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "MediaCurator: failed to remove empty folder {FolderKey} ({Name})", folderKey, name);
+                await _runLog.RecordItemAsync(runKey, folderKey, name, parentKey, toParentKey: null, marker, success: false, note: ex.Message, cancellationToken);
+                return false;
+            }
+        }
+
+        await VisitAsync(processedFolderKey, string.Empty, Guid.Empty, isProcessedFolder: true);
+        return removed;
+    }
+
+    private CurationContext BuildContext(MediaItemInfo item, Guid scopeFolderKey, CultureInfo culture, RecognizeFn recognize)
     {
         IReadOnlyDictionary<string, string>? exif = null;
         try
@@ -332,7 +770,7 @@ public sealed class CurationEngine : ICurationEngine
             ScopeRootKey = scopeFolderKey,
             Exif = exif,
             Properties = new MediaPropertyAccessor(_media, item.Key),
-            RecognizeAsync = (scheme, ct) => _recognition.AnalyzeAsync(item.Key, force: false, scheme, ct),
+            RecognizeAsync = (scheme, ct) => recognize(item.Key, scheme, ct),
             OpenFile = () => _media.OpenFile(item.Key),
         };
     }

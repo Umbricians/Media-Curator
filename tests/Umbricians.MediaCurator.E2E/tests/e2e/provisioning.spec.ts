@@ -9,6 +9,8 @@ import {
   rulesetTreeItem,
   saveRuleset,
   startNewRuleset,
+  createTestRootFolder,
+  removeTestMedia,
 } from './util';
 
 const folderName = 'MC Exif Folder';
@@ -17,14 +19,14 @@ const exifPropertyAlias = 'mediaCuratorExifData';
 
 test.describe('MediaCurator property provisioning', () => {
   test.beforeEach(async ({ umbracoApi }) => {
-    await umbracoApi.media.ensureNameNotExists(folderName);
-    await umbracoApi.media.createDefaultMediaFolder(folderName);
+    await removeTestMedia(umbracoApi, folderName);
+    await createTestRootFolder(umbracoApi, folderName);
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
     await removeProvisionedProperty(umbracoApi, 'Image', exifPropertyAlias);
   });
 
   test.afterEach(async ({ umbracoApi }) => {
-    await umbracoApi.media.ensureNameNotExists(folderName);
+    await removeTestMedia(umbracoApi, folderName);
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
     await removeProvisionedProperty(umbracoApi, 'Image', exifPropertyAlias);
   });

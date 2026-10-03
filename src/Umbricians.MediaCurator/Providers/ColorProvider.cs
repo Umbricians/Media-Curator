@@ -8,9 +8,9 @@ namespace Umbricians.MediaCurator.Providers;
 /// <summary>
 /// Sorts images by color (§5.4): the dominant (or average) color is extracted with
 /// ImageSharp and snapped to a configurable palette. Folder names come from the palette
-/// entry names — never raw hex codes.
+/// entry names — never raw hex codes. Folders are ordered as the palette lists them.
 /// </summary>
-public sealed class ColorProvider : ICurationProvider
+public sealed class ColorProvider : ICurationProvider, ICurationFolderOrder
 {
     public const string ProviderAlias = "Umbricians.MediaCurator.Color";
 
@@ -90,6 +90,14 @@ public sealed class ColorProvider : ICurationProvider
         var entry = Snap(color.Value, palette);
         return Task.FromResult(CurationResult.Resolved(entry.Name, new FolderSegment(entry.Name)));
     }
+
+    /// <summary>Folders follow the palette's listed order; names not in the palette go last.</summary>
+    public IComparer<string>? GetFolderComparer(FolderOrderContext context)
+        => context.SegmentIndex == 0
+            ? RankedFolderNameComparer.FromOrderedNames(
+                ParsePalette(context.GetSetting("palette", DefaultPalette)).Select(e => e.Name),
+                context.Culture)
+            : null;
 
     internal sealed record PaletteEntry(string Name, Rgb24 Color);
 

@@ -1,4 +1,4 @@
-import { css, customElement, html, nothing, state } from "@umbraco-cms/backoffice/external/lit";
+import { css, customElement, guard, html, nothing, state } from "@umbraco-cms/backoffice/external/lit";
 import { UmbModalBaseElement } from "@umbraco-cms/backoffice/modal";
 import type { RuleNodeModel } from "../api/index.js";
 import type { McRuleSettingsModalData, McRuleSettingsModalValue } from "./rule-settings-modal.token.js";
@@ -17,6 +17,9 @@ export class McRuleSettingsModalElement extends UmbModalBaseElement<McRuleSettin
   @state() private _rule?: RuleNodeModel;
   /** Dataset value is only rebuilt on provider change, so typing never re-renders editors with stale values. */
   @state() private _dataset: Array<{ alias: string; value: unknown }> = [];
+  /** Bumped whenever _dataset is rebuilt. Lit re-assigns object bindings on every render, and
+   * assigning umb-property-dataset's value resets every editor, so the binding is guarded on this. */
+  #datasetVersion = 0;
 
   override connectedCallback() {
     super.connectedCallback();
@@ -31,6 +34,7 @@ export class McRuleSettingsModalElement extends UmbModalBaseElement<McRuleSettin
 
   #resetDataset() {
     this._dataset = buildDatasetValue(this.#provider, this._rule?.settings);
+    this.#datasetVersion++;
   }
 
   #onProviderChange(e: Event) {
@@ -105,7 +109,9 @@ export class McRuleSettingsModalElement extends UmbModalBaseElement<McRuleSettin
           </uui-box>
           ${fields.length
             ? html`<uui-box>
-                <umb-property-dataset .value=${this._dataset} @change=${this.#onDatasetChange}>
+                <umb-property-dataset
+                  .value=${guard([this.#datasetVersion], () => this._dataset)}
+                  @change=${this.#onDatasetChange}>
                   ${fields.map((field) => {
                     const editor = editorForField(field);
                     return html`<umb-property
@@ -114,7 +120,7 @@ export class McRuleSettingsModalElement extends UmbModalBaseElement<McRuleSettin
                       alias=${field.alias}
                       data-mark=${"mc:setting-" + field.alias}
                       property-editor-ui-alias=${editor.editorUiAlias}
-                      .config=${editor.config}
+                      .config=${guard([this.#datasetVersion, field.alias], () => editor.config)}
                       .appearance=${{ labelOnTop: true }}></umb-property>`;
                   })}
                 </umb-property-dataset>

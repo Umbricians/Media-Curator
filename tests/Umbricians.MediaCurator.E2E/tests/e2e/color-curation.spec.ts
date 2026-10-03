@@ -5,6 +5,9 @@ import {
   openMediaCuratorRoot,
   openRulesetFromTree,
   runDryRun,
+  createTestFolder,
+  createTestImage,
+  removeTestMedia,
 } from './util';
 
 const folderName = 'MC Color Folder';
@@ -15,22 +18,22 @@ const base = () => process.env.UMBRACO_URL || process.env.URL || 'http://localho
 test.describe('MediaCurator color provider (deterministic)', () => {
   test.beforeEach(async ({ umbracoApi }) => {
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
-    await umbracoApi.media.ensureNameNotExists(imageName);
-    await umbracoApi.media.ensureNameNotExists(folderName);
+    await removeTestMedia(umbracoApi, imageName);
+    await removeTestMedia(umbracoApi, folderName);
   });
 
   test.afterEach(async ({ umbracoApi }) => {
     await deleteRulesetsByPrefix(umbracoApi, 'MC ');
-    await umbracoApi.media.ensureNameNotExists(imageName);
-    await umbracoApi.media.ensureNameNotExists(folderName);
+    await removeTestMedia(umbracoApi, imageName);
+    await removeTestMedia(umbracoApi, folderName);
   });
 
   test('curates a red fixture image into the Red palette folder', async ({ umbracoUi, umbracoApi }) => {
     const page = umbracoUi.page;
 
     // Arrange: folder with the solid-red fixture image, Color ruleset attached via API
-    const folderId = await umbracoApi.media.createDefaultMediaFolderAndParentId(folderName, null);
-    await umbracoApi.media.createDefaultMediaWithImageAndParentId(imageName, folderId);
+    const folderId = await createTestFolder(umbracoApi, folderName, null);
+    await createTestImage(umbracoApi, imageName, folderId);
     const folder = await umbracoApi.media.getByName(folderName);
 
     await umbracoApi.put(`${base()}/umbraco/mediacurator/api/v1/rulesets`, {

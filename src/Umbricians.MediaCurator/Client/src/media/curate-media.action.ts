@@ -11,18 +11,24 @@ import { UMB_NOTIFICATION_CONTEXT } from "@umbraco-cms/backoffice/notification";
 import { tryExecute } from "@umbraco-cms/backoffice/resources";
 import { MediaCuratorService, type MediaCurationPlanModel } from "../api/index.js";
 import {
+  cleanupOnlyMessage,
+  confirmLabel,
   confirmMessage,
+  emptyFoldersLine,
   nothingToMoveMessage,
   resultMessage,
   rulesetBreakdown,
   type MediaPlanCounts,
 } from "./curate-media.summary.js";
+import "./empty-folders-option.element.js";
+import type { McEmptyFoldersOptionElement } from "./empty-folders-option.element.js";
 
 const MEDIA_ENTITY_TYPE = "media";
 
 /**
  * "Curate images" on a media item: dry-runs every image in the folder and its subfolders
- * against the ruleset that governs each one, confirms, then moves them.
+ * against the ruleset that governs each one, confirms, then moves them and removes the empty
+ * sub-folders left behind. With nothing to move it still offers to remove empty sub-folders.
  */
 export class McCurateMediaEntityAction extends UmbEntityActionBase<never> {
   override async execute() {
@@ -34,19 +40,28 @@ export class McCurateMediaEntityAction extends UmbEntityActionBase<never> {
     if (!plan) return;
 
     const counts = toCounts(plan);
-    if (counts.moveCount === 0) {
+    const emptyFolders = plan.emptyFolderCount;
+    if (counts.moveCount === 0 && emptyFolders === 0) {
       await this.#notify("default", nothingToMoveMessage(name, counts));
       return;
     }
 
     const breakdown = rulesetBreakdown(counts);
+    let permanentlyDelete = false;
     try {
       await umbConfirmModal(this, {
         headline: "Curate images",
-        content: html`<p>${confirmMessage(name, counts)}</p>
-          ${breakdown.length > 1 ? html`<ul>${breakdown.map((line) => html`<li>${line}</li>`)}</ul>` : ""}
-          <p>You can undo the run from Settings › Media Curator › Activity log.</p>`,
-        confirmLabel: `Move ${counts.moveCount}`,
+        content: html`${counts.moveCount > 0
+            ? html`<p>${confirmMessage(name, counts)}</p>
+                ${breakdown.length > 1 ? html`<ul>${breakdown.map((line) => html`<li>${line}</li>`)}</ul>` : ""}
+                <p>${emptyFoldersLine(emptyFolders)}</p>`
+            : html`<p>${cleanupOnlyMessage(name, counts, emptyFolders)}</p>`}
+          <p>You can undo the run from Settings › Media Curator › Activity log.</p>
+          <mc-empty-folders-option
+            @change=${(event: Event) =>
+              (permanentlyDelete = (event.target as McEmptyFoldersOptionElement).permanentlyDelete)}
+          ></mc-empty-folders-option>`,
+        confirmLabel: confirmLabel(counts.moveCount, emptyFolders),
         color: "positive",
       });
     } catch {
@@ -55,11 +70,14 @@ export class McCurateMediaEntityAction extends UmbEntityActionBase<never> {
 
     const { data: result } = await tryExecute(
       this,
-      MediaCuratorService.executeMediaCuration({ path: { mediaKey: unique } }),
+      MediaCuratorService.executeMediaCuration({
+        path: { mediaKey: unique },
+        query: { permanentlyDeleteEmptyFolders: permanentlyDelete },
+      }),
     );
     if (!result) return;
 
-    await this.#notify(result.failed > 0 ? "warning" : "positive", resultMessage(result));
+    await this.#notify(result.failed > 0 ? "warning" : "positive", resultMessage(result, permanentlyDelete));
     await this.#reloadTrees(unique, plan);
   }
 

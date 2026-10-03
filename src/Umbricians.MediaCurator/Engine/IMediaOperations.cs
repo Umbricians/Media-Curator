@@ -19,6 +19,9 @@ public interface IMediaOperations
     /// <summary>Items under the scope folder (folders excluded), optionally recursive.</summary>
     IReadOnlyList<MediaItemInfo> GetItems(Guid scopeFolderKey, bool recursive);
 
+    /// <summary>The direct children of a folder, folders included (unlike <see cref="GetItems"/>).</summary>
+    IReadOnlyList<MediaItemInfo> GetChildren(Guid folderKey);
+
     MediaItemInfo? GetItem(Guid mediaKey);
 
     /// <summary>Reads a string property value from the media item (null when absent).</summary>
@@ -37,4 +40,19 @@ public interface IMediaOperations
 
     /// <summary>Moves the item to the target folder. No-op if already there.</summary>
     void Move(Guid mediaKey, Guid targetFolderKey);
+
+    /// <summary>Sets the order of a folder's children to <paramref name="orderedChildKeys"/>. Children not
+    /// listed keep their relative order after the listed ones. Changes sort order only — the items are
+    /// not saved, so no "media saved" notifications (or automations listening for them) fire.</summary>
+    void SortChildren(Guid folderKey, IReadOnlyList<Guid> orderedChildKeys);
+
+    /// <summary>Moves the item (and anything below it) to the Recycle Bin. Recoverable.</summary>
+    void MoveToRecycleBin(Guid mediaKey);
+
+    /// <summary>Permanently deletes the item (and anything below it), bypassing the Recycle Bin.</summary>
+    void Delete(Guid mediaKey);
+
+    /// <summary>Moves an item out of the Recycle Bin back under the parent folder
+    /// (<see cref="Guid.Empty"/> = the media root). No-op if it is already there.</summary>
+    void RestoreFromRecycleBin(Guid mediaKey, Guid parentKey);
 }
