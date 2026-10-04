@@ -4,6 +4,7 @@ import { UMB_NOTIFICATION_CONTEXT } from "@umbraco-cms/backoffice/notification";
 import { MediaCuratorService, type ReanalyzeImageResultModel } from "../api/index.js";
 import { notify, type McNotifications } from "./mc-notify.js";
 import { rootViewStyles } from "./root-view.styles.js";
+import "./background-runs-banner.element.js";
 
 @customElement("mc-root-reanalyze-view")
 export class McRootReanalyzeViewElement extends UmbLitElement {
@@ -60,7 +61,7 @@ export class McRootReanalyzeViewElement extends UmbLitElement {
   }
 
   override render() {
-    return html`
+    return html`<mc-background-runs-banner></mc-background-runs-banner>
       <uui-box headline="Re-analyze image" data-mark="mc:reanalyze">
         <p>
           Force a fresh AI vision pass on selected images. Cached descriptions and tags are ignored

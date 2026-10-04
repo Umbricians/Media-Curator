@@ -4,6 +4,7 @@ import { UMB_NOTIFICATION_CONTEXT } from "@umbraco-cms/backoffice/notification";
 import { MediaCuratorService, type BulkRunStatusModel, type CurationRunModel, type RulesetModel } from "../api/index.js";
 import { notify, type McNotifications } from "./mc-notify.js";
 import { rootViewStyles } from "./root-view.styles.js";
+import "./background-runs-banner.element.js";
 
 @customElement("mc-root-activity-view")
 export class McRootActivityViewElement extends UmbLitElement {
@@ -107,14 +108,14 @@ export class McRootActivityViewElement extends UmbLitElement {
   }
 
   override render() {
-    if (this._loading) return html`<uui-loader></uui-loader>`;
+    if (this._loading) return html`<mc-background-runs-banner></mc-background-runs-banner><uui-loader></uui-loader>`;
     if (this._runs.length === 0) {
-      return html`${this.#renderBackground()}
+      return html`<mc-background-runs-banner></mc-background-runs-banner>${this.#renderBackground()}
         <uui-box headline="Activity log" data-mark="mc:activity-log">
           <p data-mark="mc:activity-empty">No curation runs yet.</p>
         </uui-box>`;
     }
-    return html`
+    return html`<mc-background-runs-banner></mc-background-runs-banner>
       ${this.#renderBackground()}
       <uui-box headline="Activity log" data-mark="mc:activity-log">
         <uui-table>

@@ -11,6 +11,7 @@ import {
 } from "../api/index.js";
 import { notify, type McNotifications } from "./mc-notify.js";
 import { rootViewStyles } from "./root-view.styles.js";
+import "./background-runs-banner.element.js";
 import {
   CLASSIFICATION_METHODS,
   DEFAULT_SETTINGS,
@@ -108,12 +109,12 @@ export class McRootSetupViewElement extends UmbLitElement {
   override render() {
     const settings = this._settings;
     const ai = this._ai;
-    if (!settings || !ai) return html`<uui-loader></uui-loader>`;
+    if (!settings || !ai) return html`<mc-background-runs-banner></mc-background-runs-banner><uui-loader></uui-loader>`;
     const jevSelected = settings.decisionEngine === "Jev";
     const jevAvailable = settings.jevApiKeyConfigured;
     const keyFromServer = settings.jevApiKeySource === "ServerConfiguration";
 
-    return html`
+    return html`<mc-background-runs-banner></mc-background-runs-banner>
       <uui-box headline="Setup" data-mark="mc:settings">
         <p>
           Everything Media Curator needs is set up here. The classification scheme is set on each ruleset's
