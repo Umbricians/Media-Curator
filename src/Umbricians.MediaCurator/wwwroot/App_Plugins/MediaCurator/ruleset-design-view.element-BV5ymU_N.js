@@ -3,7 +3,7 @@ import { UmbLitElement as Eb } from "@umbraco-cms/backoffice/lit-element";
 import { UmbElementMixin as zb } from "@umbraco-cms/backoffice/element-api";
 import { UmbModalToken as Mb, umbConfirmModal as Nb, umbOpenModal as Ab } from "@umbraco-cms/backoffice/modal";
 import { s as Cb, d as Tb, r as Db, a as Ob, b as xp, c as Hb, u as Rb } from "./rule-tree.logic-40nRL1No.js";
-import { M as Bb } from "./ruleset-workspace.context-token-CizKWrw5.js";
+import { M as Bb } from "./ruleset-workspace.context-token-BwAZb3Yx.js";
 function _p(n) {
   return n && n.__esModule && Object.prototype.hasOwnProperty.call(n, "default") ? n.default : n;
 }
@@ -17499,4 +17499,4 @@ export {
   oa as McRulesetDesignViewElement,
   Zz as default
 };
-//# sourceMappingURL=ruleset-design-view.element-Chbjjmd9.js.map
+//# sourceMappingURL=ruleset-design-view.element-BV5ymU_N.js.map

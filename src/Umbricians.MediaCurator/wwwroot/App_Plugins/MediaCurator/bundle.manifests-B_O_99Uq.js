@@ -51,7 +51,7 @@ const O = [
     type: "repository",
     alias: m,
     name: "Media Curator Ruleset Tree Repository",
-    api: () => import("./ruleset-tree.repository-CDZlK9yo.js")
+    api: () => import("./ruleset-tree.repository-Ba0h2fDj.js")
   },
   {
     type: "tree",
@@ -85,7 +85,7 @@ const W = [
     type: "repository",
     alias: R,
     name: "Media Curator Ruleset Item Repository",
-    api: () => import("./ruleset-item.repository-Do13UuWz.js")
+    api: () => import("./ruleset-item.repository-B7cRxoMx.js")
   },
   {
     type: "itemStore",
@@ -100,7 +100,7 @@ const W = [
     alias: "Umbricians.MediaCurator.EntityAction.Ruleset.Create",
     name: "Create Media Curator Ruleset Entity Action",
     weight: 1200,
-    api: () => import("./create-ruleset.action-CO9AUlC0.js"),
+    api: () => import("./create-ruleset.action-BUsdDou0.js"),
     forEntityTypes: [t],
     meta: { icon: "icon-add", label: "Create ruleset" }
   },
@@ -190,7 +190,7 @@ const W = [
     type: "repository",
     alias: M,
     name: "Media Curator Ruleset Detail Repository",
-    api: () => import("./ruleset-detail.repository-ydtAdKW_.js")
+    api: () => import("./ruleset-detail.repository-0TRWV7vj.js")
   },
   {
     type: "store",
@@ -204,14 +204,14 @@ const W = [
     kind: "routable",
     alias: A,
     name: "Media Curator Ruleset Workspace",
-    api: () => import("./ruleset-workspace.context-CjuO0NnT.js"),
+    api: () => import("./ruleset-workspace.context-y7E8GJDL.js"),
     meta: { entityType: a }
   },
   {
     type: "workspaceView",
     alias: "Umbricians.MediaCurator.WorkspaceView.Ruleset.Design",
     name: "Media Curator Ruleset Design View",
-    element: () => import("./ruleset-design-view.element-Chbjjmd9.js"),
+    element: () => import("./ruleset-design-view.element-BV5ymU_N.js"),
     weight: 300,
     meta: { label: "Design", pathname: "design", icon: "icon-mindmap" },
     conditions: [e]
@@ -220,7 +220,7 @@ const W = [
     type: "workspaceView",
     alias: "Umbricians.MediaCurator.WorkspaceView.Ruleset.Settings",
     name: "Media Curator Ruleset Settings View",
-    element: () => import("./ruleset-settings-view.element-UMfVUXP3.js"),
+    element: () => import("./ruleset-settings-view.element-B0Bf7YoH.js"),
     weight: 200,
     meta: { label: "Settings", pathname: "settings", icon: "icon-settings" },
     conditions: [e]
@@ -229,7 +229,7 @@ const W = [
     type: "workspaceView",
     alias: "Umbricians.MediaCurator.WorkspaceView.Ruleset.Requirements",
     name: "Media Curator Ruleset Requirements View",
-    element: () => import("./ruleset-requirements-view.element-B8qh3WcV.js"),
+    element: () => import("./ruleset-requirements-view.element-ByWMjnEy.js"),
     weight: 150,
     meta: { label: "Requirements", pathname: "requirements", icon: "icon-checkbox" },
     conditions: [e, c]
@@ -238,7 +238,7 @@ const W = [
     type: "workspaceView",
     alias: "Umbricians.MediaCurator.WorkspaceView.Ruleset.Curate",
     name: "Media Curator Ruleset Curate View",
-    element: () => import("./ruleset-curate-view.element-BTJy6s-R.js"),
+    element: () => import("./ruleset-curate-view.element-DJ70-eC4.js"),
     weight: 100,
     meta: { label: "Curate", pathname: "curate", icon: "icon-play" },
     conditions: [e, c]
@@ -258,7 +258,7 @@ const W = [
     kind: "menuStructure",
     alias: "Umbricians.MediaCurator.Context.Ruleset.Menu.Structure",
     name: "Media Curator Ruleset Menu Structure Context",
-    api: () => import("./ruleset-menu-structure.context-3WLwVAPw.js"),
+    api: () => import("./ruleset-menu-structure.context-DuvDaLyC.js"),
     meta: { menuItemAlias: C },
     conditions: [e]
   },
@@ -276,7 +276,7 @@ const W = [
     alias: "Umbricians.MediaCurator.EntityAction.Media.Curate",
     name: "Curate Images Entity Action",
     weight: 50,
-    api: () => import("./curate-media.action-CGXQbUhN.js"),
+    api: () => import("./curate-media.action-t-hBkWuE.js"),
     forEntityTypes: ["media"],
     meta: { icon: "icon-wand", label: "Curate images" },
     // The Media Curator API requires Settings section access.
@@ -367,4 +367,4 @@ export {
   m as h,
   ie as m
 };
-//# sourceMappingURL=bundle.manifests-BGBdPeL-.js.map
+//# sourceMappingURL=bundle.manifests-B_O_99Uq.js.map

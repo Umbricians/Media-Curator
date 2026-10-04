@@ -581,10 +581,6 @@ export type GetQueueItemStatusErrors = {
      * The resource is protected and requires an authentication token
      */
     401: unknown;
-    /**
-     * Not Found
-     */
-    404: unknown;
 };
 
 export type GetQueueItemStatusResponses = {
@@ -592,6 +588,10 @@ export type GetQueueItemStatusResponses = {
      * OK
      */
     200: BulkRunStatusModel;
+    /**
+     * No Content
+     */
+    204: void;
 };
 
 export type GetQueueItemStatusResponse = GetQueueItemStatusResponses[keyof GetQueueItemStatusResponses];

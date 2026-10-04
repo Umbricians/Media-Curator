@@ -1,19 +1,19 @@
-import { html as o, nothing as f, css as T, state as m, customElement as U } from "@umbraco-cms/backoffice/external/lit";
+import { html as o, nothing as f, css as T, state as p, customElement as U } from "@umbraco-cms/backoffice/external/lit";
 import { UmbLitElement as L } from "@umbraco-cms/backoffice/lit-element";
 import { UMB_NOTIFICATION_CONTEXT as W } from "@umbraco-cms/backoffice/notification";
 import { UmbMediaItemRepository as A } from "@umbraco-cms/backoffice/media";
 import { umbConfirmModal as B } from "@umbraco-cms/backoffice/modal";
-import { M as p } from "./sdk.gen-DBpJrjP9.js";
-import { d as J } from "./bundle.manifests-BGBdPeL-.js";
-import { M as Y } from "./ruleset-workspace.context-token-CizKWrw5.js";
-import { i as q, w as z, h as V, g as G, f as K, e as H, d as M } from "./empty-folders-option.element-DqAqCN9I.js";
-var X = Object.defineProperty, Q = Object.getOwnPropertyDescriptor, R = (e) => {
+import { M as m } from "./sdk.gen-DBpJrjP9.js";
+import { d as J } from "./bundle.manifests-B_O_99Uq.js";
+import { M as Y } from "./ruleset-workspace.context-token-BwAZb3Yx.js";
+import { i as q, j as z, w as V, h as G, g as H, f as K, e as X, d as M } from "./empty-folders-option.element-DfLSa1h6.js";
+var j = Object.defineProperty, Q = Object.getOwnPropertyDescriptor, R = (e) => {
   throw TypeError(e);
 }, d = (e, t, a, u) => {
   for (var h = u > 1 ? void 0 : u ? Q(t, a) : t, $ = e.length - 1, k; $ >= 0; $--)
     (k = e[$]) && (h = (u ? k(t, a, h) : k(h)) || h);
-  return u && h && X(t, a, h), h;
-}, C = (e, t, a) => t.has(e) || R("Cannot " + a), c = (e, t, a) => (C(e, t, "read from private field"), t.get(e)), _ = (e, t, a) => t.has(e) ? R("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, a), g = (e, t, a, u) => (C(e, t, "write to private field"), t.set(e, a), a), s = (e, t, a) => (C(e, t, "access private method"), a), n, b, v, i, r, y, x, S, w, I, N, E, D, O, P;
+  return u && h && j(t, a, h), h;
+}, C = (e, t, a) => t.has(e) || R("Cannot " + a), c = (e, t, a) => (C(e, t, "read from private field"), t.get(e)), _ = (e, t, a) => t.has(e) ? R("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, a), g = (e, t, a, u) => (C(e, t, "write to private field"), t.set(e, a), a), s = (e, t, a) => (C(e, t, "access private method"), a), n, b, v, i, r, y, x, N, w, S, E, I, D, O, P;
 const F = (e, t, a) => `${e} ${e === 1 ? t : a}`;
 let l = class extends L {
   constructor() {
@@ -46,20 +46,20 @@ y = async function() {
     this._runs = [];
     return;
   }
-  const { data: e } = await p.getRuns();
+  const { data: e } = await m.getRuns();
   this._runs = (e ?? []).filter((t) => t.scopeFolderKey === this._scopeFolderKey);
 };
 x = async function() {
   const e = this._scopeFolderKey;
   if (!e) return;
-  const [{ data: t }, { data: a }, { data: u }] = await Promise.all([
-    p.countMediaCuration({ path: { mediaKey: e } }),
-    p.getQueueItemStatus({ path: { mediaKey: e } }),
+  const [{ data: t }, a, { data: u }] = await Promise.all([
+    m.countMediaCuration({ path: { mediaKey: e } }),
+    q(e),
     new A(this).requestItems([e])
   ]);
-  e === this._scopeFolderKey && (this._count = t, this._scopeName = u?.[0]?.name ?? "this folder", a && q(a) && s(this, i, w).call(this, a));
+  e === this._scopeFolderKey && (this._count = t, this._scopeName = u?.[0]?.name ?? "this folder", a && z(a) && s(this, i, w).call(this, a));
 };
-S = async function() {
+N = async function() {
   const e = this._scopeFolderKey, t = this._count;
   if (!e || !t) return;
   c(this, b)?.getHasUnpersistedChanges() && s(this, i, r).call(this, "warning", "You have unsaved changes. Curation uses the last saved version of this ruleset.");
@@ -75,7 +75,7 @@ S = async function() {
     return;
   }
   this._busy = !0;
-  const a = await p.executeCuration({
+  const a = await m.executeCuration({
     body: { scopeFolderKey: e, recursive: !0, permanentlyDeleteEmptyFolders: c(this, n) }
   });
   if (this._busy = !1, a.error || !a.data) {
@@ -104,7 +104,7 @@ S = async function() {
 w = async function(e) {
   const t = e.scopeFolderKey;
   this._background = e;
-  const a = await z(t, (u) => {
+  const a = await V(t, (u) => {
     t === this._scopeFolderKey && (this._background = u);
   });
   if (t === this._scopeFolderKey) {
@@ -112,13 +112,13 @@ w = async function(e) {
       s(this, i, r).call(this, "warning", `Lost track of the run for "${this._scopeName}" (the site may have restarted). Check the Activity log.`);
       return;
     }
-    s(this, i, r).call(this, a.state === "completed" && a.failed === 0 ? "positive" : "warning", V(this._scopeName, a, c(this, n))), await s(this, i, y).call(this);
+    s(this, i, r).call(this, a.state === "completed" && a.failed === 0 ? "positive" : "warning", G(this._scopeName, a, c(this, n))), await s(this, i, y).call(this);
   }
 };
-I = async function() {
+S = async function() {
   if (!this._scopeFolderKey) return;
   c(this, b)?.getHasUnpersistedChanges() && s(this, i, r).call(this, "warning", "You have unsaved changes. The dry run uses the last saved version of this ruleset."), this._busy = !0;
-  const e = await p.planCuration({
+  const e = await m.planCuration({
     body: { scopeFolderKey: this._scopeFolderKey, recursive: !0, permanentlyDeleteEmptyFolders: !1 }
   });
   if (this._busy = !1, e.error || !e.data) {
@@ -127,10 +127,10 @@ I = async function() {
   }
   this._plan = e.data;
 };
-N = async function() {
+E = async function() {
   if (!this._scopeFolderKey) return;
   this._busy = !0;
-  const e = await p.executeCuration({
+  const e = await m.executeCuration({
     body: {
       scopeFolderKey: this._scopeFolderKey,
       recursive: !0,
@@ -143,8 +143,8 @@ N = async function() {
   }
   s(this, i, r).call(this, "positive", M(e.data, c(this, n))), this._plan = void 0, await s(this, i, y).call(this);
 };
-E = async function(e) {
-  const t = await p.undoRun({ path: { runKey: e.key } });
+I = async function(e) {
+  const t = await m.undoRun({ path: { runKey: e.key } });
   if (t.error || !t.data) {
     s(this, i, r).call(this, "danger", `Undo failed: ${JSON.stringify(t.error ?? "no data")}`);
     return;
@@ -156,7 +156,7 @@ D = function() {
   const e = this._count, t = this._background;
   return o`
       <uui-box headline="Curate" data-mark="mc:background-curate">
-        ${t ? o`<p data-mark="mc:background-progress">${G(this._scopeName, t)}</p>
+        ${t ? o`<p data-mark="mc:background-progress">${H(this._scopeName, t)}</p>
               ${t.total > 0 ? o`<uui-loader-bar progress=${Math.round(100 * t.processed / t.total)}></uui-loader-bar>` : o`<uui-loader-bar></uui-loader-bar>`}` : o`<p>${K(this._scopeName, e.imageCount, e.threshold)}</p>
               <mc-empty-folders-option
                 @change=${(a) => g(this, n, a.target.permanentlyDelete)}
@@ -168,7 +168,7 @@ D = function() {
                   look="primary"
                   color="positive"
                   ?disabled=${this._busy}
-                  @click=${() => s(this, i, S).call(this)}
+                  @click=${() => s(this, i, N).call(this)}
                 ></uui-button>
               </div>`}
       </uui-box>
@@ -184,7 +184,7 @@ O = function() {
           label=${e ? "Run again" : "Run dry run"}
           look=${e ? "secondary" : "primary"}
           ?disabled=${this._busy}
-          @click=${() => s(this, i, I).call(this)}
+          @click=${() => s(this, i, S).call(this)}
         ></uui-button>
         ${e ? o`
               <p data-mark="mc:plan-summary">
@@ -210,7 +210,7 @@ O = function() {
                       ${(e.skippedItems ?? []).map((t) => o`<li>${t}</li>`)}
                     </ul>
                   </details>` : f}
-              ${e.moveCount > 0 || e.emptyFolderCount > 0 ? o`${e.moveCount > 0 ? o`<p>${H(e.emptyFolderCount)}</p>` : o`<p data-mark="mc:plan-cleanup-only">${F(e.emptyFolderCount, "empty sub-folder", "empty sub-folders")} can be removed.</p>`}
+              ${e.moveCount > 0 || e.emptyFolderCount > 0 ? o`${e.moveCount > 0 ? o`<p>${X(e.emptyFolderCount)}</p>` : o`<p data-mark="mc:plan-cleanup-only">${F(e.emptyFolderCount, "empty sub-folder", "empty sub-folders")} can be removed.</p>`}
                     <mc-empty-folders-option
                       @change=${(t) => g(this, n, t.target.permanentlyDelete)}
                     ></mc-empty-folders-option>
@@ -221,7 +221,7 @@ O = function() {
                         look="primary"
                         color="positive"
                         ?disabled=${this._busy}
-                        @click=${() => s(this, i, N).call(this)}
+                        @click=${() => s(this, i, E).call(this)}
                       ></uui-button>
                     </div>` : f}
             ` : o`<p>See where every item in the scope folder would go, before anything moves.</p>`}
@@ -253,7 +253,7 @@ P = function() {
                       compact
                       look="secondary"
                       label="Undo run from ${new Date(e.started).toLocaleString()}"
-                      @click=${() => s(this, i, E).call(this, e)}
+                      @click=${() => s(this, i, I).call(this, e)}
                       >Undo</uui-button
                     >` : f}
               </uui-table-cell>
@@ -280,32 +280,32 @@ l.styles = [
     `
 ];
 d([
-  m()
+  p()
 ], l.prototype, "_scopeFolderKey", 2);
 d([
-  m()
+  p()
 ], l.prototype, "_plan", 2);
 d([
-  m()
+  p()
 ], l.prototype, "_runs", 2);
 d([
-  m()
+  p()
 ], l.prototype, "_busy", 2);
 d([
-  m()
+  p()
 ], l.prototype, "_count", 2);
 d([
-  m()
+  p()
 ], l.prototype, "_background", 2);
 d([
-  m()
+  p()
 ], l.prototype, "_scopeName", 2);
 l = d([
   U("mc-ruleset-curate-view")
 ], l);
-const le = l;
+const ue = l;
 export {
   l as McRulesetCurateViewElement,
-  le as default
+  ue as default
 };
-//# sourceMappingURL=ruleset-curate-view.element-BTJy6s-R.js.map
+//# sourceMappingURL=ruleset-curate-view.element-DJ70-eC4.js.map

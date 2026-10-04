@@ -6,7 +6,7 @@ import { umbConfirmModal as y } from "@umbraco-cms/backoffice/modal";
 import { UMB_NOTIFICATION_CONTEXT as g } from "@umbraco-cms/backoffice/notification";
 import { tryExecute as m } from "@umbraco-cms/backoffice/resources";
 import { M as p } from "./sdk.gen-DBpJrjP9.js";
-import { n as N, r as _, c as $, a as A, e as D, b as F, d as w, f as x, g as C, w as B, h as O } from "./empty-folders-option.element-DqAqCN9I.js";
+import { n as N, r as _, c as $, a as A, e as D, b as F, d as w, f as x, g as C, w as B, h as O } from "./empty-folders-option.element-DfLSa1h6.js";
 import { t as R, p as U, r as q, u as K } from "./reload-people-badges-BK_mojpx.js";
 const E = "media", h = "Curate images";
 class Q extends v {
@@ -124,4 +124,4 @@ export {
   Q as McCurateMediaEntityAction,
   Q as api
 };
-//# sourceMappingURL=curate-media.action-CGXQbUhN.js.map
+//# sourceMappingURL=curate-media.action-t-hBkWuE.js.map
