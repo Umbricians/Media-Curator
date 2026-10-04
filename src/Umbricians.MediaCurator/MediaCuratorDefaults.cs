@@ -13,6 +13,10 @@ public static class MediaCuratorDefaults
     /// <summary>Upper bound for the "images analyzed at once" setting, so a typo cannot flood the AI provider.</summary>
     public const int MaxParallelAnalysesLimit = 16;
 
+    /// <summary>"Curate images" on a folder with more images than this (at any depth) runs in the
+    /// background: a single request for thousands of moves outlasts hosting time limits.</summary>
+    public const int BackgroundCurationThreshold = 100;
+
     /// <summary>Deepest scheme level a classification decision reaches.</summary>
     public const int MaxClassificationDepth = 4;
 

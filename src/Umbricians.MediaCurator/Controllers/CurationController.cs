@@ -1,6 +1,8 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Umbraco.Cms.Core.Models;
+using Umbraco.Cms.Core.Services;
 using Umbricians.MediaCurator.Controllers.ViewModels;
 using Umbricians.MediaCurator.Engine;
 
@@ -17,6 +19,7 @@ public class CurationController : MediaCuratorApiControllerBase
     private readonly IExclusionRepository _exclusions;
     private readonly Rules.IRulesetTransferService _transfer;
     private readonly IMediaChangeTracker? _changes;
+    private readonly IEntityService? _entities;
 
     public CurationController(
         ICurationEngine engine,
@@ -25,9 +28,11 @@ public class CurationController : MediaCuratorApiControllerBase
         ICurationUndoService undoService,
         IExclusionRepository exclusions,
         Rules.IRulesetTransferService transfer,
-        IMediaChangeTracker? changes = null)
+        IMediaChangeTracker? changes = null,
+        IEntityService? entities = null)
     {
         _changes = changes;
+        _entities = entities;
         _engine = engine;
         _runLog = runLog;
         _bulkQueue = bulkQueue;
@@ -92,9 +97,41 @@ public class CurationController : MediaCuratorApiControllerBase
         }
     }
 
+    /// <summary>How many images "Curate images" would cover, counted without loading them, and whether
+    /// it would run in the background. Lets the backoffice skip the slow preview for large folders.</summary>
+    [HttpGet("curation/media/{mediaKey:guid}/count")]
+    [ProducesResponseType<MediaCurationCountModel>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public IActionResult CountMediaCuration(Guid mediaKey)
+    {
+        try
+        {
+            var count = _engine.CountImages(mediaKey);
+            return Ok(new MediaCurationCountModel
+            {
+                ImageCount = count,
+                Threshold = MediaCuratorDefaults.BackgroundCurationThreshold,
+                RunsInBackground = count > MediaCuratorDefaults.BackgroundCurationThreshold,
+            });
+        }
+        catch (MediaNotFoundException ex)
+        {
+            return NotFound(Error(ex.Message));
+        }
+    }
+
+    /// <summary>The background run of one folder, or 404 when it has none.</summary>
+    [HttpGet("curation/queue/{mediaKey:guid}")]
+    [ProducesResponseType<BulkRunStatusModel>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult GetQueueItemStatus(Guid mediaKey)
+        => _bulkQueue.GetStatus(mediaKey) is { } status ? Ok(BulkRunStatusModel.From(status)) : NotFound();
+
     /// <summary>Plans and executes curation for one media item or folder tree. Each governing
     /// ruleset runs (and is logged) separately. Afterwards the empty sub-folders below the clicked
-    /// folder are removed (to the Recycle Bin, or permanently when asked), and the folders are sorted.</summary>
+    /// folder are removed (to the Recycle Bin, or permanently when asked), and the folders are sorted.
+    /// A folder with more than <see cref="MediaCuratorDefaults.BackgroundCurationThreshold"/> images is
+    /// queued as a background run instead (<see cref="MediaCurationSummaryModel.Queued"/>).</summary>
     [HttpPost("curation/media/{mediaKey:guid}/execute")]
     [ProducesResponseType<MediaCurationSummaryModel>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -102,39 +139,33 @@ public class CurationController : MediaCuratorApiControllerBase
     {
         try
         {
-            var plan = await _engine.PlanForMediaAsync(mediaKey, ct);
-            int moved = 0, inPlace = 0, failed = 0;
-            var runKeys = new List<Guid>();
-            var executed = new List<ExecutedPlan>();
-            foreach (var p in plan.Plans)
+            // Decided here, not in the backoffice, so no caller can start a request that outlasts
+            // hosting time limits: large folders always go to the background.
+            var imageCount = _engine.CountImages(mediaKey);
+            if (imageCount > MediaCuratorDefaults.BackgroundCurationThreshold)
             {
-                var summary = await _engine.ExecuteAsync(p, trigger: "manual", ct);
-                executed.Add(new ExecutedPlan(p, summary.RunKey));
-                moved += summary.Moved;
-                inPlace += summary.AlreadyInPlace;
-                failed += summary.Failed;
-                // A vetoed run (cancelled by a notification handler) has no run entry.
-                if (summary.RunKey != Guid.Empty)
-                {
-                    runKeys.Add(summary.RunKey);
-                }
+                var folder = _entities?.Get(mediaKey, UmbracoObjectTypes.Media);
+                var queued = _bulkQueue.TryEnqueueMedia(
+                    mediaKey,
+                    folder?.Name ?? string.Empty,
+                    folder?.Path ?? string.Empty,
+                    imageCount,
+                    Removal(permanentlyDeleteEmptyFolders));
+                return queued == BulkEnqueueResult.Queued
+                    ? Ok(new MediaCurationSummaryModel { Moved = 0, AlreadyInPlace = 0, Failed = 0, Queued = true, ImageCount = imageCount })
+                    : Conflict(Error("This folder, or a folder above or below it, is already being curated in the background."));
             }
 
-            // Once, after every plan has run, rooted at the clicked folder (never for a single image).
-            var foldersRemoved = await _engine.RemoveEmptyFoldersForMediaAsync(
-                mediaKey, executed, Removal(permanentlyDeleteEmptyFolders), ct);
-
-            // Then, once, put the clicked folder's tree (or a single image's new path) in order.
-            await _engine.SortFoldersForMediaAsync(mediaKey, executed, ct);
-
+            var summary = await _engine.CurateMediaAsync(mediaKey, "manual", Removal(permanentlyDeleteEmptyFolders), cancellationToken: ct);
             return Ok(new MediaCurationSummaryModel
             {
-                Moved = moved,
-                AlreadyInPlace = inPlace,
-                Failed = failed,
-                FoldersRemoved = foldersRemoved,
-                RunKeys = runKeys,
+                Moved = summary.Moved,
+                AlreadyInPlace = summary.AlreadyInPlace,
+                Failed = summary.Failed,
+                FoldersRemoved = summary.FoldersRemoved,
+                RunKeys = summary.RunKeys.ToList(),
                 ChangedFolderKeys = _changes?.ChangedFolders.ToList() ?? [],
+                ImageCount = imageCount,
             });
         }
         catch (MediaNotFoundException ex)

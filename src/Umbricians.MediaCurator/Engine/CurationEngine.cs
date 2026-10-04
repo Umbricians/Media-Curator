@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -105,6 +106,58 @@ public interface ICurationEngine
         IReadOnlyList<ExecutedPlan> executed,
         CancellationToken cancellationToken = default);
 
+    /// <summary>The whole media action, as one call (the backoffice's "Curate images", in the foreground or
+    /// as a background run): plans the clicked image or folder tree, executes each governing ruleset's
+    /// plan (one run log entry each), then removes the empty sub-folders below the clicked folder and
+    /// puts its tree in order. Throws <see cref="MediaNotFoundException"/> when the media does not exist.</summary>
+    async Task<MediaCurationSummary> CurateMediaAsync(
+        Guid mediaKey,
+        string trigger,
+        EmptyFolderRemoval emptyFolders,
+        IProgress<CurationProgress>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        var plan = await PlanForMediaAsync(mediaKey, cancellationToken);
+        var total = plan.Plans.Sum(p => p.MoveCount);
+        progress?.Report(new CurationProgress(0, total));
+
+        int moved = 0, inPlace = 0, failed = 0, done = 0;
+        var runKeys = new List<Guid>();
+        var executed = new List<ExecutedPlan>();
+        foreach (var p in plan.Plans)
+        {
+            var before = done;
+            var options = new CurationExecutionOptions
+            {
+                MoveProgress = progress is null ? null : new InlineProgress<int>(n => progress.Report(new CurationProgress(before + n, total))),
+            };
+            var summary = await ExecuteAsync(p, trigger, options, cancellationToken);
+            executed.Add(new ExecutedPlan(p, summary.RunKey));
+            moved += summary.Moved;
+            inPlace += summary.AlreadyInPlace;
+            failed += summary.Failed;
+            done = before + summary.Moved + summary.Failed;
+
+            // A vetoed run (cancelled by a notification handler) has no run entry.
+            if (summary.RunKey != Guid.Empty)
+            {
+                runKeys.Add(summary.RunKey);
+            }
+        }
+
+        // Once, after every plan has run, rooted at the clicked folder (never for a single image).
+        var foldersRemoved = await RemoveEmptyFoldersForMediaAsync(mediaKey, executed, emptyFolders, cancellationToken);
+
+        // Then, once, put the clicked folder's tree (or a single image's new path) in order.
+        await SortFoldersForMediaAsync(mediaKey, executed, cancellationToken);
+
+        return new MediaCurationSummary(moved, inPlace, failed, foldersRemoved, runKeys);
+    }
+
+    /// <summary>How many images are below the folder (or 1 for an image), counted without loading them:
+    /// decides whether "Curate images" runs in the background.</summary>
+    int CountImages(Guid mediaKey);
+
     /// <summary>How many empty sub-folders below <paramref name="folderKey"/> a cleanup would remove
     /// right now (same rules, nothing removed). Zero when the media is not a folder.</summary>
     Task<int> CountEmptyFoldersAsync(Guid folderKey, CancellationToken cancellationToken = default);
@@ -150,7 +203,24 @@ public sealed record CurationExecutionOptions
 
     /// <summary>Folder sorting, after removal.</summary>
     public FolderSorting Sorting { get; init; } = FolderSorting.None;
+
+    /// <summary>Told how many of the plan's moves have been attempted so far, after each one.</summary>
+    public IProgress<int>? MoveProgress { get; init; }
 }
+
+/// <summary>How far a media-action run has got: moves attempted so far, of the moves planned.</summary>
+public sealed record CurationProgress(int Processed, int Total);
+
+/// <summary>Reports on the calling thread, unlike <see cref="Progress{T}"/>, which posts to the
+/// synchronization context or thread pool and so can report out of order.</summary>
+internal sealed class InlineProgress<T>(Action<T> report) : IProgress<T>
+{
+    public void Report(T value) => report(value);
+}
+
+/// <summary>The result of <see cref="ICurationEngine.CurateMediaAsync"/>: totals over every governing
+/// ruleset's run, and those runs' log entries.</summary>
+public sealed record MediaCurationSummary(int Moved, int AlreadyInPlace, int Failed, int FoldersRemoved, IReadOnlyList<Guid> RunKeys);
 
 /// <summary>A plan that was executed, with the run log entry it produced.</summary>
 public sealed record ExecutedPlan(CurationPlan Plan, Guid RunKey);
@@ -253,6 +323,7 @@ public sealed class CurationEngine : ICurationEngine
 
     public async Task<MediaCurationPlan> PlanForMediaAsync(Guid mediaKey, CancellationToken cancellationToken = default)
     {
+        var timer = Stopwatch.StartNew();
         var clicked = _media.GetItem(mediaKey)
             ?? throw new MediaNotFoundException(mediaKey);
 
@@ -308,7 +379,24 @@ public sealed class CurationEngine : ICurationEngine
         var plans = groups
             .Select(g => new CurationPlan(g.Ruleset.ScopeRootKey, g.Ruleset.Key, g.Ruleset.Name, g.Moves, g.Skipped))
             .ToList();
+        _logger.LogInformation(
+            "MediaCurator: planned {Items} items under {MediaKey} ({Moves} to move) in {Elapsed} ms.",
+            items.Count,
+            mediaKey,
+            plans.Sum(p => p.MoveCount),
+            timer.ElapsedMilliseconds);
         return new MediaCurationPlan(mediaKey, plans, unattributed);
+    }
+
+    public int CountImages(Guid mediaKey)
+    {
+        var item = _media.GetItem(mediaKey) ?? throw new MediaNotFoundException(mediaKey);
+        if (!item.IsFolder)
+        {
+            return ImageMediaTypes.Contains(item.ContentTypeAlias, StringComparer.OrdinalIgnoreCase) ? 1 : 0;
+        }
+
+        return _media.CountDescendants(mediaKey, ImageMediaTypes);
     }
 
     /// <summary>The verdict for one item: a move, or the reason it is left alone.
@@ -515,6 +603,7 @@ public sealed class CurationEngine : ICurationEngine
 
         var runKey = await _runLog.StartRunAsync(plan.ScopeFolderKey, plan.RulesetKey, trigger, cancellationToken);
         int moved = 0, inPlace = 0, failed = 0;
+        var timer = Stopwatch.StartNew();
 
         foreach (var move in plan.Moves)
         {
@@ -539,7 +628,18 @@ public sealed class CurationEngine : ICurationEngine
                 await _runLog.RecordItemAsync(runKey, move.MediaKey, move.MediaName, move.FromParentKey, null, move.TargetPath, success: false, note: ex.Message, cancellationToken);
                 failed++;
             }
+
+            options.MoveProgress?.Report(moved + failed);
         }
+
+        _logger.LogInformation(
+            "MediaCurator: run {RunKey} ({Ruleset}) moved {Moved}, {InPlace} already in place, {Failed} failed in {Elapsed} ms.",
+            runKey,
+            plan.RulesetName,
+            moved,
+            inPlace,
+            failed,
+            timer.ElapsedMilliseconds);
 
         var foldersRemoved = emptyFolders == EmptyFolderRemoval.None
             ? 0

@@ -119,6 +119,8 @@ public class AutomateActionsTests
     {
         public CurationPlan? Plan;
 
+        public int CountImages(Guid mediaKey) => 1;
+
         public MediaCurationPlan? MediaPlan;
 
         public bool PlannedWholeScope;

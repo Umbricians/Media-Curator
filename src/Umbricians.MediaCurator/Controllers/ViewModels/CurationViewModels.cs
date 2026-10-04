@@ -81,6 +81,22 @@ public class MediaCurationSummaryModel
     /// <summary>Folders whose children changed (moved in or out, created, removed or sorted), for the
     /// backoffice to reload. <see cref="Guid.Empty"/> is the media root.</summary>
     public List<Guid> ChangedFolderKeys { get; init; } = [];
+
+    /// <summary>True when the run was sent to the background (more images than
+    /// <see cref="MediaCurationCountModel.Threshold"/>): the counts are then empty, and the run's
+    /// progress and result come from the queue status.</summary>
+    public bool Queued { get; init; }
+
+    /// <summary>Images below the clicked folder (or 1 for an image).</summary>
+    public int ImageCount { get; init; }
+}
+
+/// <summary>How many images "Curate images" would cover, and whether it runs in the background.</summary>
+public class MediaCurationCountModel
+{
+    public required int ImageCount { get; init; }
+    public required int Threshold { get; init; }
+    public required bool RunsInBackground { get; init; }
 }
 
 public class CurationRunSummaryModel
@@ -108,6 +124,31 @@ public class BulkRunStatusModel
     public required int Processed { get; init; }
     public required int Total { get; init; }
     public string? Error { get; init; }
+    public string? Name { get; init; }
+    public int ImageCount { get; init; }
+    public int Moved { get; init; }
+    public int Failed { get; init; }
+    public int FoldersRemoved { get; init; }
+    public List<Guid> RunKeys { get; init; } = [];
+    public List<Guid> ChangedFolderKeys { get; init; } = [];
+    public DateTime Updated { get; init; }
+
+    public static BulkRunStatusModel From(BulkRunStatus s) => new()
+    {
+        ScopeFolderKey = s.ScopeFolderKey,
+        State = s.State.ToString().ToLowerInvariant(),
+        Processed = s.Processed,
+        Total = s.Total,
+        Error = s.Error,
+        Name = s.Name,
+        ImageCount = s.ImageCount,
+        Moved = s.Moved,
+        Failed = s.Failed,
+        FoldersRemoved = s.FoldersRemoved,
+        RunKeys = s.RunKeys.ToList(),
+        ChangedFolderKeys = s.ChangedFolderKeys.ToList(),
+        Updated = s.Updated,
+    };
 }
 
 public class BulkQueueStatusModel
@@ -118,14 +159,7 @@ public class BulkQueueStatusModel
     public static BulkQueueStatusModel From(int queueLength, IReadOnlyList<BulkRunStatus> statuses) => new()
     {
         QueueLength = queueLength,
-        Statuses = statuses.Select(s => new BulkRunStatusModel
-        {
-            ScopeFolderKey = s.ScopeFolderKey,
-            State = s.State.ToString().ToLowerInvariant(),
-            Processed = s.Processed,
-            Total = s.Total,
-            Error = s.Error,
-        }).ToList(),
+        Statuses = statuses.OrderByDescending(s => s.Updated).Select(BulkRunStatusModel.From).ToList(),
     };
 }
 

@@ -30,7 +30,8 @@ public sealed class BulkCurationJob : IRecurringBackgroundJob
         _logger = logger;
     }
 
-    public TimeSpan Period => TimeSpan.FromSeconds(15);
+    // Short: an editor who sent a large "Curate images" to the background is waiting for it to start.
+    public TimeSpan Period => TimeSpan.FromSeconds(5);
 
     public TimeSpan Delay => TimeSpan.FromSeconds(30);
 
@@ -52,6 +53,12 @@ public sealed class BulkCurationJob : IRecurringBackgroundJob
         while (_queue.TryDequeue(out var request) && request is not null)
         {
             var scope = request.ScopeFolderKey;
+            if (request.MediaRun)
+            {
+                await RunMediaAsync(request);
+                continue;
+            }
+
             try
             {
                 _queue.Report(scope, new BulkRunStatus(scope, BulkRunState.Running, 0, 0, null, null));
@@ -71,6 +78,52 @@ public sealed class BulkCurationJob : IRecurringBackgroundJob
                 _logger.LogError(ex, "MediaCurator: background curation failed for {Scope}.", scope);
                 _queue.Report(scope, new BulkRunStatus(scope, BulkRunState.Failed, 0, 0, ex.Message, null));
             }
+        }
+    }
+
+    /// <summary>A "Curate images" run sent to the background: the same steps as in the foreground, with
+    /// progress reported to the queue after each move.</summary>
+    private async Task RunMediaAsync(BulkCurationRequest request)
+    {
+        var key = request.ScopeFolderKey;
+        var queued = _queue.GetStatus(key) ?? new BulkRunStatus(key, BulkRunState.Queued, 0, 0, null, null);
+        try
+        {
+            _queue.Report(key, queued with { State = BulkRunState.Running, Updated = DateTime.UtcNow });
+
+            using var serviceScope = _scopeFactory.CreateScope();
+            var engine = serviceScope.ServiceProvider.GetRequiredService<ICurationEngine>();
+            var changes = serviceScope.ServiceProvider.GetService<IMediaChangeTracker>();
+
+            var running = queued with { State = BulkRunState.Running };
+            var progress = new InlineProgress<CurationProgress>(p =>
+            {
+                running = running with { Processed = p.Processed, Total = p.Total, Updated = DateTime.UtcNow };
+                _queue.Report(key, running);
+            });
+
+            var summary = await engine.CurateMediaAsync(key, trigger: "background", request.EmptyFolders, progress);
+            _queue.Report(key, running with
+            {
+                State = BulkRunState.Completed,
+                Moved = summary.Moved,
+                Failed = summary.Failed,
+                FoldersRemoved = summary.FoldersRemoved,
+                RunKeys = summary.RunKeys,
+                RunKey = summary.RunKeys.Count > 0 ? summary.RunKeys[0] : null,
+                ChangedFolderKeys = changes?.ChangedFolders.ToList() ?? [],
+                Updated = DateTime.UtcNow,
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "MediaCurator: background curation failed for {MediaKey}.", key);
+            _queue.Report(key, (_queue.GetStatus(key) ?? queued) with
+            {
+                State = BulkRunState.Failed,
+                Error = ex.Message,
+                Updated = DateTime.UtcNow,
+            });
         }
     }
 }

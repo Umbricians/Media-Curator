@@ -49,6 +49,9 @@ public class CurationControllerTests
 
         public int EmptyFolders;
         public readonly List<Guid> CountedFolders = [];
+        public int Images;
+
+        public int CountImages(Guid mediaKey) => Images;
 
         public Task<int> CountEmptyFoldersAsync(Guid folderKey, CancellationToken ct = default)
         {
@@ -124,6 +127,50 @@ public class CurationControllerTests
         Assert.Equal(0, model.Failed);
         Assert.Equal(2, model.RunKeys.Count);
         Assert.All(engine.Executed, e => Assert.Equal("manual", e.Trigger));
+    }
+
+    [Fact]
+    public async Task More_images_than_the_threshold_are_queued_not_curated()
+    {
+        var (engine, key) = TwoPlanEngine();
+        engine.Images = MediaCuratorDefaults.BackgroundCurationThreshold + 1;
+        var queue = new BulkCurationQueue();
+
+        var result = await new CurationController(engine, null!, queue, null!, null!, null!)
+            .ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: true, CancellationToken.None);
+
+        var model = Assert.IsType<MediaCurationSummaryModel>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.True(model.Queued);
+        Assert.Equal(engine.Images, model.ImageCount);
+        Assert.Empty(engine.Executed);
+        Assert.True(queue.TryDequeue(out var request));
+        Assert.Equal(EmptyFolderRemoval.Delete, request!.EmptyFolders);
+    }
+
+    [Fact]
+    public async Task A_folder_already_curating_in_the_background_is_refused()
+    {
+        var (engine, key) = TwoPlanEngine();
+        engine.Images = MediaCuratorDefaults.BackgroundCurationThreshold + 1;
+        var controller = new CurationController(engine, null!, new BulkCurationQueue(), null!, null!, null!);
+        await controller.ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: false, CancellationToken.None);
+
+        var second = await controller.ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: false, CancellationToken.None);
+
+        Assert.IsType<ConflictObjectResult>(second);
+    }
+
+    [Fact]
+    public async Task Up_to_the_threshold_curates_in_the_request()
+    {
+        var (engine, key) = TwoPlanEngine();
+        engine.Images = MediaCuratorDefaults.BackgroundCurationThreshold;
+
+        var result = await Controller(engine).ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: false, CancellationToken.None);
+
+        var model = Assert.IsType<MediaCurationSummaryModel>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.False(model.Queued);
+        Assert.Equal(2, engine.Executed.Count);
     }
 
     [Fact]

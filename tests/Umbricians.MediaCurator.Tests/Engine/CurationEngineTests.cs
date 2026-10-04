@@ -38,8 +38,21 @@ public class CurationEngineTests
             return key;
         }
 
+        /// <summary>How many times a single folder's items were listed (not recursive).</summary>
+        public int FolderListings;
+
+        public Guid? FindChildFolder(Guid parentFolderKey, string name)
+            => Children.GetValueOrDefault(parentFolderKey, [])
+                .Select(k => Items[k])
+                .FirstOrDefault(i => i.IsFolder && i.Name.Equals(name, StringComparison.OrdinalIgnoreCase))?.Key;
+
         public IReadOnlyList<MediaItemInfo> GetItems(Guid scopeFolderKey, bool recursive)
         {
+            if (!recursive)
+            {
+                FolderListings++;
+            }
+
             var result = new List<MediaItemInfo>();
             void Collect(Guid parent)
             {
@@ -324,6 +337,57 @@ public class CurationEngineTests
         // The item now sits in Products/2026/06
         var item = media.GetItem(img)!;
         Assert.Equal("06", media.GetItem(item.ParentKey)!.Name);
+    }
+
+    [Fact]
+    public async Task Planning_a_flat_folder_never_lists_a_folder_per_image()
+    {
+        // Listing the target folder for each image made planning quadratic: about a million media
+        // loads for a flat folder of 1,000 images.
+        var (engine, media, _, _, scope, _) = Setup();
+        for (var i = 0; i < 200; i++)
+        {
+            media.AddImage($"photo-{i}.jpg", scope, new DateTime(2026, 6, 10));
+        }
+
+        await engine.ExecuteAsync(await engine.PlanAsync(scope, recursive: true), "manual");
+        media.FolderListings = 0;
+
+        var plan = await engine.PlanForMediaAsync(scope);
+
+        Assert.Equal(200, plan.Plans.Single().Moves.Count(m => m.AlreadyInPlace));
+        Assert.Equal(0, media.FolderListings);
+    }
+
+    [Fact]
+    public async Task Curating_media_reports_progress_up_to_every_planned_move()
+    {
+        var (engine, media, _, _, scope, _) = Setup();
+        for (var i = 0; i < 3; i++)
+        {
+            media.AddImage($"photo-{i}.jpg", scope, new DateTime(2026, 6, 10));
+        }
+
+        var reports = new List<CurationProgress>();
+        var summary = await ((ICurationEngine)engine).CurateMediaAsync(scope, "background", EmptyFolderRemoval.None, new InlineProgress<CurationProgress>(reports.Add));
+
+        Assert.Equal(3, summary.Moved);
+        Assert.Equal(new CurationProgress(0, 3), reports[0]);
+        Assert.Equal(new CurationProgress(3, 3), reports[^1]);
+        Assert.Single(summary.RunKeys);
+    }
+
+    [Fact]
+    public void Images_are_counted_below_a_folder_and_one_for_an_image()
+    {
+        var (engine, media, _, _, scope, _) = Setup();
+        var sub = media.AddFolder("Sub", scope);
+        var image = media.AddImage("a.jpg", scope);
+        media.AddImage("b.jpg", sub);
+        media.AddImage("doc.pdf", sub, contentType: "File");
+
+        Assert.Equal(2, engine.CountImages(scope));
+        Assert.Equal(1, engine.CountImages(image));
     }
 
     [Fact]
