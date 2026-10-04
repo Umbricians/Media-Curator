@@ -18,6 +18,10 @@ public sealed class RulesetResolver : IRulesetResolver
     private readonly IRulesetRepository _repository;
     private readonly IMediaAncestry _ancestry;
 
+    // Rulesets by folder key for this resolver's lifetime (one request or background run): every image
+    // in a run asks about the same few ancestor folders, and each question was a database query.
+    private readonly Dictionary<Guid, Ruleset?> _byFolder = [];
+
     public RulesetResolver(IRulesetRepository repository, IMediaAncestry ancestry)
     {
         _repository = repository;
@@ -28,7 +32,21 @@ public sealed class RulesetResolver : IRulesetResolver
     {
         foreach (var folderKey in _ancestry.GetAncestorOrSelfFolderKeys(mediaKey))
         {
-            var ruleset = await _repository.GetByScopeKeyAsync(folderKey, cancellationToken);
+            Ruleset? ruleset;
+            lock (_byFolder)
+            {
+                _byFolder.TryGetValue(folderKey, out ruleset);
+            }
+
+            if (ruleset is null && !IsKnown(folderKey))
+            {
+                ruleset = await _repository.GetByScopeKeyAsync(folderKey, cancellationToken);
+                lock (_byFolder)
+                {
+                    _byFolder[folderKey] = ruleset;
+                }
+            }
+
             if (ruleset is { Enabled: true })
             {
                 return ruleset;
@@ -36,5 +54,13 @@ public sealed class RulesetResolver : IRulesetResolver
         }
 
         return null;
+    }
+
+    private bool IsKnown(Guid folderKey)
+    {
+        lock (_byFolder)
+        {
+            return _byFolder.ContainsKey(folderKey);
+        }
     }
 }

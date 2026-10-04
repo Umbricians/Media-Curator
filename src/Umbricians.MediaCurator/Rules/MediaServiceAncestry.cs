@@ -15,9 +15,14 @@ internal sealed class MediaServiceAncestry : IMediaAncestry
         _entityService = entityService;
     }
 
+    // Folder keys by id, for this instance's lifetime (one request or background run): every image in a
+    // run shares the same few ancestors.
+    private readonly Dictionary<int, Guid?> _keys = [];
+
     public IReadOnlyList<Guid> GetAncestorOrSelfFolderKeys(Guid mediaKey)
     {
-        var media = _mediaService.GetById(mediaKey);
+        // The light entity is enough for the path; loading the whole item cost a property read per image.
+        var media = _entityService.Get(mediaKey, UmbracoObjectTypes.Media);
         if (media is null)
         {
             return [];
@@ -35,10 +40,20 @@ internal sealed class MediaServiceAncestry : IMediaAncestry
         var keys = new List<Guid>();
         foreach (var id in ids)
         {
-            var attempt = _entityService.GetKey(id, UmbracoObjectTypes.Media);
-            if (attempt.Success)
+            Guid? key;
+            lock (_keys)
             {
-                keys.Add(attempt.Result);
+                if (!_keys.TryGetValue(id, out key))
+                {
+                    var attempt = _entityService.GetKey(id, UmbracoObjectTypes.Media);
+                    key = attempt.Success ? attempt.Result : null;
+                    _keys[id] = key;
+                }
+            }
+
+            if (key is { } found)
+            {
+                keys.Add(found);
             }
         }
 

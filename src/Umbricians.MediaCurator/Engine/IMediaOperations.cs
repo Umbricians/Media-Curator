@@ -60,6 +60,24 @@ public interface IMediaOperations
         return written;
     }
 
+    /// <summary>Every string property value of the item, loaded once (null when the implementation
+    /// cannot, in which case callers read properties one at a time).</summary>
+    IReadOnlyDictionary<string, string?>? GetPropertyValues(Guid mediaKey) => null;
+
+    /// <summary>The key of the child folder named <paramref name="name"/> (case-insensitive, first
+    /// match), or null. Implementations may remember each folder's child folders for their lifetime
+    /// (one request or background run), so a folder of thousands of images is listed once, not once
+    /// per image.</summary>
+    Guid? FindChildFolder(Guid parentFolderKey, string name)
+        => GetItems(parentFolderKey, recursive: false)
+            .FirstOrDefault(i => i.IsFolder && i.Name.Equals(name, StringComparison.OrdinalIgnoreCase))?.Key;
+
+    /// <summary>How many media items of the given types are below the folder, at any depth, without
+    /// loading them.</summary>
+    int CountDescendants(Guid folderKey, IReadOnlyCollection<string> contentTypeAliases)
+        => GetItems(folderKey, recursive: true)
+            .Count(i => contentTypeAliases.Contains(i.ContentTypeAlias, StringComparer.OrdinalIgnoreCase));
+
     /// <summary>Opens the media item's file for reading, or null when it has none.</summary>
     Stream? OpenFile(Guid mediaKey);
 

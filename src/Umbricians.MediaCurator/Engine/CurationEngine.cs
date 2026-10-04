@@ -789,14 +789,12 @@ public sealed class CurationEngine : ICurationEngine
         var current = scopeFolderKey;
         foreach (var segment in segments)
         {
-            var child = _media.GetItems(current, recursive: false)
-                .FirstOrDefault(i => i.IsFolder && i.Name.Equals(segment, StringComparison.OrdinalIgnoreCase));
-            if (child is null)
+            if (_media.FindChildFolder(current, segment) is not { } child)
             {
                 return false;
             }
 
-            current = child.Key;
+            current = child;
         }
 
         return current == item.ParentKey;
@@ -836,11 +834,26 @@ internal sealed class MediaPropertyAccessor : IPropertyAccessor
     private readonly IMediaOperations _media;
     private readonly Guid _mediaKey;
 
+    // Loaded on the first read and kept for this evaluation only: rules read several properties, and
+    // each separate read loaded the whole item again. Never shared between evaluations, because
+    // recognition writes codes between the planning passes.
+    private IReadOnlyDictionary<string, string?>? _values;
+    private bool _loaded;
+
     public MediaPropertyAccessor(IMediaOperations media, Guid mediaKey)
     {
         _media = media;
         _mediaKey = mediaKey;
     }
 
-    public string? GetString(string alias) => _media.GetPropertyValue(_mediaKey, alias);
+    public string? GetString(string alias)
+    {
+        if (!_loaded)
+        {
+            _values = _media.GetPropertyValues(_mediaKey);
+            _loaded = true;
+        }
+
+        return _values is null ? _media.GetPropertyValue(_mediaKey, alias) : _values.GetValueOrDefault(alias);
+    }
 }
