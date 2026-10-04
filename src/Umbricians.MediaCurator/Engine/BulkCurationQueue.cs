@@ -120,7 +120,8 @@ public sealed class BulkCurationQueue : IBulkCurationQueue
                 return BulkEnqueueResult.Overlapping;
             }
 
-            _statuses[mediaKey] = new BulkRunStatus(mediaKey, BulkRunState.Queued, 0, imageCount, null, null)
+            // Total stays 0 until planning knows how many images actually move.
+            _statuses[mediaKey] = new BulkRunStatus(mediaKey, BulkRunState.Queued, 0, 0, null, null)
             {
                 Name = name,
                 Path = path,

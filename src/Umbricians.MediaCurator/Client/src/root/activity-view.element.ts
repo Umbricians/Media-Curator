@@ -95,7 +95,9 @@ export class McRootActivityViewElement extends UmbLitElement {
                 : b.total > 0
                   ? html`<uui-loader-bar progress=${Math.round((100 * b.processed) / b.total)}></uui-loader-bar>
                       ${b.processed} of ${b.total}`
-                  : `${b.imageCount} images`}
+                  : b.state === "running"
+                    ? `Planning ${b.imageCount} images…`
+                    : `${b.imageCount} images`}
             </uui-table-cell>
             <uui-table-cell>${new Date(b.updated).toLocaleString()}</uui-table-cell>
           </uui-table-row>`,

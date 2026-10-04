@@ -1,7 +1,7 @@
 import { html as g, css as E, state as _, customElement as R } from "@umbraco-cms/backoffice/external/lit";
 import { UmbLitElement as C } from "@umbraco-cms/backoffice/lit-element";
-import { d as m } from "./bundle.manifests-fx23Irdj.js";
-import { M as S } from "./ruleset-workspace.context-token-_m2fNG8D.js";
+import { d as m } from "./bundle.manifests-Sny11acB.js";
+import { M as S } from "./ruleset-workspace.context-token-Bd4N2ji7.js";
 var w = Object.defineProperty, K = Object.getOwnPropertyDescriptor, v = (e) => {
   throw TypeError(e);
 }, c = (e, t, o, a) => {
@@ -81,4 +81,4 @@ export {
   r as McRulesetSettingsViewElement,
   $ as default
 };
-//# sourceMappingURL=ruleset-settings-view.element-BDPUftRY.js.map
+//# sourceMappingURL=ruleset-settings-view.element-Bs69uKaz.js.map

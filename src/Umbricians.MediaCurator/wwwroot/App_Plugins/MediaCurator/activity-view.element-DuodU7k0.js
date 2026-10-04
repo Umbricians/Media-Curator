@@ -1,18 +1,18 @@
 import { html as i, state as p, customElement as M } from "@umbraco-cms/backoffice/external/lit";
-import { UmbLitElement as x } from "@umbraco-cms/backoffice/lit-element";
-import { UMB_NOTIFICATION_CONTEXT as P } from "@umbraco-cms/backoffice/notification";
+import { UmbLitElement as P } from "@umbraco-cms/backoffice/lit-element";
+import { UMB_NOTIFICATION_CONTEXT as x } from "@umbraco-cms/backoffice/notification";
 import { M as b } from "./sdk.gen-DBpJrjP9.js";
 import { n as v, r as R } from "./root-view.styles-zhTrEhZY.js";
 var T = Object.defineProperty, E = Object.getOwnPropertyDescriptor, k = (e) => {
   throw TypeError(e);
 }, h = (e, t, a, u) => {
-  for (var o = u > 1 ? void 0 : u ? E(t, a) : t, _ = e.length - 1, f; _ >= 0; _--)
-    (f = e[_]) && (o = (u ? f(t, a, o) : f(o)) || o);
+  for (var o = u > 1 ? void 0 : u ? E(t, a) : t, g = e.length - 1, _; g >= 0; g--)
+    (_ = e[g]) && (o = (u ? _(t, a, o) : _(o)) || o);
   return u && o && T(t, a, o), o;
-}, $ = (e, t, a) => t.has(e) || k("Cannot " + a), d = (e, t, a) => ($(e, t, "read from private field"), t.get(e)), g = (e, t, a) => t.has(e) ? k("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, a), w = (e, t, a, u) => ($(e, t, "write to private field"), t.set(e, a), a), c = (e, t, a) => ($(e, t, "access private method"), a), n, s, l, m, C, S, y;
-let r = class extends x {
+}, $ = (e, t, a) => t.has(e) || k("Cannot " + a), n = (e, t, a) => ($(e, t, "read from private field"), t.get(e)), f = (e, t, a) => t.has(e) ? k("Cannot add the same private member more than once") : t instanceof WeakSet ? t.add(e) : t.set(e, a), w = (e, t, a, u) => ($(e, t, "write to private field"), t.set(e, a), a), c = (e, t, a) => ($(e, t, "access private method"), a), d, s, l, m, C, S, y;
+let r = class extends P {
   constructor() {
-    super(), g(this, l), this._runs = [], this._rulesets = [], this._loading = !0, this._background = [], g(this, n), g(this, s), this.consumeContext(P, (e) => {
+    super(), f(this, l), this._runs = [], this._rulesets = [], this._loading = !0, this._background = [], f(this, d), f(this, s), this.consumeContext(x, (e) => {
       w(this, s, e);
     });
   }
@@ -20,7 +20,7 @@ let r = class extends x {
     super.connectedCallback(), c(this, l, m).call(this);
   }
   disconnectedCallback() {
-    super.disconnectedCallback(), clearTimeout(d(this, n));
+    super.disconnectedCallback(), clearTimeout(n(this, d));
   }
   render() {
     return this._loading ? i`<uui-loader></uui-loader>` : this._runs.length === 0 ? i`${c(this, l, y).call(this)}
@@ -66,7 +66,7 @@ let r = class extends x {
     `;
   }
 };
-n = /* @__PURE__ */ new WeakMap();
+d = /* @__PURE__ */ new WeakMap();
 s = /* @__PURE__ */ new WeakMap();
 l = /* @__PURE__ */ new WeakSet();
 m = async function() {
@@ -76,9 +76,9 @@ m = async function() {
       b.getRulesets(),
       b.getQueueStatus()
     ]);
-    this._runs = e.data ?? [], this._rulesets = t.data ?? [], this._background = a.data?.statuses ?? [], clearTimeout(d(this, n)), this._background.some((u) => u.state === "queued" || u.state === "running") && w(this, n, setTimeout(() => c(this, l, m).call(this), 5e3));
+    this._runs = e.data ?? [], this._rulesets = t.data ?? [], this._background = a.data?.statuses ?? [], clearTimeout(n(this, d)), this._background.some((u) => u.state === "queued" || u.state === "running") && w(this, d, setTimeout(() => c(this, l, m).call(this), 5e3));
   } catch {
-    v(d(this, s), "danger", "Could not load the activity log. Check the server log and reload.");
+    v(n(this, s), "danger", "Could not load the activity log. Check the server log and reload.");
   } finally {
     this._loading = !1;
   }
@@ -89,12 +89,12 @@ C = function(e) {
 S = async function(e) {
   const t = await b.undoRun({ path: { runKey: e.key } });
   if (t.error || !t.data) {
-    v(d(this, s), "danger", `Undo failed: ${JSON.stringify(t.error ?? "no data")}`);
+    v(n(this, s), "danger", `Undo failed: ${JSON.stringify(t.error ?? "no data")}`);
     return;
   }
   const a = t.data;
   v(
-    d(this, s),
+    n(this, s),
     "positive",
     `Undo: ${a.moved} restored, ${a.alreadyInPlace} already in place, ${a.failed} failed.`
   ), await c(this, l, m).call(this);
@@ -114,7 +114,7 @@ y = function() {
             <uui-table-cell>${e.state}${e.error ? i`: ${e.error}` : ""}</uui-table-cell>
             <uui-table-cell>
               ${e.state === "completed" ? `${e.moved} moved, ${e.alreadyInPlace} in place, ${e.failed} failed` : e.total > 0 ? i`<uui-loader-bar progress=${Math.round(100 * e.processed / e.total)}></uui-loader-bar>
-                      ${e.processed} of ${e.total}` : `${e.imageCount} images`}
+                      ${e.processed} of ${e.total}` : e.state === "running" ? `Planning ${e.imageCount} images…` : `${e.imageCount} images`}
             </uui-table-cell>
             <uui-table-cell>${new Date(e.updated).toLocaleString()}</uui-table-cell>
           </uui-table-row>`
@@ -143,4 +143,4 @@ export {
   r as McRootActivityViewElement,
   D as default
 };
-//# sourceMappingURL=activity-view.element-DxI-RhUX.js.map
+//# sourceMappingURL=activity-view.element-DuodU7k0.js.map

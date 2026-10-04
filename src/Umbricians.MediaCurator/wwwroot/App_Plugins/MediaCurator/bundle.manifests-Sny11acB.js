@@ -51,7 +51,7 @@ const O = [
     type: "repository",
     alias: m,
     name: "Media Curator Ruleset Tree Repository",
-    api: () => import("./ruleset-tree.repository-Dh04T-EZ.js")
+    api: () => import("./ruleset-tree.repository-Da55qKd-.js")
   },
   {
     type: "tree",
@@ -85,7 +85,7 @@ const W = [
     type: "repository",
     alias: R,
     name: "Media Curator Ruleset Item Repository",
-    api: () => import("./ruleset-item.repository-XtxOL8B-.js")
+    api: () => import("./ruleset-item.repository-BMhFYjZL.js")
   },
   {
     type: "itemStore",
@@ -100,7 +100,7 @@ const W = [
     alias: "Umbricians.MediaCurator.EntityAction.Ruleset.Create",
     name: "Create Media Curator Ruleset Entity Action",
     weight: 1200,
-    api: () => import("./create-ruleset.action--bYo9wAI.js"),
+    api: () => import("./create-ruleset.action-BJwbcykw.js"),
     forEntityTypes: [t],
     meta: { icon: "icon-add", label: "Create ruleset" }
   },
@@ -174,7 +174,7 @@ const W = [
     type: "workspaceView",
     alias: "Umbricians.MediaCurator.WorkspaceView.Root.Activity",
     name: "Media Curator Activity Log View",
-    element: () => import("./activity-view.element-DxI-RhUX.js"),
+    element: () => import("./activity-view.element-DuodU7k0.js"),
     weight: 100,
     meta: { label: "Activity log", pathname: "activity", icon: "icon-history" },
     conditions: o
@@ -190,7 +190,7 @@ const W = [
     type: "repository",
     alias: M,
     name: "Media Curator Ruleset Detail Repository",
-    api: () => import("./ruleset-detail.repository-DBAI-1gb.js")
+    api: () => import("./ruleset-detail.repository-nCxpjZEu.js")
   },
   {
     type: "store",
@@ -204,14 +204,14 @@ const W = [
     kind: "routable",
     alias: A,
     name: "Media Curator Ruleset Workspace",
-    api: () => import("./ruleset-workspace.context-VJxmvIWf.js"),
+    api: () => import("./ruleset-workspace.context-CJCOgBCd.js"),
     meta: { entityType: a }
   },
   {
     type: "workspaceView",
     alias: "Umbricians.MediaCurator.WorkspaceView.Ruleset.Design",
     name: "Media Curator Ruleset Design View",
-    element: () => import("./ruleset-design-view.element-CzbEy72E.js"),
+    element: () => import("./ruleset-design-view.element-CjD3j7lx.js"),
     weight: 300,
     meta: { label: "Design", pathname: "design", icon: "icon-mindmap" },
     conditions: [e]
@@ -220,7 +220,7 @@ const W = [
     type: "workspaceView",
     alias: "Umbricians.MediaCurator.WorkspaceView.Ruleset.Settings",
     name: "Media Curator Ruleset Settings View",
-    element: () => import("./ruleset-settings-view.element-BDPUftRY.js"),
+    element: () => import("./ruleset-settings-view.element-Bs69uKaz.js"),
     weight: 200,
     meta: { label: "Settings", pathname: "settings", icon: "icon-settings" },
     conditions: [e]
@@ -229,7 +229,7 @@ const W = [
     type: "workspaceView",
     alias: "Umbricians.MediaCurator.WorkspaceView.Ruleset.Requirements",
     name: "Media Curator Ruleset Requirements View",
-    element: () => import("./ruleset-requirements-view.element-CObEUwEN.js"),
+    element: () => import("./ruleset-requirements-view.element-MnP7zqKA.js"),
     weight: 150,
     meta: { label: "Requirements", pathname: "requirements", icon: "icon-checkbox" },
     conditions: [e, c]
@@ -238,7 +238,7 @@ const W = [
     type: "workspaceView",
     alias: "Umbricians.MediaCurator.WorkspaceView.Ruleset.Curate",
     name: "Media Curator Ruleset Curate View",
-    element: () => import("./ruleset-curate-view.element-BoGZA1QS.js"),
+    element: () => import("./ruleset-curate-view.element-DKmiuq7Y.js"),
     weight: 100,
     meta: { label: "Curate", pathname: "curate", icon: "icon-play" },
     conditions: [e, c]
@@ -258,7 +258,7 @@ const W = [
     kind: "menuStructure",
     alias: "Umbricians.MediaCurator.Context.Ruleset.Menu.Structure",
     name: "Media Curator Ruleset Menu Structure Context",
-    api: () => import("./ruleset-menu-structure.context-C0aa7frk.js"),
+    api: () => import("./ruleset-menu-structure.context-DR8OsZJF.js"),
     meta: { menuItemAlias: C },
     conditions: [e]
   },
@@ -367,4 +367,4 @@ export {
   m as h,
   ie as m
 };
-//# sourceMappingURL=bundle.manifests-fx23Irdj.js.map
+//# sourceMappingURL=bundle.manifests-Sny11acB.js.map
