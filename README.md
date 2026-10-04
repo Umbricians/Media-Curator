@@ -27,6 +27,10 @@ for the full product scope.
 - **Safe by design** — dry-run preview before anything moves, activity log with one-click
   undo, exclusions/pinning, image-only filtering, and all moves through `IMediaService`
   so references and UDIs stay intact.
+- **Built for large libraries** — "Curate images" on a folder with more than 100 images (at any
+  depth) skips the preview and runs in the background, with progress in a notification and in
+  the Activity log, so no request outlasts hosting time limits. Curating 10,000 images in one
+  flat folder takes about nine minutes on a development machine, with no AI involved.
 - **AI on your terms** — recognition runs on the [Umbraco.AI](https://www.nuget.org/packages/Umbraco.AI)
   abstractions (any configured provider), results are cached per image, and AI can be
   switched off entirely in the setup. Classification decisions can optionally use TypeSafe's Jev.
