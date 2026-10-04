@@ -247,7 +247,9 @@ public class CurationController : MediaCuratorApiControllerBase
     [HttpPost("curation/runs/{runKey:guid}/undo")]
     [ProducesResponseType<CurationRunSummaryModel>(StatusCodes.Status200OK)]
     public async Task<CurationRunSummaryModel> UndoRun(Guid runKey, CancellationToken ct)
-        => CurationRunSummaryModel.From(await _undoService.UndoRunAsync(runKey, ct));
+        // Not the request's token: an editor navigating away mid-undo cancelled it half done, leaving an
+        // undo run that never completed. An undo always runs to the end.
+        => CurationRunSummaryModel.From(await _undoService.UndoRunAsync(runKey, CancellationToken.None));
 
     /// <summary>Excludes or re-includes a media item/folder from curation (§11.2).</summary>
     [HttpPut("curation/exclusions/{mediaKey:guid}")]

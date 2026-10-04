@@ -55,8 +55,11 @@ test.describe('MediaCurator undo', () => {
     const imageAfterCurate = await umbracoApi.media.getByName(imageName);
     expect(imageAfterCurate).toBeTruthy();
 
-    // Undo from the activity log
+    // Undo from the activity log, and wait for it: other tests' undo runs are in the log too, so the row
+    // check below can pass before this undo has finished.
+    const undone = page.waitForResponse((r) => r.url().includes('/undo') && r.request().method() === 'POST');
     await page.getByTestId('mc:run-undo').first().click();
+    expect((await undone).status()).toBe(200);
 
     // A new undo run appears with 1 moved, and a fresh dry-run would move the item again
     await expect(
