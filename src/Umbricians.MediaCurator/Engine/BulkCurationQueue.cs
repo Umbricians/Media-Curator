@@ -78,6 +78,10 @@ public interface IBulkCurationQueue
     /// images at once would fight over them.</summary>
     BulkEnqueueResult TryEnqueueMedia(Guid mediaKey, string name, string path, int imageCount, EmptyFolderRemoval emptyFolders);
 
+    /// <summary>Enqueues a scope run of one ruleset (the Settings › ruleset "Curate" tab), with the
+    /// same overlap rule as <see cref="TryEnqueueMedia"/>.</summary>
+    BulkEnqueueResult TryEnqueueScope(Guid scopeFolderKey, string name, string path, int imageCount, EmptyFolderRemoval emptyFolders);
+
     /// <summary>The status of a folder's run, or null when it has none.</summary>
     BulkRunStatus? GetStatus(Guid scopeFolderKey);
 
@@ -111,6 +115,12 @@ public sealed class BulkCurationQueue : IBulkCurationQueue
     }
 
     public BulkEnqueueResult TryEnqueueMedia(Guid mediaKey, string name, string path, int imageCount, EmptyFolderRemoval emptyFolders)
+        => Enqueue(mediaKey, name, path, imageCount, emptyFolders, mediaRun: true);
+
+    public BulkEnqueueResult TryEnqueueScope(Guid scopeFolderKey, string name, string path, int imageCount, EmptyFolderRemoval emptyFolders)
+        => Enqueue(scopeFolderKey, name, path, imageCount, emptyFolders, mediaRun: false);
+
+    private BulkEnqueueResult Enqueue(Guid mediaKey, string name, string path, int imageCount, EmptyFolderRemoval emptyFolders, bool mediaRun)
     {
         lock (_statuses)
         {
@@ -129,7 +139,7 @@ public sealed class BulkCurationQueue : IBulkCurationQueue
             };
             _queue.Enqueue(new BulkCurationRequest(mediaKey, Recursive: true, DateTime.UtcNow)
             {
-                MediaRun = true,
+                MediaRun = mediaRun,
                 EmptyFolders = emptyFolders,
             });
             return BulkEnqueueResult.Queued;

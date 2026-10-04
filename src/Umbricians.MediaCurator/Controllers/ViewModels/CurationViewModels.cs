@@ -107,6 +107,11 @@ public class CurationRunSummaryModel
     public required int Failed { get; init; }
     public int FoldersRemoved { get; init; }
 
+    /// <summary>True when the run was sent to the background (more images than
+    /// <see cref="MediaCurationCountModel.Threshold"/>): the counts are then empty, and the run's
+    /// progress and result come from the queue status.</summary>
+    public bool Queued { get; init; }
+
     public static CurationRunSummaryModel From(CurationRunSummary summary) => new()
     {
         RunKey = summary.RunKey,

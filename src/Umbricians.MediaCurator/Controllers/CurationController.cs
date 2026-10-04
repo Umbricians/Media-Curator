@@ -20,6 +20,7 @@ public class CurationController : MediaCuratorApiControllerBase
     private readonly Rules.IRulesetTransferService _transfer;
     private readonly IMediaChangeTracker? _changes;
     private readonly IEntityService? _entities;
+    private readonly Rules.IRulesetRepository? _rulesets;
 
     public CurationController(
         ICurationEngine engine,
@@ -29,10 +30,12 @@ public class CurationController : MediaCuratorApiControllerBase
         IExclusionRepository exclusions,
         Rules.IRulesetTransferService transfer,
         IMediaChangeTracker? changes = null,
-        IEntityService? entities = null)
+        IEntityService? entities = null,
+        Rules.IRulesetRepository? rulesets = null)
     {
         _changes = changes;
         _entities = entities;
+        _rulesets = rulesets;
         _engine = engine;
         _runLog = runLog;
         _bulkQueue = bulkQueue;
@@ -60,19 +63,48 @@ public class CurationController : MediaCuratorApiControllerBase
         }
     }
 
-    /// <summary>Plans and executes a curation run for the scope folder.</summary>
+    /// <summary>Plans and executes a curation run for the scope folder. A scope with more than
+    /// <see cref="MediaCuratorDefaults.BackgroundCurationThreshold"/> images is queued as a background
+    /// run instead (<see cref="CurationRunSummaryModel.Queued"/>).</summary>
     [HttpPost("curation/execute")]
     [ProducesResponseType<CurationRunSummaryModel>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ExecuteCuration(CurationRequestModel request, CancellationToken ct)
     {
         try
         {
+            var imageCount = _engine.CountImages(request.ScopeFolderKey);
+            if (imageCount > MediaCuratorDefaults.BackgroundCurationThreshold)
+            {
+                // Fail now, not in the background, when there is nothing to run.
+                if (_rulesets is not null
+                    && await _rulesets.GetByScopeKeyAsync(request.ScopeFolderKey, ct) is not { Enabled: true })
+                {
+                    return BadRequest($"No enabled ruleset is attached to folder '{request.ScopeFolderKey}'.");
+                }
+
+                var folder = _entities?.Get(request.ScopeFolderKey, UmbracoObjectTypes.Media);
+                var queued = _bulkQueue.TryEnqueueScope(
+                    request.ScopeFolderKey,
+                    folder?.Name ?? string.Empty,
+                    folder?.Path ?? string.Empty,
+                    imageCount,
+                    Removal(request.PermanentlyDeleteEmptyFolders));
+                return queued == BulkEnqueueResult.Queued
+                    ? Ok(new CurationRunSummaryModel { RunKey = Guid.Empty, Moved = 0, AlreadyInPlace = 0, Failed = 0, Queued = true })
+                    : Conflict(Error("This folder, or a folder above or below it, is already being curated in the background."));
+            }
+
             var plan = await _engine.PlanAsync(request.ScopeFolderKey, request.Recursive, ct);
             var summary = await _engine.ExecuteAsync(plan, trigger: "manual", Removal(request.PermanentlyDeleteEmptyFolders), ct);
             return Ok(CurationRunSummaryModel.From(summary));
         }
         catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (MediaNotFoundException ex)
         {
             return BadRequest(ex.Message);
         }

@@ -52,38 +52,13 @@ public sealed class BulkCurationJob : IRecurringBackgroundJob
 
         while (_queue.TryDequeue(out var request) && request is not null)
         {
-            var scope = request.ScopeFolderKey;
-            if (request.MediaRun)
-            {
-                await RunMediaAsync(request);
-                continue;
-            }
-
-            try
-            {
-                _queue.Report(scope, new BulkRunStatus(scope, BulkRunState.Running, 0, 0, null, null));
-
-                using var serviceScope = _scopeFactory.CreateScope();
-                var engine = serviceScope.ServiceProvider.GetRequiredService<ICurationEngine>();
-
-                var plan = await engine.PlanAsync(scope, request.Recursive);
-                _queue.Report(scope, new BulkRunStatus(scope, BulkRunState.Running, 0, plan.MoveCount, null, null));
-
-                // Empty sub-folders go to the Recycle Bin (recoverable); the queue request carries no delete option.
-                var summary = await engine.ExecuteAsync(plan, trigger: "background", EmptyFolderRemoval.RecycleBin);
-                _queue.Report(scope, new BulkRunStatus(scope, BulkRunState.Completed, summary.Moved, plan.MoveCount, null, summary.RunKey));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "MediaCurator: background curation failed for {Scope}.", scope);
-                _queue.Report(scope, new BulkRunStatus(scope, BulkRunState.Failed, 0, 0, ex.Message, null));
-            }
+            await RunAsync(request);
         }
     }
 
-    /// <summary>A "Curate images" run sent to the background: the same steps as in the foreground, with
-    /// progress reported to the queue after each move.</summary>
-    private async Task RunMediaAsync(BulkCurationRequest request)
+    /// <summary>A run sent to the background: the same steps as in the foreground ("Curate images" on a
+    /// folder, or a ruleset's scope run), with progress reported to the queue after each move.</summary>
+    private async Task RunAsync(BulkCurationRequest request)
     {
         var key = request.ScopeFolderKey;
         var queued = _queue.GetStatus(key) ?? new BulkRunStatus(key, BulkRunState.Queued, 0, 0, null, null);
@@ -102,7 +77,29 @@ public sealed class BulkCurationJob : IRecurringBackgroundJob
                 _queue.Report(key, running);
             });
 
-            var summary = await engine.CurateMediaAsync(key, trigger: "background", request.EmptyFolders, progress);
+            MediaCurationSummary summary;
+            if (request.MediaRun)
+            {
+                summary = await engine.CurateMediaAsync(key, trigger: "background", request.EmptyFolders, progress);
+            }
+            else
+            {
+                var plan = await engine.PlanAsync(key, request.Recursive);
+                progress.Report(new CurationProgress(0, plan.MoveCount));
+                var run = await engine.ExecuteAsync(plan, trigger: "background", new CurationExecutionOptions
+                {
+                    EmptyFolders = request.EmptyFolders,
+                    Sorting = FolderSorting.Subtree,
+                    MoveProgress = new InlineProgress<int>(n => progress.Report(new CurationProgress(n, plan.MoveCount))),
+                });
+                summary = new MediaCurationSummary(
+                    run.Moved,
+                    run.AlreadyInPlace,
+                    run.Failed,
+                    run.FoldersRemoved,
+                    run.RunKey == Guid.Empty ? [] : [run.RunKey]);
+            }
+
             _queue.Report(key, running with
             {
                 State = BulkRunState.Completed,
@@ -118,7 +115,7 @@ public sealed class BulkCurationJob : IRecurringBackgroundJob
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "MediaCurator: background curation failed for {MediaKey}.", key);
+            _logger.LogError(ex, "MediaCurator: background curation failed for {FolderKey}.", key);
             _queue.Report(key, (_queue.GetStatus(key) ?? queued) with
             {
                 State = BulkRunState.Failed,

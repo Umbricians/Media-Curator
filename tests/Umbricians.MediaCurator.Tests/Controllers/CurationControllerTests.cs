@@ -161,6 +161,25 @@ public class CurationControllerTests
     }
 
     [Fact]
+    public async Task A_ruleset_scope_with_more_images_than_the_threshold_is_queued()
+    {
+        var engine = new StubEngine { Images = MediaCuratorDefaults.BackgroundCurationThreshold + 1 };
+        var queue = new BulkCurationQueue();
+        var scope = Guid.NewGuid();
+
+        var result = await new CurationController(engine, null!, queue, null!, null!, null!)
+            .ExecuteCuration(new CurationRequestModel { ScopeFolderKey = scope, PermanentlyDeleteEmptyFolders = true }, CancellationToken.None);
+
+        var model = Assert.IsType<CurationRunSummaryModel>(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.True(model.Queued);
+        Assert.Empty(engine.Executed);
+        Assert.True(queue.TryDequeue(out var request));
+        Assert.False(request!.MediaRun);
+        Assert.Equal(scope, request.ScopeFolderKey);
+        Assert.Equal(EmptyFolderRemoval.Delete, request.EmptyFolders);
+    }
+
+    [Fact]
     public async Task Up_to_the_threshold_curates_in_the_request()
     {
         var (engine, key) = TwoPlanEngine();
