@@ -1,15 +1,15 @@
-import { UmbPathPattern as s } from "@umbraco-cms/backoffice/router";
-import { UMB_WORKSPACE_PATH_PATTERN as m, UMB_WORKSPACE_CONDITION_ALIAS as E, UMB_WORKSPACE_ENTITY_IS_NEW_CONDITION_ALIAS as A, UmbSubmitWorkspaceAction as S } from "@umbraco-cms/backoffice/workspace";
-import { UmbItemStoreBase as T } from "@umbraco-cms/backoffice/store";
-import { UmbContextToken as _ } from "@umbraco-cms/backoffice/context-api";
-const b = [
+import { UmbPathPattern as p } from "@umbraco-cms/backoffice/router";
+import { UMB_WORKSPACE_PATH_PATTERN as u, UMB_WORKSPACE_CONDITION_ALIAS as _, UMB_WORKSPACE_ENTITY_IS_NEW_CONDITION_ALIAS as b, UmbSubmitWorkspaceAction as g } from "@umbraco-cms/backoffice/workspace";
+import { UmbItemStoreBase as w } from "@umbraco-cms/backoffice/store";
+import { UmbContextToken as U } from "@umbraco-cms/backoffice/context-api";
+const f = [
   {
     name: "Media Curator Entrypoint",
     alias: "Umbricians.MediaCurator.Entrypoint",
     type: "backofficeEntryPoint",
     js: () => import("./entrypoint-D1teVEvQ.js")
   }
-], U = [
+], I = [
   {
     name: "MediaCurator Pizza Original Test Target Repository",
     alias: "Uai.Repository.TestFeatureEntity.media-curator-pizza-original",
@@ -28,37 +28,37 @@ const b = [
       feature: "media-curator-pizza-prepared"
     }
   }
-], w = [
+], k = [
   {
     type: "modal",
     alias: "Umbricians.MediaCurator.Modal.RuleSettings",
     name: "Media Curator Rule Settings Modal",
     element: () => import("./rule-settings-modal.element-BYD_cwSE.js")
   }
-], t = "mc-root", a = "mc-ruleset", j = "00000000-0000-0000-0000-000000000000", c = "settings", i = "Umbricians.MediaCurator.Menu", l = "Umbricians.MediaCurator.MenuItem.Rulesets", u = "Umbricians.MediaCurator.Tree.Rulesets", n = "Umbricians.MediaCurator.Repository.Ruleset.Tree", p = "Umbricians.MediaCurator.Repository.Ruleset.Detail", g = "Umbricians.MediaCurator.Store.Ruleset.Detail", d = "Umbricians.MediaCurator.Repository.Ruleset.Item", I = "Umbricians.MediaCurator.Store.Ruleset.Item", C = "Umbricians.MediaCurator.Workspace.Root", y = "Umbricians.MediaCurator.Workspace.Ruleset", X = m.generateAbsolute({
-  sectionName: c,
+], t = "mc-root", a = "mc-ruleset", ee = "00000000-0000-0000-0000-000000000000", d = "settings", i = "Umbricians.MediaCurator.Menu", C = "Umbricians.MediaCurator.MenuItem.Rulesets", y = "Umbricians.MediaCurator.Tree.Rulesets", m = "Umbricians.MediaCurator.Repository.Ruleset.Tree", M = "Umbricians.MediaCurator.Repository.Ruleset.Detail", h = "Umbricians.MediaCurator.Store.Ruleset.Detail", R = "Umbricians.MediaCurator.Repository.Ruleset.Item", P = "Umbricians.MediaCurator.Store.Ruleset.Item", E = "Umbricians.MediaCurator.Workspace.Root", A = "Umbricians.MediaCurator.Workspace.Ruleset", te = u.generateAbsolute({
+  sectionName: d,
   entityType: t
-}), M = m.generateAbsolute({
-  sectionName: c,
+}), S = u.generateAbsolute({
+  sectionName: d,
   entityType: a
-}), J = new s("create/parent/:parentEntityType/:parentUnique", M);
-new s(
+}), ae = new p("create/parent/:parentEntityType/:parentUnique", S);
+new p(
   "edit/:unique",
-  M
+  S
 );
-const k = [
+const O = [
   {
     type: "repository",
-    alias: n,
+    alias: m,
     name: "Media Curator Ruleset Tree Repository",
-    api: () => import("./ruleset-tree.repository-BjVfAOvF.js")
+    api: () => import("./ruleset-tree.repository-DctJhyXN.js")
   },
   {
     type: "tree",
     kind: "default",
-    alias: u,
+    alias: y,
     name: "Media Curator Ruleset Tree",
-    meta: { repositoryAlias: n }
+    meta: { repositoryAlias: m }
   },
   {
     type: "treeItem",
@@ -74,33 +74,33 @@ const k = [
     name: "Reload Media Curator Tree Children Entity Action",
     forEntityTypes: [t]
   }
-], f = new _("McRulesetItemStore");
-class h extends T {
-  constructor(R) {
-    super(R, f.toString());
+], L = new U("McRulesetItemStore");
+class N extends w {
+  constructor(T) {
+    super(T, L.toString());
   }
 }
-const P = [
+const W = [
   {
     type: "repository",
-    alias: d,
+    alias: R,
     name: "Media Curator Ruleset Item Repository",
-    api: () => import("./ruleset-item.repository-CIvsIEb-.js")
+    api: () => import("./ruleset-item.repository-BDIQZRv3.js")
   },
   {
     type: "itemStore",
-    alias: I,
+    alias: P,
     name: "Media Curator Ruleset Item Store",
-    api: h
+    api: N
   }
-], O = [
+], z = [
   {
     type: "entityAction",
     kind: "default",
     alias: "Umbricians.MediaCurator.EntityAction.Ruleset.Create",
     name: "Create Media Curator Ruleset Entity Action",
     weight: 1200,
-    api: () => import("./create-ruleset.action-CQDGRiD2.js"),
+    api: () => import("./create-ruleset.action-lrx9B1eF.js"),
     forEntityTypes: [t],
     meta: { icon: "icon-add", label: "Create ruleset" }
   },
@@ -111,11 +111,11 @@ const P = [
     name: "Delete Media Curator Ruleset Entity Action",
     forEntityTypes: [a],
     meta: {
-      itemRepositoryAlias: d,
-      detailRepositoryAlias: p
+      itemRepositoryAlias: R,
+      detailRepositoryAlias: M
     }
   }
-], L = [
+], v = [
   {
     type: "menu",
     alias: i,
@@ -133,22 +133,22 @@ const P = [
   {
     type: "menuItem",
     kind: "tree",
-    alias: l,
+    alias: C,
     name: "Media Curator Menu Item",
     weight: 100,
     meta: {
       label: "Media Curator",
       icon: "icon-mindmap",
       entityType: t,
-      treeAlias: u,
+      treeAlias: y,
       menus: [i]
     }
   }
-], o = [{ alias: "Umb.Condition.WorkspaceAlias", match: C }], W = [
+], o = [{ alias: "Umb.Condition.WorkspaceAlias", match: E }], V = [
   {
     type: "workspace",
     kind: "default",
-    alias: C,
+    alias: E,
     name: "Media Curator Root Workspace",
     meta: { entityType: t, headline: "Media Curator" }
   },
@@ -179,39 +179,39 @@ const P = [
     meta: { label: "Activity log", pathname: "activity", icon: "icon-history" },
     conditions: o
   }
-], N = [
-  ...L,
-  ...k,
-  ...P,
+], $ = [
+  ...v,
   ...O,
-  ...W
-], z = [
+  ...W,
+  ...z,
+  ...V
+], D = [
   {
     type: "repository",
-    alias: p,
+    alias: M,
     name: "Media Curator Ruleset Detail Repository",
-    api: () => import("./ruleset-detail.repository--c5QZ8qi.js")
+    api: () => import("./ruleset-detail.repository-D3HqAHed.js")
   },
   {
     type: "store",
-    alias: g,
+    alias: h,
     name: "Media Curator Ruleset Detail Store",
     api: () => import("./ruleset-detail.store-CPa94nJU.js")
   }
-], e = { alias: E, match: y }, r = { alias: A, match: !1 }, V = [
+], e = { alias: _, match: A }, c = { alias: b, match: !1 }, B = [
   {
     type: "workspace",
     kind: "routable",
-    alias: y,
+    alias: A,
     name: "Media Curator Ruleset Workspace",
-    api: () => import("./ruleset-workspace.context-rs8NGXT8.js"),
+    api: () => import("./ruleset-workspace.context-B5OzIxbK.js"),
     meta: { entityType: a }
   },
   {
     type: "workspaceView",
     alias: "Umbricians.MediaCurator.WorkspaceView.Ruleset.Design",
     name: "Media Curator Ruleset Design View",
-    element: () => import("./ruleset-design-view.element-xBjal-20.js"),
+    element: () => import("./ruleset-design-view.element-DFFoa0TA.js"),
     weight: 300,
     meta: { label: "Design", pathname: "design", icon: "icon-mindmap" },
     conditions: [e]
@@ -220,7 +220,7 @@ const P = [
     type: "workspaceView",
     alias: "Umbricians.MediaCurator.WorkspaceView.Ruleset.Settings",
     name: "Media Curator Ruleset Settings View",
-    element: () => import("./ruleset-settings-view.element-6nSyKq7L.js"),
+    element: () => import("./ruleset-settings-view.element-B3QzTNVY.js"),
     weight: 200,
     meta: { label: "Settings", pathname: "settings", icon: "icon-settings" },
     conditions: [e]
@@ -229,26 +229,26 @@ const P = [
     type: "workspaceView",
     alias: "Umbricians.MediaCurator.WorkspaceView.Ruleset.Requirements",
     name: "Media Curator Ruleset Requirements View",
-    element: () => import("./ruleset-requirements-view.element-PPNV-Vae.js"),
+    element: () => import("./ruleset-requirements-view.element-BmffHs4E.js"),
     weight: 150,
     meta: { label: "Requirements", pathname: "requirements", icon: "icon-checkbox" },
-    conditions: [e, r]
+    conditions: [e, c]
   },
   {
     type: "workspaceView",
     alias: "Umbricians.MediaCurator.WorkspaceView.Ruleset.Curate",
     name: "Media Curator Ruleset Curate View",
-    element: () => import("./ruleset-curate-view.element-CAVsvm5z.js"),
+    element: () => import("./ruleset-curate-view.element-CfO6CWrP.js"),
     weight: 100,
     meta: { label: "Curate", pathname: "curate", icon: "icon-play" },
-    conditions: [e, r]
+    conditions: [e, c]
   },
   {
     type: "workspaceAction",
     kind: "default",
     alias: "Umbricians.MediaCurator.WorkspaceAction.Ruleset.Save",
     name: "Save Media Curator Ruleset",
-    api: S,
+    api: g,
     weight: 90,
     meta: { label: "Save", look: "primary", color: "positive" },
     conditions: [e]
@@ -258,8 +258,8 @@ const P = [
     kind: "menuStructure",
     alias: "Umbricians.MediaCurator.Context.Ruleset.Menu.Structure",
     name: "Media Curator Ruleset Menu Structure Context",
-    api: () => import("./ruleset-menu-structure.context-CE4XBRba.js"),
-    meta: { menuItemAlias: l },
+    api: () => import("./ruleset-menu-structure.context-COlGASzV.js"),
+    meta: { menuItemAlias: C },
     conditions: [e]
   },
   {
@@ -269,7 +269,7 @@ const P = [
     name: "Media Curator Ruleset Breadcrumb",
     conditions: [e]
   }
-], $ = [...z, ...V], D = [
+], x = [...D, ...B], Y = [
   {
     type: "entityAction",
     kind: "default",
@@ -293,16 +293,36 @@ const P = [
     meta: { icon: "icon-refresh", label: "Analyze images" },
     conditions: [{ alias: "Umb.Condition.SectionUserPermission", match: "Umb.Section.Settings" }]
   }
-], B = "MediaCurator.ContainsPeople", Y = "MediaCurator.ContainsPeopleBelow", v = [
+], F = "MediaCurator.ContainsPeople", K = "MediaCurator.ContainsPeopleBelow", l = (s) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="overflow:visible"><g style="stroke:var(--uui-color-surface,#fff);stroke-width:3;paint-order:stroke">${s}</g></svg>`, n = "icon-mediacurator-person", r = "icon-mediacurator-dot", q = [
+  {
+    name: n,
+    path: () => Promise.resolve({ default: l('<path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.6-9 6v2h18v-2c0-3.4-4-6-9-6Z"/>') })
+  },
+  {
+    name: r,
+    path: () => Promise.resolve({ default: l('<circle cx="12" cy="12" r="8"/>') })
+  }
+], j = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  DOT_ICON: r,
+  PERSON_ICON: n,
+  default: q
+}, Symbol.toStringTag, { value: "Module" })), H = [
+  {
+    type: "icons",
+    alias: "Umbricians.MediaCurator.Icons.People",
+    name: "Media Curator People Icons",
+    js: () => Promise.resolve().then(() => j)
+  },
   {
     type: "entitySign",
     kind: "icon",
     alias: "Umbricians.MediaCurator.EntitySign.ContainsPeople",
     name: "Contains People Media Entity Sign",
     forEntityTypes: ["media"],
-    forEntityFlags: [B],
+    forEntityFlags: [F],
     weight: 900,
-    meta: { iconName: "icon-user", label: "#mediaCurator_containsPeople", iconColorAlias: "blue" }
+    meta: { iconName: n, label: "#mediaCurator_containsPeople", iconColorAlias: "red" }
   },
   {
     type: "entitySign",
@@ -310,11 +330,11 @@ const P = [
     alias: "Umbricians.MediaCurator.EntitySign.ContainsPeopleBelow",
     name: "Contains People Below Media Entity Sign",
     forEntityTypes: ["media"],
-    forEntityFlags: [Y],
+    forEntityFlags: [K],
     weight: 890,
-    meta: { iconName: "icon-users", label: "#mediaCurator_containsPeopleBelow", iconColorAlias: "light-blue" }
+    meta: { iconName: r, label: "#mediaCurator_containsPeopleBelow", iconColorAlias: "red" }
   }
-], F = [
+], G = [
   {
     type: "localization",
     alias: "Umbricians.MediaCurator.Localization.En",
@@ -325,26 +345,26 @@ const P = [
     },
     js: () => import("./en-DBW87d1W.js")
   }
-], Q = [
-  ...b,
-  ...U,
-  ...w,
-  ...N,
+], ie = [
+  ...f,
+  ...I,
+  ...k,
   ...$,
-  ...D,
-  ...v,
-  ...F
+  ...x,
+  ...Y,
+  ...H,
+  ...G
 ];
 export {
   a as M,
   t as a,
-  f as b,
-  J as c,
-  j as d,
-  X as e,
-  p as f,
-  y as g,
-  n as h,
-  Q as m
+  L as b,
+  ae as c,
+  ee as d,
+  te as e,
+  M as f,
+  A as g,
+  m as h,
+  ie as m
 };
-//# sourceMappingURL=bundle.manifests-Bs7oDyPq.js.map
+//# sourceMappingURL=bundle.manifests-jPVwANZA.js.map

@@ -2,7 +2,7 @@ import { UmbArrayState as p } from "@umbraco-cms/backoffice/observable-api";
 import { tryExecute as c } from "@umbraco-cms/backoffice/resources";
 import { UmbEntityNamedDetailWorkspaceContextBase as l, UmbWorkspaceIsNewRedirectController as m } from "@umbraco-cms/backoffice/workspace";
 import { M as u } from "./sdk.gen-BaXox45_.js";
-import { e as d, f as h, M as y, g as b } from "./bundle.manifests-Bs7oDyPq.js";
+import { e as d, f as h, M as y, g as b } from "./bundle.manifests-jPVwANZA.js";
 import { html as _, css as E, customElement as O } from "@umbraco-cms/backoffice/external/lit";
 import { UmbLitElement as R } from "@umbraco-cms/backoffice/lit-element";
 var v = Object.getOwnPropertyDescriptor, w = (i, t, e, r) => {
@@ -72,4 +72,4 @@ export {
   U as McRulesetWorkspaceContext,
   U as api
 };
-//# sourceMappingURL=ruleset-workspace.context-rs8NGXT8.js.map
+//# sourceMappingURL=ruleset-workspace.context-B5OzIxbK.js.map

@@ -1,8 +1,15 @@
 import { CONTAINS_PEOPLE_BELOW_FLAG, CONTAINS_PEOPLE_FLAG } from "./constants.js";
+import { DOT_ICON, PERSON_ICON } from "./icons.js";
 
 // Signs on media tree items, from the server's people flags (PeopleFlagProvider). `forEntityTypes: ["media"]`
 // covers folders too. The media grid and table views do not render entity signs, so only the tree shows them.
 export const manifests: Array<UmbExtensionManifest> = [
+  {
+    type: "icons",
+    alias: "Umbricians.MediaCurator.Icons.People",
+    name: "Media Curator People Icons",
+    js: () => import("./icons.js"),
+  },
   {
     type: "entitySign",
     kind: "icon",
@@ -11,7 +18,7 @@ export const manifests: Array<UmbExtensionManifest> = [
     forEntityTypes: ["media"],
     forEntityFlags: [CONTAINS_PEOPLE_FLAG],
     weight: 900,
-    meta: { iconName: "icon-user", label: "#mediaCurator_containsPeople", iconColorAlias: "blue" },
+    meta: { iconName: PERSON_ICON, label: "#mediaCurator_containsPeople", iconColorAlias: "red" },
   },
   {
     type: "entitySign",
@@ -21,6 +28,6 @@ export const manifests: Array<UmbExtensionManifest> = [
     forEntityTypes: ["media"],
     forEntityFlags: [CONTAINS_PEOPLE_BELOW_FLAG],
     weight: 890,
-    meta: { iconName: "icon-users", label: "#mediaCurator_containsPeopleBelow", iconColorAlias: "light-blue" },
+    meta: { iconName: DOT_ICON, label: "#mediaCurator_containsPeopleBelow", iconColorAlias: "red" },
   },
 ];

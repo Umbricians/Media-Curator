@@ -1,7 +1,7 @@
 import { UmbItemServerDataSourceBase as m, UmbItemRepositoryBase as i } from "@umbraco-cms/backoffice/repository";
 import { M as c } from "./sdk.gen-BaXox45_.js";
-import { t as p } from "./ruleset.mapper-DSUDnwOz.js";
-import { b as n } from "./bundle.manifests-Bs7oDyPq.js";
+import { t as p } from "./ruleset.mapper-CvZKAYbh.js";
+import { b as n } from "./bundle.manifests-jPVwANZA.js";
 class u extends m {
   constructor(e) {
     super(e, { mapper: p });
@@ -21,4 +21,4 @@ export {
   R as McRulesetItemRepository,
   R as api
 };
-//# sourceMappingURL=ruleset-item.repository-CIvsIEb-.js.map
+//# sourceMappingURL=ruleset-item.repository-BDIQZRv3.js.map

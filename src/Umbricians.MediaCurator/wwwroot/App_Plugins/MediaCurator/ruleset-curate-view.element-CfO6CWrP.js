@@ -2,8 +2,8 @@ import { html as i, nothing as d, css as S, state as f, customElement as D } fro
 import { UmbLitElement as I } from "@umbraco-cms/backoffice/lit-element";
 import { UMB_NOTIFICATION_CONTEXT as O } from "@umbraco-cms/backoffice/notification";
 import { M as _ } from "./sdk.gen-BaXox45_.js";
-import { d as T } from "./bundle.manifests-Bs7oDyPq.js";
-import { M as P } from "./ruleset-workspace.context-token-B62XQj6y.js";
+import { d as T } from "./bundle.manifests-jPVwANZA.js";
+import { M as P } from "./ruleset-workspace.context-token-BNcU0N_v.js";
 import { e as N, d as U } from "./empty-folders-option.element-CaPuknSO.js";
 var W = Object.defineProperty, L = Object.getOwnPropertyDescriptor, F = (e) => {
   throw TypeError(e);
@@ -209,4 +209,4 @@ export {
   s as McRulesetCurateViewElement,
   B as default
 };
-//# sourceMappingURL=ruleset-curate-view.element-CAVsvm5z.js.map
+//# sourceMappingURL=ruleset-curate-view.element-CfO6CWrP.js.map

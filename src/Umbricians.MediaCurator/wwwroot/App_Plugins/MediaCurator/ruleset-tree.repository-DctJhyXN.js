@@ -1,5 +1,5 @@
 import { UmbTreeServerDataSourceBase as o, UmbTreeRepositoryBase as i } from "@umbraco-cms/backoffice/tree";
-import { M as u, a } from "./bundle.manifests-Bs7oDyPq.js";
+import { M as u, a } from "./bundle.manifests-jPVwANZA.js";
 import { M as n } from "./sdk.gen-BaXox45_.js";
 const c = "icon-mindmap";
 function l(e) {
@@ -55,4 +55,4 @@ export {
   C as McRulesetTreeRepository,
   C as api
 };
-//# sourceMappingURL=ruleset-tree.repository-BjVfAOvF.js.map
+//# sourceMappingURL=ruleset-tree.repository-DctJhyXN.js.map
