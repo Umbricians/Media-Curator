@@ -31,6 +31,35 @@ public interface IMediaOperations
     /// the property does not exist on the item's media type.</summary>
     void SetPropertyValue(Guid mediaKey, string propertyAlias, string value);
 
+    /// <summary>Writes several string property values and saves the item at most once, and not at all
+    /// when every value is already stored. Each save raises a "media saved" notification (and so can
+    /// start a "Media Saved" automation), so writes that belong together go through here. Properties the
+    /// item's media type lacks are skipped; returns the aliases the item has.</summary>
+    IReadOnlySet<string> SetPropertyValues(Guid mediaKey, IReadOnlyDictionary<string, string> values)
+    {
+        var written = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (alias, value) in values)
+        {
+            if (string.Equals(GetPropertyValue(mediaKey, alias), value, StringComparison.Ordinal))
+            {
+                written.Add(alias);
+                continue;
+            }
+
+            try
+            {
+                SetPropertyValue(mediaKey, alias, value);
+                written.Add(alias);
+            }
+            catch (InvalidOperationException)
+            {
+                // The property is not on this media type (not provisioned).
+            }
+        }
+
+        return written;
+    }
+
     /// <summary>Opens the media item's file for reading, or null when it has none.</summary>
     Stream? OpenFile(Guid mediaKey);
 

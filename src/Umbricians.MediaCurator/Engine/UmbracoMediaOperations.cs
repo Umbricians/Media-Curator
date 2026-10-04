@@ -114,6 +114,35 @@ internal sealed class UmbracoMediaOperations : IMediaOperations
         _mediaService.Save(media);
     }
 
+    public IReadOnlySet<string> SetPropertyValues(Guid mediaKey, IReadOnlyDictionary<string, string> values)
+    {
+        var media = _mediaService.GetById(mediaKey)
+            ?? throw new InvalidOperationException($"Media '{mediaKey}' not found.");
+        var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var changed = false;
+        foreach (var (alias, value) in values)
+        {
+            if (!media.HasProperty(alias))
+            {
+                continue;
+            }
+
+            present.Add(alias);
+            if (!string.Equals(media.GetValue<string>(alias), value, StringComparison.Ordinal))
+            {
+                media.SetValue(alias, value);
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            _mediaService.Save(media);
+        }
+
+        return present;
+    }
+
     public Stream? OpenFile(Guid mediaKey)
     {
         var media = _mediaService.GetById(mediaKey);

@@ -132,10 +132,27 @@ public class RecognitionServiceTests
 
         public string? GetPropertyValue(Guid k, string alias) => Properties.GetValueOrDefault(alias);
 
+        public int Saves;
+
         public void SetPropertyValue(Guid k, string alias, string value)
         {
             if (ThrowOnSet) throw new InvalidOperationException("no such property");
             Properties[alias] = value;
+            Saves++;
+        }
+
+        public IReadOnlySet<string> SetPropertyValues(Guid k, IReadOnlyDictionary<string, string> values)
+        {
+            if (ThrowOnSet) throw new InvalidOperationException("no such property");
+            var changed = false;
+            foreach (var (alias, value) in values)
+            {
+                changed |= Properties.GetValueOrDefault(alias) != value;
+                Properties[alias] = value;
+            }
+
+            if (changed) Saves++;
+            return values.Keys.ToHashSet();
         }
 
         public Stream? OpenFile(Guid k) => HasFile ? new MemoryStream(FileBytes) : null;
@@ -639,6 +656,73 @@ public class RecognitionServiceTests
         Assert.Equal("385", media.Properties[ClassificationProvider.CodePropertyAlias]);
         Assert.Equal(4, chat.Calls);
         Assert.Equal("train", result.Tags[0].Name);
+    }
+
+    [Fact]
+    public async Task Step_by_step_analysis_saves_the_item_once()
+    {
+        // Each save raises "media saved", which starts a "Media Saved" automation once per save.
+        var media = new FakeMediaOps();
+        var chat = new FakeChatService();
+        chat.ResponseQueue.Enqueue(
+            """{"description":"high-speed train at a railway station","tags":[{"name":"train","confidence":0.95}]}""");
+        chat.ResponseQueue.Enqueue("""{"classificationCode":"300"}""");
+        chat.ResponseQueue.Enqueue("""{"classificationCode":"380"}""");
+        chat.ResponseQueue.Enqueue("""{"classificationCode":"385"}""");
+        var service = Create(
+            media,
+            chat,
+            configure: s =>
+            {
+                s.ClassificationMethod = ClassificationMethod.StepByStep;
+                s.PersistImageDescription = true;
+            });
+
+        await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
+
+        Assert.Equal(1, media.Saves);
+        Assert.Equal("385", media.Properties[ClassificationProvider.CodePropertyAlias]);
+        Assert.Equal("high-speed train at a railway station", media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias]);
+        Assert.Contains("385", media.Properties[UmbracoAiRecognitionService.TagsPropertyAlias]);
+    }
+
+    [Fact]
+    public async Task Single_call_analysis_saves_the_item_once()
+    {
+        var media = new FakeMediaOps();
+        var chat = new FakeChatService
+        {
+            ResponseText = """{"description":"a camera photo","tags":[{"name":"photography","confidence":0.9}],"classificationCode":"770"}""",
+        };
+        var service = Create(
+            media,
+            chat,
+            configure: s =>
+            {
+                s.ClassificationMethod = ClassificationMethod.SingleCall;
+                s.PersistImageDescription = true;
+            });
+
+        await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
+
+        Assert.Equal(1, media.Saves);
+        Assert.Equal("a camera photo", media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias]);
+        Assert.Equal("770", media.Properties[ClassificationProvider.CodePropertyAlias]);
+    }
+
+    [Fact]
+    public async Task Reanalysis_with_the_same_result_does_not_save()
+    {
+        var media = new FakeMediaOps();
+        var chat = new FakeChatService();
+        var service = Create(media, chat, configure: s => s.PersistImageDescription = true);
+        await service.AnalyzeAsync(Guid.NewGuid());
+        var saves = media.Saves;
+
+        await service.AnalyzeAsync(Guid.NewGuid(), force: true);
+
+        Assert.Equal(1, saves);
+        Assert.Equal(1, media.Saves);
     }
 
     [Fact]

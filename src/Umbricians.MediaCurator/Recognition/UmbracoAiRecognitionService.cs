@@ -152,13 +152,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
             context.Description,
             finalCode,
             ClassificationMethod: scheme is not null && finalCode is not null ? CurrentMethod(scheme, ai) : null));
-        Persist(mediaKey, result);
-        if (siteSettings.PersistImageDescription)
-        {
-            PersistDescription(mediaKey, result.Description);
-        }
-
-        PersistClassificationCode(mediaKey, finalCode, force);
+        PersistAnalysis(mediaKey, result, siteSettings.PersistImageDescription, force);
         return result;
     }
 
@@ -231,12 +225,19 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
             }
 
             var refreshed = cached with { ClassificationCode = code, ClassificationMethod = CurrentMethod(scheme, ai) };
-            if (!Persist(mediaKey, refreshed))
+            var changed = !string.Equals(code, existing, StringComparison.OrdinalIgnoreCase);
+            var values = new Dictionary<string, string> { [TagsPropertyAlias] = JsonSerializer.Serialize(refreshed, _json) };
+            if (changed)
+            {
+                values[ClassificationProvider.CodePropertyAlias] = code;
+            }
+
+            if (!TrySetPropertyValues(mediaKey, values).Contains(TagsPropertyAlias))
             {
                 return cached;
             }
 
-            if (!string.Equals(code, existing, StringComparison.OrdinalIgnoreCase))
+            if (changed)
             {
                 _logger.LogInformation(
                     "MediaCurator: reclassified {MediaKey} from {OldCode} to {NewCode} ({Method}).",
@@ -244,7 +245,6 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
                     existing,
                     code,
                     refreshed.ClassificationMethod);
-                PersistClassificationCode(mediaKey, code, force: true);
             }
 
             return refreshed;
@@ -320,13 +320,7 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
                 cancellationToken);
         }
 
-        var result = await AnalyzeSingleShotAsync(chatService, ai, scheme, imageBytes, mediaType, cancellationToken);
-        if (result is not null && persistImageDescription)
-        {
-            PersistDescription(mediaKey, result.Description);
-        }
-
-        return result;
+        return await AnalyzeSingleShotAsync(chatService, ai, scheme, imageBytes, mediaType, cancellationToken);
     }
 
     private async Task<RecognitionResult?> AnalyzeHierarchicalWithVisionAsync(
@@ -359,18 +353,24 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
             return null;
         }
 
-        if (persistImageDescription)
+        string? code;
+        try
         {
-            PersistDescription(mediaKey, described.Description);
+            code = await ClassifyFromDescriptionAsync(
+                chatService,
+                ai,
+                scheme,
+                described.Description ?? string.Empty,
+                described.Tags,
+                cancellationToken);
         }
-
-        var code = await ClassifyFromDescriptionAsync(
-            chatService,
-            ai,
-            scheme,
-            described.Description ?? string.Empty,
-            described.Tags,
-            cancellationToken);
+        catch (Exception) when (persistImageDescription)
+        {
+            // Keep the paid-for description so the next run classifies from it without vision. On
+            // success it is saved with the rest of the analysis, in the same save.
+            PersistDescription(mediaKey, described.Description);
+            throw;
+        }
 
         return new RecognitionResult(described.Tags, described.Description, code);
     }
@@ -763,29 +763,44 @@ internal sealed class UmbracoAiRecognitionService : IRecognitionService
         }
     }
 
-    private void PersistClassificationCode(Guid mediaKey, string? code, bool force)
+    /// <summary>
+    /// Stores the analysis (cache, description and code) with a single save of the item. Each save
+    /// raises a "media saved" notification, so separate saves used to start a "Media Saved" automation
+    /// once per property.
+    /// </summary>
+    private void PersistAnalysis(Guid mediaKey, RecognitionResult result, bool persistDescription, bool force)
     {
-        if (string.IsNullOrWhiteSpace(code))
+        var values = new Dictionary<string, string>
         {
-            return;
+            [TagsPropertyAlias] = JsonSerializer.Serialize(result, _json),
+        };
+
+        if (persistDescription && !string.IsNullOrWhiteSpace(result.Description))
+        {
+            values[DescriptionPropertyAlias] = result.Description.Trim();
         }
 
-        if (!force)
+        var code = result.ClassificationCode;
+        if (!string.IsNullOrWhiteSpace(code)
+            && (force || string.IsNullOrWhiteSpace(_media.GetPropertyValue(mediaKey, ClassificationProvider.CodePropertyAlias))))
         {
-            var existing = _media.GetPropertyValue(mediaKey, ClassificationProvider.CodePropertyAlias);
-            if (!string.IsNullOrWhiteSpace(existing))
-            {
-                return;
-            }
+            values[ClassificationProvider.CodePropertyAlias] = code;
         }
 
+        TrySetPropertyValues(mediaKey, values);
+    }
+
+    /// <summary>The aliases written (or already holding the value); empty when the save failed.</summary>
+    private IReadOnlySet<string> TrySetPropertyValues(Guid mediaKey, IReadOnlyDictionary<string, string> values)
+    {
         try
         {
-            _media.SetPropertyValue(mediaKey, ClassificationProvider.CodePropertyAlias, code);
+            return _media.SetPropertyValues(mediaKey, values);
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "MediaCurator: could not persist classification code for {MediaKey}.", mediaKey);
+            _logger.LogDebug(ex, "MediaCurator: could not save the analysis of {MediaKey}.", mediaKey);
+            return new HashSet<string>();
         }
     }
 
