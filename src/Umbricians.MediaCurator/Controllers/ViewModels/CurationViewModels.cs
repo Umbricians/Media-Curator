@@ -127,6 +127,7 @@ public class BulkRunStatusModel
     public string? Name { get; init; }
     public int ImageCount { get; init; }
     public int Moved { get; init; }
+    public int AlreadyInPlace { get; init; }
     public int Failed { get; init; }
     public int FoldersRemoved { get; init; }
     public List<Guid> RunKeys { get; init; } = [];
@@ -143,6 +144,7 @@ public class BulkRunStatusModel
         Name = s.Name,
         ImageCount = s.ImageCount,
         Moved = s.Moved,
+        AlreadyInPlace = s.AlreadyInPlace,
         Failed = s.Failed,
         FoldersRemoved = s.FoldersRemoved,
         RunKeys = s.RunKeys.ToList(),

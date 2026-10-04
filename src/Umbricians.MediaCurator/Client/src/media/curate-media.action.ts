@@ -132,7 +132,7 @@ export class McCurateMediaEntityAction extends UmbEntityActionBase<never> {
     }
 
     const notifications = await this.getContext(UMB_NOTIFICATION_CONTEXT);
-    const queued = { state: "queued", processed: 0, total: 0, imageCount, moved: 0, failed: 0, foldersRemoved: 0 };
+    const queued = { state: "queued", processed: 0, total: 0, imageCount, moved: 0, alreadyInPlace: 0, failed: 0, foldersRemoved: 0 };
     const progress = notifications?.stay("default", { data: { headline: HEADLINE, message: backgroundProgressMessage(name, queued) } });
     const run = await this.#waitForRun(unique, (status) =>
       updateNotificationMessage(progress, HEADLINE, backgroundProgressMessage(name, status)),

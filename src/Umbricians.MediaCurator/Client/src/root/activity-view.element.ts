@@ -91,7 +91,7 @@ export class McRootActivityViewElement extends UmbLitElement {
             <uui-table-cell>${b.state}${b.error ? html`: ${b.error}` : ""}</uui-table-cell>
             <uui-table-cell>
               ${b.state === "completed"
-                ? `${b.moved} moved, ${b.failed} failed`
+                ? `${b.moved} moved, ${b.alreadyInPlace} in place, ${b.failed} failed`
                 : b.total > 0
                   ? html`<uui-loader-bar progress=${Math.round((100 * b.processed) / b.total)}></uui-loader-bar>
                       ${b.processed} of ${b.total}`

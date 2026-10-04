@@ -107,6 +107,7 @@ public sealed class BulkCurationJob : IRecurringBackgroundJob
             {
                 State = BulkRunState.Completed,
                 Moved = summary.Moved,
+                AlreadyInPlace = summary.AlreadyInPlace,
                 Failed = summary.Failed,
                 FoldersRemoved = summary.FoldersRemoved,
                 RunKeys = summary.RunKeys,

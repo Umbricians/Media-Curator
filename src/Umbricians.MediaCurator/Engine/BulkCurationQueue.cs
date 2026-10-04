@@ -39,6 +39,8 @@ public sealed record BulkRunStatus(
 
     public int Moved { get; init; }
 
+    public int AlreadyInPlace { get; init; }
+
     public int Failed { get; init; }
 
     public int FoldersRemoved { get; init; }

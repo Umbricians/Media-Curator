@@ -80,16 +80,16 @@ describe("curate media wording", () => {
   });
 
   it("reports a background run's progress", () => {
-    const run = { state: "running", processed: 250, total: 1000, imageCount: 1000, moved: 0, failed: 0, foldersRemoved: 0 };
+    const run = { state: "running", processed: 250, total: 1000, imageCount: 1000, moved: 0, alreadyInPlace: 0, failed: 0, foldersRemoved: 0 };
     expect(backgroundProgressMessage("Demo", { ...run, state: "queued" })).toContain("queued");
     expect(backgroundProgressMessage("Demo", { ...run, total: 0 })).toContain("Working out");
     expect(backgroundProgressMessage("Demo", run)).toBe('Curating "Demo": 250 of 1000 images moved.');
   });
 
   it("reports a finished or failed background run", () => {
-    const run = { state: "completed", processed: 10, total: 10, imageCount: 10, moved: 9, failed: 1, foldersRemoved: 2 };
+    const run = { state: "completed", processed: 10, total: 10, imageCount: 12, moved: 9, alreadyInPlace: 2, failed: 1, foldersRemoved: 2 };
     expect(backgroundResultMessage("Demo", run)).toBe(
-      'Curated "Demo" in the background: 9 moved, 1 failed. 2 empty folders moved to the Recycle Bin.',
+      'Curated "Demo" in the background: 9 moved, 2 already in place, 1 failed. 2 empty folders moved to the Recycle Bin.',
     );
     expect(backgroundResultMessage("Demo", { ...run, state: "failed", error: "boom" })).toContain("stopped: boom");
   });

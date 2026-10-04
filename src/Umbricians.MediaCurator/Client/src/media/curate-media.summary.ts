@@ -76,6 +76,7 @@ export type BackgroundRun = {
   total: number;
   imageCount: number;
   moved: number;
+  alreadyInPlace: number;
   failed: number;
   foldersRemoved: number;
   error?: string | null;
@@ -96,7 +97,7 @@ export function backgroundProgressMessage(folderName: string, run: BackgroundRun
 /** The notification when a background run finishes. */
 export function backgroundResultMessage(folderName: string, run: BackgroundRun, permanentlyDeleted = false): string {
   if (run.state === "failed") return `Curating "${folderName}" stopped: ${run.error ?? "unknown error"}. The Activity log shows what moved, and can undo it.`;
-  const curated = `Curated "${folderName}" in the background: ${run.moved} moved, ${run.failed} failed.`;
+  const curated = `Curated "${folderName}" in the background: ${run.moved} moved, ${run.alreadyInPlace} already in place, ${run.failed} failed.`;
   if (run.foldersRemoved === 0) return curated;
   const where = permanentlyDeleted ? "deleted permanently" : "moved to the Recycle Bin";
   return `${curated} ${plural(run.foldersRemoved, "empty folder", "empty folders")} ${where}.`;
