@@ -68,3 +68,36 @@ export function emptyFoldersDescription(permanentlyDelete: boolean): string {
     ? "Empty sub-folders left after the run will be deleted permanently. Undo recreates them by name."
     : "Empty sub-folders left after the run will be moved to the Recycle Bin.";
 }
+
+/** A background run's state, as the queue status reports it. */
+export type BackgroundRun = {
+  state: string;
+  processed: number;
+  total: number;
+  imageCount: number;
+  moved: number;
+  failed: number;
+  foldersRemoved: number;
+  error?: string | null;
+};
+
+/** The confirm dialog for a folder large enough to curate in the background (no preview: too slow). */
+export function backgroundConfirmMessage(folderName: string, imageCount: number, threshold: number): string {
+  return `"${folderName}" and its subfolders hold ${plural(imageCount, "image", "images")}. Folders with more than ${threshold} images are curated in the background, so you can carry on working while it runs.`;
+}
+
+/** The progress notification while a background run is queued or moving images. */
+export function backgroundProgressMessage(folderName: string, run: BackgroundRun): string {
+  if (run.state === "queued") return `"${folderName}" is queued and will start in a few seconds.`;
+  if (run.total === 0) return `Working out where the images in "${folderName}" belong…`;
+  return `Curating "${folderName}": ${run.processed} of ${plural(run.total, "image", "images")} moved.`;
+}
+
+/** The notification when a background run finishes. */
+export function backgroundResultMessage(folderName: string, run: BackgroundRun, permanentlyDeleted = false): string {
+  if (run.state === "failed") return `Curating "${folderName}" stopped: ${run.error ?? "unknown error"}. The Activity log shows what moved, and can undo it.`;
+  const curated = `Curated "${folderName}" in the background: ${run.moved} moved, ${run.failed} failed.`;
+  if (run.foldersRemoved === 0) return curated;
+  const where = permanentlyDeleted ? "deleted permanently" : "moved to the Recycle Bin";
+  return `${curated} ${plural(run.foldersRemoved, "empty folder", "empty folders")} ${where}.`;
+}

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  backgroundConfirmMessage,
+  backgroundProgressMessage,
+  backgroundResultMessage,
   cleanupOnlyMessage,
   confirmLabel,
   confirmMessage,
@@ -68,5 +71,26 @@ describe("curate media wording", () => {
     expect(resultMessage({ moved: 3, alreadyInPlace: 2, failed: 0 })).toBe(
       "Curated: 3 moved, 2 already in place, 0 failed.",
     );
+  });
+
+  it("explains why a large folder is curated in the background", () => {
+    expect(backgroundConfirmMessage("Demo", 10000, 100)).toBe(
+      '"Demo" and its subfolders hold 10000 images. Folders with more than 100 images are curated in the background, so you can carry on working while it runs.',
+    );
+  });
+
+  it("reports a background run's progress", () => {
+    const run = { state: "running", processed: 250, total: 1000, imageCount: 1000, moved: 0, failed: 0, foldersRemoved: 0 };
+    expect(backgroundProgressMessage("Demo", { ...run, state: "queued" })).toContain("queued");
+    expect(backgroundProgressMessage("Demo", { ...run, total: 0 })).toContain("Working out");
+    expect(backgroundProgressMessage("Demo", run)).toBe('Curating "Demo": 250 of 1000 images moved.');
+  });
+
+  it("reports a finished or failed background run", () => {
+    const run = { state: "completed", processed: 10, total: 10, imageCount: 10, moved: 9, failed: 1, foldersRemoved: 2 };
+    expect(backgroundResultMessage("Demo", run)).toBe(
+      'Curated "Demo" in the background: 9 moved, 1 failed. 2 empty folders moved to the Recycle Bin.',
+    );
+    expect(backgroundResultMessage("Demo", { ...run, state: "failed", error: "boom" })).toContain("stopped: boom");
   });
 });
