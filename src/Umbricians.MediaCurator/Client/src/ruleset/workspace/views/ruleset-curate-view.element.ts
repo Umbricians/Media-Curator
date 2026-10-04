@@ -19,7 +19,7 @@ import {
   emptyFoldersLine,
   resultMessage,
 } from "../../../media/curate-media.summary.js";
-import { isActive, waitForBackgroundRun } from "../../../media/background-run.js";
+import { getBackgroundRun, isActive, waitForBackgroundRun } from "../../../media/background-run.js";
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 import "../../../media/empty-folders-option.element.js";
@@ -84,9 +84,9 @@ export class McRulesetCurateViewElement extends UmbLitElement {
   async #loadCount() {
     const key = this._scopeFolderKey;
     if (!key) return;
-    const [{ data: count }, { data: status }, { data: folders }] = await Promise.all([
+    const [{ data: count }, status, { data: folders }] = await Promise.all([
       MediaCuratorService.countMediaCuration({ path: { mediaKey: key } }),
-      MediaCuratorService.getQueueItemStatus({ path: { mediaKey: key } }),
+      getBackgroundRun(key),
       new UmbMediaItemRepository(this).requestItems([key]),
     ]);
     if (key !== this._scopeFolderKey) return;

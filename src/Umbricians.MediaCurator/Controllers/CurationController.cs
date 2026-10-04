@@ -152,12 +152,14 @@ public class CurationController : MediaCuratorApiControllerBase
         }
     }
 
-    /// <summary>The background run of one folder, or 404 when it has none.</summary>
+    /// <summary>The background run of one folder, or 204 when it has none (never run, or forgotten by a
+    /// restart: the queue is in memory). Not 404: the backoffice's API client throws on errors, and
+    /// "no run" is an ordinary answer here.</summary>
     [HttpGet("curation/queue/{mediaKey:guid}")]
     [ProducesResponseType<BulkRunStatusModel>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public IActionResult GetQueueItemStatus(Guid mediaKey)
-        => _bulkQueue.GetStatus(mediaKey) is { } status ? Ok(BulkRunStatusModel.From(status)) : NotFound();
+        => _bulkQueue.GetStatus(mediaKey) is { } status ? Ok(BulkRunStatusModel.From(status)) : NoContent();
 
     /// <summary>Plans and executes curation for one media item or folder tree. Each governing
     /// ruleset runs (and is logged) separately. Afterwards the empty sub-folders below the clicked
