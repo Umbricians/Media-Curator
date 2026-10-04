@@ -49,6 +49,7 @@ export type BulkRunStatusModel = {
     name?: string | null;
     imageCount: number;
     moved: number;
+    alreadyInPlace: number;
     failed: number;
     foldersRemoved: number;
     runKeys: Array<string>;
