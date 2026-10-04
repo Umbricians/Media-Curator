@@ -99,6 +99,7 @@ export type CurationRunSummaryModel = {
     alreadyInPlace: number;
     failed: number;
     foldersRemoved: number;
+    queued: boolean;
 };
 
 export type DecisionEngine = 'UmbracoAi' | 'Jev';
@@ -379,7 +380,13 @@ export type ExecuteCurationErrors = {
      * The resource is protected and requires an authentication token
      */
     401: unknown;
+    /**
+     * Conflict
+     */
+    409: ProblemDetails;
 };
+
+export type ExecuteCurationError = ExecuteCurationErrors[keyof ExecuteCurationErrors];
 
 export type ExecuteCurationResponses = {
     /**

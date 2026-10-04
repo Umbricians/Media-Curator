@@ -9,7 +9,7 @@ import { UMB_MEDIA_ROOT_ENTITY_TYPE, UmbMediaItemRepository } from "@umbraco-cms
 import { umbConfirmModal } from "@umbraco-cms/backoffice/modal";
 import { UMB_NOTIFICATION_CONTEXT } from "@umbraco-cms/backoffice/notification";
 import { tryExecute } from "@umbraco-cms/backoffice/resources";
-import { MediaCuratorService, type BulkRunStatusModel, type MediaCurationPlanModel } from "../api/index.js";
+import { MediaCuratorService, type MediaCurationPlanModel } from "../api/index.js";
 import {
   backgroundConfirmMessage,
   backgroundProgressMessage,
@@ -26,12 +26,12 @@ import {
 import "./empty-folders-option.element.js";
 import { treeReloadTargets } from "./tree-reload.js";
 import { updateNotificationMessage } from "./notification-progress.js";
+import { waitForBackgroundRun } from "./background-run.js";
 import { peopleDetectionEnabled, reloadPeopleBadges } from "../people/reload-people-badges.js";
 import type { McEmptyFoldersOptionElement } from "./empty-folders-option.element.js";
 
 const MEDIA_ENTITY_TYPE = "media";
 const HEADLINE = "Curate images";
-const POLL_MS = 3000;
 
 /**
  * "Curate images" on a media item: dry-runs every image in the folder and its subfolders
@@ -134,7 +134,7 @@ export class McCurateMediaEntityAction extends UmbEntityActionBase<never> {
     const notifications = await this.getContext(UMB_NOTIFICATION_CONTEXT);
     const queued = { state: "queued", processed: 0, total: 0, imageCount, moved: 0, alreadyInPlace: 0, failed: 0, foldersRemoved: 0 };
     const progress = notifications?.stay("default", { data: { headline: HEADLINE, message: backgroundProgressMessage(name, queued) } });
-    const run = await this.#waitForRun(unique, (status) =>
+    const run = await waitForBackgroundRun(unique, (status) =>
       updateNotificationMessage(progress, HEADLINE, backgroundProgressMessage(name, status)),
     );
     progress?.close();
@@ -145,18 +145,6 @@ export class McCurateMediaEntityAction extends UmbEntityActionBase<never> {
 
     await this.#notify(run.state === "completed" && run.failed === 0 ? "positive" : "warning", backgroundResultMessage(name, run, permanentlyDelete));
     await this.#reloadTrees(unique, [], run.changedFolderKeys ?? []);
-  }
-
-  /** Polls the folder's background run until it finishes; null when the server no longer knows it. */
-  async #waitForRun(unique: string, onProgress: (status: BulkRunStatusModel) => void): Promise<BulkRunStatusModel | null> {
-    for (;;) {
-      await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-      const { data: status, response } = await MediaCuratorService.getQueueItemStatus({ path: { mediaKey: unique } });
-      if (response?.status === 404) return null;
-      if (!status) continue; // A dropped request: ask again.
-      if (status.state === "completed" || status.state === "failed") return status;
-      onProgress(status);
-    }
   }
 
   async #itemName(unique: string): Promise<string> {

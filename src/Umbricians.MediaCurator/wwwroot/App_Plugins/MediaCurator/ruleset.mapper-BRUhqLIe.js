@@ -1,4 +1,4 @@
-import { M as n, d as o } from "./bundle.manifests-Sny11acB.js";
+import { M as n, d as o } from "./bundle.manifests-BGBdPeL-.js";
 function i(e) {
   const { key: t, ...u } = e;
   return { ...u, entityType: n, unique: t, rules: e.rules ?? [] };
@@ -28,4 +28,4 @@ export {
   d as s,
   l as t
 };
-//# sourceMappingURL=ruleset.mapper-BtZHXZSc.js.map
+//# sourceMappingURL=ruleset.mapper-BRUhqLIe.js.map

@@ -1,22 +1,44 @@
 import { css, customElement, html, nothing, state } from "@umbraco-cms/backoffice/external/lit";
 import { UmbLitElement } from "@umbraco-cms/backoffice/lit-element";
 import { UMB_NOTIFICATION_CONTEXT } from "@umbraco-cms/backoffice/notification";
-import { MediaCuratorService, type CurationPlanModel, type CurationRunModel } from "../../../api/index.js";
+import { UmbMediaItemRepository } from "@umbraco-cms/backoffice/media";
+import { umbConfirmModal } from "@umbraco-cms/backoffice/modal";
+import {
+  MediaCuratorService,
+  type BulkRunStatusModel,
+  type CurationPlanModel,
+  type CurationRunModel,
+  type MediaCurationCountModel,
+} from "../../../api/index.js";
 import { MC_EMPTY_GUID } from "../../entity.js";
 import { MC_RULESET_WORKSPACE_CONTEXT } from "../ruleset-workspace.context-token.js";
-import { emptyFoldersLine, resultMessage } from "../../../media/curate-media.summary.js";
+import {
+  backgroundConfirmMessage,
+  backgroundProgressMessage,
+  backgroundResultMessage,
+  emptyFoldersLine,
+  resultMessage,
+} from "../../../media/curate-media.summary.js";
+import { isActive, waitForBackgroundRun } from "../../../media/background-run.js";
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 import "../../../media/empty-folders-option.element.js";
 import type { McEmptyFoldersOptionElement } from "../../../media/empty-folders-option.element.js";
 
-/** Curate tab: dry run the saved ruleset against its scope folder, apply it, and see this folder's runs. */
+/**
+ * Curate tab: dry run the saved ruleset against its scope folder, apply it, and see this folder's runs.
+ * A scope with more images than the server's threshold skips the dry run (too slow) and is curated in
+ * the background, with its progress shown here until it finishes.
+ */
 @customElement("mc-ruleset-curate-view")
 export class McRulesetCurateViewElement extends UmbLitElement {
   @state() private _scopeFolderKey?: string;
   @state() private _plan?: CurationPlanModel;
   @state() private _runs: CurationRunModel[] = [];
   @state() private _busy = false;
+  @state() private _count?: MediaCurationCountModel;
+  @state() private _background?: BulkRunStatusModel;
+  @state() private _scopeName = "this folder";
   #permanentlyDeleteEmptyFolders = false;
 
   #context?: typeof MC_RULESET_WORKSPACE_CONTEXT.TYPE;
@@ -36,7 +58,10 @@ export class McRulesetCurateViewElement extends UmbLitElement {
           if (key === this._scopeFolderKey) return;
           this._scopeFolderKey = key;
           this._plan = undefined;
+          this._count = undefined;
+          this._background = undefined;
           void this.#loadRuns();
+          void this.#loadCount();
         },
         "_persistedData",
       );
@@ -54,6 +79,90 @@ export class McRulesetCurateViewElement extends UmbLitElement {
     }
     const { data } = await MediaCuratorService.getRuns();
     this._runs = (data ?? []).filter((run) => run.scopeFolderKey === this._scopeFolderKey);
+  }
+
+  async #loadCount() {
+    const key = this._scopeFolderKey;
+    if (!key) return;
+    const [{ data: count }, { data: status }, { data: folders }] = await Promise.all([
+      MediaCuratorService.countMediaCuration({ path: { mediaKey: key } }),
+      MediaCuratorService.getQueueItemStatus({ path: { mediaKey: key } }),
+      new UmbMediaItemRepository(this).requestItems([key]),
+    ]);
+    if (key !== this._scopeFolderKey) return;
+    this._count = count;
+    this._scopeName = folders?.[0]?.name ?? "this folder";
+    // A run started earlier (here or from the media tree) is still going: show it and follow it.
+    if (status && isActive(status)) void this.#follow(status);
+  }
+
+  async #curateInBackground() {
+    const key = this._scopeFolderKey;
+    const count = this._count;
+    if (!key || !count) return;
+    if (this.#context?.getHasUnpersistedChanges()) {
+      this.#notify("warning", "You have unsaved changes. Curation uses the last saved version of this ruleset.");
+    }
+    try {
+      await umbConfirmModal(this, {
+        headline: "Curate",
+        content: html`<p>${backgroundConfirmMessage(this._scopeName, count.imageCount, count.threshold)}</p>
+          <p>You can undo the run below, or from Settings › Media Curator › Activity log.</p>`,
+        confirmLabel: "Curate in the background",
+        color: "positive",
+      });
+    } catch {
+      return;
+    }
+
+    this._busy = true;
+    const response = await MediaCuratorService.executeCuration({
+      body: { scopeFolderKey: key, recursive: true, permanentlyDeleteEmptyFolders: this.#permanentlyDeleteEmptyFolders },
+    });
+    this._busy = false;
+    if (response.error || !response.data) {
+      this.#notify("danger", `Curation failed: ${JSON.stringify(response.error ?? "no data")}`);
+      return;
+    }
+    if (!response.data.queued) {
+      // The scope shrank below the threshold since it was counted: it ran in the request.
+      this.#notify("positive", resultMessage(response.data, this.#permanentlyDeleteEmptyFolders));
+      await this.#loadRuns();
+      return;
+    }
+    await this.#follow({
+      scopeFolderKey: key,
+      state: "queued",
+      processed: 0,
+      total: 0,
+      imageCount: count.imageCount,
+      moved: 0,
+      alreadyInPlace: 0,
+      failed: 0,
+      foldersRemoved: 0,
+      runKeys: [],
+      changedFolderKeys: [],
+      updated: new Date().toISOString(),
+    });
+  }
+
+  async #follow(status: BulkRunStatusModel) {
+    const key = status.scopeFolderKey;
+    this._background = status;
+    const run = await waitForBackgroundRun(key, (progress) => {
+      if (key === this._scopeFolderKey) this._background = progress;
+    });
+    if (key !== this._scopeFolderKey) return;
+    this._background = undefined;
+    if (!run) {
+      this.#notify("warning", `Lost track of the run for "${this._scopeName}" (the site may have restarted). Check the Activity log.`);
+      return;
+    }
+    this.#notify(
+      run.state === "completed" && run.failed === 0 ? "positive" : "warning",
+      backgroundResultMessage(this._scopeName, run, this.#permanentlyDeleteEmptyFolders),
+    );
+    await this.#loadRuns();
   }
 
   async #dryRun() {
@@ -110,7 +219,36 @@ export class McRulesetCurateViewElement extends UmbLitElement {
         <p data-mark="mc:curate-no-scope">Choose a scope folder on the Settings tab and save the ruleset before curating.</p>
       </uui-box>`;
     }
-    return html`${this.#renderPlan()} ${this.#renderRuns()}`;
+    return html`${this._count?.runsInBackground ? this.#renderBackground() : this.#renderPlan()} ${this.#renderRuns()}`;
+  }
+
+  #renderBackground() {
+    const count = this._count!;
+    const run = this._background;
+    return html`
+      <uui-box headline="Curate" data-mark="mc:background-curate">
+        ${run
+          ? html`<p data-mark="mc:background-progress">${backgroundProgressMessage(this._scopeName, run)}</p>
+              ${run.total > 0
+                ? html`<uui-loader-bar progress=${Math.round((100 * run.processed) / run.total)}></uui-loader-bar>`
+                : html`<uui-loader-bar></uui-loader-bar>`}`
+          : html`<p>${backgroundConfirmMessage(this._scopeName, count.imageCount, count.threshold)}</p>
+              <mc-empty-folders-option
+                @change=${(event: Event) =>
+                  (this.#permanentlyDeleteEmptyFolders = (event.target as McEmptyFoldersOptionElement).permanentlyDelete)}
+              ></mc-empty-folders-option>
+              <div class="actions">
+                <uui-button
+                  data-mark="mc:background-execute"
+                  label="Curate in the background"
+                  look="primary"
+                  color="positive"
+                  ?disabled=${this._busy}
+                  @click=${() => this.#curateInBackground()}
+                ></uui-button>
+              </div>`}
+      </uui-box>
+    `;
   }
 
   #renderPlan() {
