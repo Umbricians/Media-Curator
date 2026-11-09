@@ -8,7 +8,7 @@ using Umbricians.MediaCurator.Controllers.ViewModels;
 namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
-[ApiExplorerSettings(GroupName = "MediaCurator")]
+[ApiExplorerSettings(GroupName = "Media Curator")]
 public class PeopleController : MediaCuratorApiControllerBase
 {
     private const int RecycleBinId = -21;

@@ -8,7 +8,7 @@
       "name": "Media Curator Bundle",
       "alias": "Umbricians.MediaCurator.Bundle",
       "type": "bundle",
-      "js": "/App_Plugins/MediaCurator/media-curator.js"
+      "js": "/App_Plugins/UmbriciansMediaCurator/umbricians-media-curator.js"
     }
   ]
 }

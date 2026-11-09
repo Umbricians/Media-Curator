@@ -32,7 +32,7 @@ namespace Umbricians.MediaCurator.Composers
                 // Along with having a generated swagger JSON file that we can use to auto generate a TypeScript client
                 opt.SwaggerDoc(Constants.ApiName, new OpenApiInfo
                 {
-                    Title = "Media CuratorBackoffice API",
+                    Title = "Media Curator Backoffice API",
                     Version = "1.0",
                     // Contact = new OpenApiContact
                     // {

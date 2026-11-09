@@ -18,7 +18,7 @@ test.describe('MediaCurator smoke', () => {
 
     // Opening it renders the Media Curator root workspace (Setup tab by default)
     await root.locator('#label-button').first().click();
-    await page.waitForURL(/\/workspace\/mc-root\/edit\/null/, { timeout: 15000 });
+    await page.waitForURL(/\/workspace\/umbricians-media-curator-root\/edit\/null/, { timeout: 15000 });
     await expect(page.getByTestId('mc:settings')).toBeVisible({ timeout: 15000 });
 
     // The root's actions menu offers "Create ruleset"

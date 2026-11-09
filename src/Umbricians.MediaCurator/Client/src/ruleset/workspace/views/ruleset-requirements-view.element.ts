@@ -11,7 +11,7 @@ import { MC_RULESET_WORKSPACE_CONTEXT } from "../ruleset-workspace.context-token
 type Choice = "create" | "map" | "decline";
 
 /** Requirements tab: media type properties the ruleset's providers need, with consent-based provisioning. */
-@customElement("mc-ruleset-requirements-view")
+@customElement("umbricians-media-curator-ruleset-requirements-view")
 export class McRulesetRequirementsViewElement extends UmbLitElement {
   @state() private _report?: RequirementReportModel;
   @state() private _choices = new Map<string, Choice>();
@@ -209,6 +209,6 @@ export default McRulesetRequirementsViewElement;
 
 declare global {
   interface HTMLElementTagNameMap {
-    "mc-ruleset-requirements-view": McRulesetRequirementsViewElement;
+    "umbricians-media-curator-ruleset-requirements-view": McRulesetRequirementsViewElement;
   }
 }

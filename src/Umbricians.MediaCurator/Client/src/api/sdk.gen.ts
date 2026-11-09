@@ -22,7 +22,7 @@ export class MediaCuratorService {
     public static getExclusions<ThrowOnError extends boolean = false>(options?: Options<GetExclusionsData, ThrowOnError>): RequestResult<GetExclusionsResponses, GetExclusionsErrors, ThrowOnError> {
         return (options?.client ?? client).get<GetExclusionsResponses, GetExclusionsErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/curation/exclusions',
+            url: '/umbraco/umbriciansmediacurator/api/v1/curation/exclusions',
             ...options
         });
     }
@@ -30,7 +30,7 @@ export class MediaCuratorService {
     public static setExclusion<ThrowOnError extends boolean = false>(options: Options<SetExclusionData, ThrowOnError>): RequestResult<SetExclusionResponses, SetExclusionErrors, ThrowOnError> {
         return (options.client ?? client).put<SetExclusionResponses, SetExclusionErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/curation/exclusions/{mediaKey}',
+            url: '/umbraco/umbriciansmediacurator/api/v1/curation/exclusions/{mediaKey}',
             ...options
         });
     }
@@ -38,7 +38,7 @@ export class MediaCuratorService {
     public static executeCuration<ThrowOnError extends boolean = false>(options?: Options<ExecuteCurationData, ThrowOnError>): RequestResult<ExecuteCurationResponses, ExecuteCurationErrors, ThrowOnError> {
         return (options?.client ?? client).post<ExecuteCurationResponses, ExecuteCurationErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/curation/execute',
+            url: '/umbraco/umbriciansmediacurator/api/v1/curation/execute',
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -50,7 +50,7 @@ export class MediaCuratorService {
     public static countMediaCuration<ThrowOnError extends boolean = false>(options: Options<CountMediaCurationData, ThrowOnError>): RequestResult<CountMediaCurationResponses, CountMediaCurationErrors, ThrowOnError> {
         return (options.client ?? client).get<CountMediaCurationResponses, CountMediaCurationErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/curation/media/{mediaKey}/count',
+            url: '/umbraco/umbriciansmediacurator/api/v1/curation/media/{mediaKey}/count',
             ...options
         });
     }
@@ -58,7 +58,7 @@ export class MediaCuratorService {
     public static executeMediaCuration<ThrowOnError extends boolean = false>(options: Options<ExecuteMediaCurationData, ThrowOnError>): RequestResult<ExecuteMediaCurationResponses, ExecuteMediaCurationErrors, ThrowOnError> {
         return (options.client ?? client).post<ExecuteMediaCurationResponses, ExecuteMediaCurationErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/curation/media/{mediaKey}/execute',
+            url: '/umbraco/umbriciansmediacurator/api/v1/curation/media/{mediaKey}/execute',
             ...options
         });
     }
@@ -66,7 +66,7 @@ export class MediaCuratorService {
     public static planMediaCuration<ThrowOnError extends boolean = false>(options: Options<PlanMediaCurationData, ThrowOnError>): RequestResult<PlanMediaCurationResponses, PlanMediaCurationErrors, ThrowOnError> {
         return (options.client ?? client).post<PlanMediaCurationResponses, PlanMediaCurationErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/curation/media/{mediaKey}/plan',
+            url: '/umbraco/umbriciansmediacurator/api/v1/curation/media/{mediaKey}/plan',
             ...options
         });
     }
@@ -74,7 +74,7 @@ export class MediaCuratorService {
     public static planCuration<ThrowOnError extends boolean = false>(options?: Options<PlanCurationData, ThrowOnError>): RequestResult<PlanCurationResponses, PlanCurationErrors, ThrowOnError> {
         return (options?.client ?? client).post<PlanCurationResponses, PlanCurationErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/curation/plan',
+            url: '/umbraco/umbriciansmediacurator/api/v1/curation/plan',
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -86,7 +86,7 @@ export class MediaCuratorService {
     public static getQueueStatus<ThrowOnError extends boolean = false>(options?: Options<GetQueueStatusData, ThrowOnError>): RequestResult<GetQueueStatusResponses, GetQueueStatusErrors, ThrowOnError> {
         return (options?.client ?? client).get<GetQueueStatusResponses, GetQueueStatusErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/curation/queue',
+            url: '/umbraco/umbriciansmediacurator/api/v1/curation/queue',
             ...options
         });
     }
@@ -94,7 +94,7 @@ export class MediaCuratorService {
     public static queueCuration<ThrowOnError extends boolean = false>(options?: Options<QueueCurationData, ThrowOnError>): RequestResult<QueueCurationResponses, QueueCurationErrors, ThrowOnError> {
         return (options?.client ?? client).post<QueueCurationResponses, QueueCurationErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/curation/queue',
+            url: '/umbraco/umbriciansmediacurator/api/v1/curation/queue',
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -106,7 +106,7 @@ export class MediaCuratorService {
     public static getQueueItemStatus<ThrowOnError extends boolean = false>(options: Options<GetQueueItemStatusData, ThrowOnError>): RequestResult<GetQueueItemStatusResponses, GetQueueItemStatusErrors, ThrowOnError> {
         return (options.client ?? client).get<GetQueueItemStatusResponses, GetQueueItemStatusErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/curation/queue/{mediaKey}',
+            url: '/umbraco/umbriciansmediacurator/api/v1/curation/queue/{mediaKey}',
             ...options
         });
     }
@@ -114,7 +114,7 @@ export class MediaCuratorService {
     public static getRuns<ThrowOnError extends boolean = false>(options?: Options<GetRunsData, ThrowOnError>): RequestResult<GetRunsResponses, GetRunsErrors, ThrowOnError> {
         return (options?.client ?? client).get<GetRunsResponses, GetRunsErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/curation/runs',
+            url: '/umbraco/umbriciansmediacurator/api/v1/curation/runs',
             ...options
         });
     }
@@ -122,7 +122,7 @@ export class MediaCuratorService {
     public static getRunItems<ThrowOnError extends boolean = false>(options: Options<GetRunItemsData, ThrowOnError>): RequestResult<GetRunItemsResponses, GetRunItemsErrors, ThrowOnError> {
         return (options.client ?? client).get<GetRunItemsResponses, GetRunItemsErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/curation/runs/{runKey}/items',
+            url: '/umbraco/umbriciansmediacurator/api/v1/curation/runs/{runKey}/items',
             ...options
         });
     }
@@ -130,7 +130,7 @@ export class MediaCuratorService {
     public static undoRun<ThrowOnError extends boolean = false>(options: Options<UndoRunData, ThrowOnError>): RequestResult<UndoRunResponses, UndoRunErrors, ThrowOnError> {
         return (options.client ?? client).post<UndoRunResponses, UndoRunErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/curation/runs/{runKey}/undo',
+            url: '/umbraco/umbriciansmediacurator/api/v1/curation/runs/{runKey}/undo',
             ...options
         });
     }
@@ -138,7 +138,7 @@ export class MediaCuratorService {
     public static getAncestorFolders<ThrowOnError extends boolean = false>(options?: Options<GetAncestorFoldersData, ThrowOnError>): RequestResult<GetAncestorFoldersResponses, GetAncestorFoldersErrors, ThrowOnError> {
         return (options?.client ?? client).post<GetAncestorFoldersResponses, GetAncestorFoldersErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/people/ancestor-folders',
+            url: '/umbraco/umbriciansmediacurator/api/v1/people/ancestor-folders',
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -150,7 +150,7 @@ export class MediaCuratorService {
     public static getProviders<ThrowOnError extends boolean = false>(options?: Options<GetProvidersData, ThrowOnError>): RequestResult<GetProvidersResponses, GetProvidersErrors, ThrowOnError> {
         return (options?.client ?? client).get<GetProvidersResponses, GetProvidersErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/providers',
+            url: '/umbraco/umbriciansmediacurator/api/v1/providers',
             ...options
         });
     }
@@ -158,7 +158,7 @@ export class MediaCuratorService {
     public static analyzeMediaImages<ThrowOnError extends boolean = false>(options: Options<AnalyzeMediaImagesData, ThrowOnError>): RequestResult<AnalyzeMediaImagesResponses, AnalyzeMediaImagesErrors, ThrowOnError> {
         return (options.client ?? client).post<AnalyzeMediaImagesResponses, AnalyzeMediaImagesErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/recognition/media/{mediaKey}/analyze',
+            url: '/umbraco/umbriciansmediacurator/api/v1/recognition/media/{mediaKey}/analyze',
             ...options
         });
     }
@@ -166,7 +166,7 @@ export class MediaCuratorService {
     public static listImagesToAnalyze<ThrowOnError extends boolean = false>(options: Options<ListImagesToAnalyzeData, ThrowOnError>): RequestResult<ListImagesToAnalyzeResponses, ListImagesToAnalyzeErrors, ThrowOnError> {
         return (options.client ?? client).get<ListImagesToAnalyzeResponses, ListImagesToAnalyzeErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/recognition/media/{mediaKey}/images',
+            url: '/umbraco/umbriciansmediacurator/api/v1/recognition/media/{mediaKey}/images',
             ...options
         });
     }
@@ -174,7 +174,7 @@ export class MediaCuratorService {
     public static countMediaImages<ThrowOnError extends boolean = false>(options: Options<CountMediaImagesData, ThrowOnError>): RequestResult<CountMediaImagesResponses, CountMediaImagesErrors, ThrowOnError> {
         return (options.client ?? client).get<CountMediaImagesResponses, CountMediaImagesErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/recognition/media/{mediaKey}/images/count',
+            url: '/umbraco/umbriciansmediacurator/api/v1/recognition/media/{mediaKey}/images/count',
             ...options
         });
     }
@@ -182,7 +182,7 @@ export class MediaCuratorService {
     public static reanalyzeImages<ThrowOnError extends boolean = false>(options?: Options<ReanalyzeImagesData, ThrowOnError>): RequestResult<ReanalyzeImagesResponses, ReanalyzeImagesErrors, ThrowOnError> {
         return (options?.client ?? client).post<ReanalyzeImagesResponses, ReanalyzeImagesErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/recognition/reanalyze',
+            url: '/umbraco/umbriciansmediacurator/api/v1/recognition/reanalyze',
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -194,7 +194,7 @@ export class MediaCuratorService {
     public static testPizzaOriginal<ThrowOnError extends boolean = false>(options?: Options<TestPizzaOriginalData, ThrowOnError>): RequestResult<TestPizzaOriginalResponses, TestPizzaOriginalErrors, ThrowOnError> {
         return (options?.client ?? client).post<TestPizzaOriginalResponses, TestPizzaOriginalErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/recognition/test-pizza/original',
+            url: '/umbraco/umbriciansmediacurator/api/v1/recognition/test-pizza/original',
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -206,7 +206,7 @@ export class MediaCuratorService {
     public static testPizzaPrepared<ThrowOnError extends boolean = false>(options?: Options<TestPizzaPreparedData, ThrowOnError>): RequestResult<TestPizzaPreparedResponses, TestPizzaPreparedErrors, ThrowOnError> {
         return (options?.client ?? client).post<TestPizzaPreparedResponses, TestPizzaPreparedErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/recognition/test-pizza/prepared',
+            url: '/umbraco/umbriciansmediacurator/api/v1/recognition/test-pizza/prepared',
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -218,7 +218,7 @@ export class MediaCuratorService {
     public static applyRequirements<ThrowOnError extends boolean = false>(options?: Options<ApplyRequirementsData, ThrowOnError>): RequestResult<ApplyRequirementsResponses, ApplyRequirementsErrors, ThrowOnError> {
         return (options?.client ?? client).post<ApplyRequirementsResponses, ApplyRequirementsErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/requirements/apply',
+            url: '/umbraco/umbriciansmediacurator/api/v1/requirements/apply',
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -230,7 +230,7 @@ export class MediaCuratorService {
     public static checkRequirements<ThrowOnError extends boolean = false>(options: Options<CheckRequirementsData, ThrowOnError>): RequestResult<CheckRequirementsResponses, CheckRequirementsErrors, ThrowOnError> {
         return (options.client ?? client).get<CheckRequirementsResponses, CheckRequirementsErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/requirements/check/{rulesetKey}',
+            url: '/umbraco/umbriciansmediacurator/api/v1/requirements/check/{rulesetKey}',
             ...options
         });
     }
@@ -238,7 +238,7 @@ export class MediaCuratorService {
     public static getRulesets<ThrowOnError extends boolean = false>(options?: Options<GetRulesetsData, ThrowOnError>): RequestResult<GetRulesetsResponses, GetRulesetsErrors, ThrowOnError> {
         return (options?.client ?? client).get<GetRulesetsResponses, GetRulesetsErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/rulesets',
+            url: '/umbraco/umbriciansmediacurator/api/v1/rulesets',
             ...options
         });
     }
@@ -246,7 +246,7 @@ export class MediaCuratorService {
     public static saveRuleset<ThrowOnError extends boolean = false>(options?: Options<SaveRulesetData, ThrowOnError>): RequestResult<SaveRulesetResponses, SaveRulesetErrors, ThrowOnError> {
         return (options?.client ?? client).put<SaveRulesetResponses, SaveRulesetErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/rulesets',
+            url: '/umbraco/umbriciansmediacurator/api/v1/rulesets',
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -258,7 +258,7 @@ export class MediaCuratorService {
     public static deleteRuleset<ThrowOnError extends boolean = false>(options: Options<DeleteRulesetData, ThrowOnError>): RequestResult<DeleteRulesetResponses, DeleteRulesetErrors, ThrowOnError> {
         return (options.client ?? client).delete<DeleteRulesetResponses, DeleteRulesetErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/rulesets/{key}',
+            url: '/umbraco/umbriciansmediacurator/api/v1/rulesets/{key}',
             ...options
         });
     }
@@ -266,7 +266,7 @@ export class MediaCuratorService {
     public static getRuleset<ThrowOnError extends boolean = false>(options: Options<GetRulesetData, ThrowOnError>): RequestResult<GetRulesetResponses, GetRulesetErrors, ThrowOnError> {
         return (options.client ?? client).get<GetRulesetResponses, GetRulesetErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/rulesets/{key}',
+            url: '/umbraco/umbriciansmediacurator/api/v1/rulesets/{key}',
             ...options
         });
     }
@@ -274,7 +274,7 @@ export class MediaCuratorService {
     public static getRulesetByScope<ThrowOnError extends boolean = false>(options: Options<GetRulesetByScopeData, ThrowOnError>): RequestResult<GetRulesetByScopeResponses, GetRulesetByScopeErrors, ThrowOnError> {
         return (options.client ?? client).get<GetRulesetByScopeResponses, GetRulesetByScopeErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/rulesets/by-scope/{scopeRootKey}',
+            url: '/umbraco/umbriciansmediacurator/api/v1/rulesets/by-scope/{scopeRootKey}',
             ...options
         });
     }
@@ -282,7 +282,7 @@ export class MediaCuratorService {
     public static exportRulesets<ThrowOnError extends boolean = false>(options?: Options<ExportRulesetsData, ThrowOnError>): RequestResult<ExportRulesetsResponses, ExportRulesetsErrors, ThrowOnError> {
         return (options?.client ?? client).get<ExportRulesetsResponses, ExportRulesetsErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/rulesets/export',
+            url: '/umbraco/umbriciansmediacurator/api/v1/rulesets/export',
             ...options
         });
     }
@@ -290,7 +290,7 @@ export class MediaCuratorService {
     public static importRulesets<ThrowOnError extends boolean = false>(options?: Options<ImportRulesetsData, ThrowOnError>): RequestResult<ImportRulesetsResponses, ImportRulesetsErrors, ThrowOnError> {
         return (options?.client ?? client).post<ImportRulesetsResponses, ImportRulesetsErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/rulesets/import',
+            url: '/umbraco/umbriciansmediacurator/api/v1/rulesets/import',
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -302,7 +302,7 @@ export class MediaCuratorService {
     public static getSettings<ThrowOnError extends boolean = false>(options?: Options<GetSettingsData, ThrowOnError>): RequestResult<GetSettingsResponses, GetSettingsErrors, ThrowOnError> {
         return (options?.client ?? client).get<GetSettingsResponses, GetSettingsErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/settings',
+            url: '/umbraco/umbriciansmediacurator/api/v1/settings',
             ...options
         });
     }
@@ -310,7 +310,7 @@ export class MediaCuratorService {
     public static saveSettings<ThrowOnError extends boolean = false>(options?: Options<SaveSettingsData, ThrowOnError>): RequestResult<SaveSettingsResponses, SaveSettingsErrors, ThrowOnError> {
         return (options?.client ?? client).put<SaveSettingsResponses, SaveSettingsErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/settings',
+            url: '/umbraco/umbriciansmediacurator/api/v1/settings',
             ...options,
             headers: {
                 'Content-Type': 'application/json',
@@ -322,7 +322,7 @@ export class MediaCuratorService {
     public static getAiOptions<ThrowOnError extends boolean = false>(options?: Options<GetAiOptionsData, ThrowOnError>): RequestResult<GetAiOptionsResponses, GetAiOptionsErrors, ThrowOnError> {
         return (options?.client ?? client).get<GetAiOptionsResponses, GetAiOptionsErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/settings/ai-options',
+            url: '/umbraco/umbriciansmediacurator/api/v1/settings/ai-options',
             ...options
         });
     }
@@ -330,7 +330,7 @@ export class MediaCuratorService {
     public static setTypeSafeApiKey<ThrowOnError extends boolean = false>(options?: Options<SetTypeSafeApiKeyData, ThrowOnError>): RequestResult<SetTypeSafeApiKeyResponses, SetTypeSafeApiKeyErrors, ThrowOnError> {
         return (options?.client ?? client).put<SetTypeSafeApiKeyResponses, SetTypeSafeApiKeyErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/mediacurator/api/v1/settings/typesafe-api-key',
+            url: '/umbraco/umbriciansmediacurator/api/v1/settings/typesafe-api-key',
             ...options,
             headers: {
                 'Content-Type': 'application/json',

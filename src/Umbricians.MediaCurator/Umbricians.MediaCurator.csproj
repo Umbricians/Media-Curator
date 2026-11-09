@@ -88,7 +88,7 @@
 
   <!-- The backoffice bundle is built by npm and git-ignored, so never pack a package without it. -->
   <Target Name="EnsureClientBundleBuilt" BeforeTargets="GenerateNuspec">
-    <Error Condition="!Exists('wwwroot\App_Plugins\MediaCurator\media-curator.js')"
+    <Error Condition="!Exists('wwwroot\App_Plugins\UmbriciansMediaCurator\umbricians-media-curator.js')"
            Text="The backoffice bundle is missing. Run 'npm ci' and 'npm run build' in src/Umbricians.MediaCurator/Client before packing." />
   </Target>
 

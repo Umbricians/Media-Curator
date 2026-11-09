@@ -7,7 +7,7 @@ using Umbricians.MediaCurator.Core;
 namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
-[ApiExplorerSettings(GroupName = "MediaCurator")]
+[ApiExplorerSettings(GroupName = "Media Curator")]
 public class ProvidersController : MediaCuratorApiControllerBase
 {
     private readonly CurationProviderCollection _providers;

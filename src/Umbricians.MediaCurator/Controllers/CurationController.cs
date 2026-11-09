@@ -9,7 +9,7 @@ using Umbricians.MediaCurator.Engine;
 namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
-[ApiExplorerSettings(GroupName = "MediaCurator")]
+[ApiExplorerSettings(GroupName = "Media Curator")]
 public class CurationController : MediaCuratorApiControllerBase
 {
     private readonly ICurationEngine _engine;

@@ -8,7 +8,7 @@ using Umbricians.MediaCurator.Rules;
 namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
-[ApiExplorerSettings(GroupName = "MediaCurator")]
+[ApiExplorerSettings(GroupName = "Media Curator")]
 public class RulesetsController : MediaCuratorApiControllerBase
 {
     private readonly IRulesetRepository _repository;

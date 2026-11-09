@@ -320,7 +320,7 @@ export type GetExclusionsData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/curation/exclusions';
+    url: '/umbraco/umbriciansmediacurator/api/v1/curation/exclusions';
 };
 
 export type GetExclusionsErrors = {
@@ -347,7 +347,7 @@ export type SetExclusionData = {
     query?: {
         excluded?: boolean;
     };
-    url: '/umbraco/mediacurator/api/v1/curation/exclusions/{mediaKey}';
+    url: '/umbraco/umbriciansmediacurator/api/v1/curation/exclusions/{mediaKey}';
 };
 
 export type SetExclusionErrors = {
@@ -368,7 +368,7 @@ export type ExecuteCurationData = {
     body?: CurationRequestModel;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/curation/execute';
+    url: '/umbraco/umbriciansmediacurator/api/v1/curation/execute';
 };
 
 export type ExecuteCurationErrors = {
@@ -403,7 +403,7 @@ export type CountMediaCurationData = {
         mediaKey: string;
     };
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/curation/media/{mediaKey}/count';
+    url: '/umbraco/umbriciansmediacurator/api/v1/curation/media/{mediaKey}/count';
 };
 
 export type CountMediaCurationErrors = {
@@ -436,7 +436,7 @@ export type ExecuteMediaCurationData = {
     query?: {
         permanentlyDeleteEmptyFolders?: boolean;
     };
-    url: '/umbraco/mediacurator/api/v1/curation/media/{mediaKey}/execute';
+    url: '/umbraco/umbriciansmediacurator/api/v1/curation/media/{mediaKey}/execute';
 };
 
 export type ExecuteMediaCurationErrors = {
@@ -467,7 +467,7 @@ export type PlanMediaCurationData = {
         mediaKey: string;
     };
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/curation/media/{mediaKey}/plan';
+    url: '/umbraco/umbriciansmediacurator/api/v1/curation/media/{mediaKey}/plan';
 };
 
 export type PlanMediaCurationErrors = {
@@ -496,7 +496,7 @@ export type PlanCurationData = {
     body?: CurationRequestModel;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/curation/plan';
+    url: '/umbraco/umbriciansmediacurator/api/v1/curation/plan';
 };
 
 export type PlanCurationErrors = {
@@ -523,7 +523,7 @@ export type GetQueueStatusData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/curation/queue';
+    url: '/umbraco/umbriciansmediacurator/api/v1/curation/queue';
 };
 
 export type GetQueueStatusErrors = {
@@ -546,7 +546,7 @@ export type QueueCurationData = {
     body?: CurationRequestModel;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/curation/queue';
+    url: '/umbraco/umbriciansmediacurator/api/v1/curation/queue';
 };
 
 export type QueueCurationErrors = {
@@ -573,7 +573,7 @@ export type GetQueueItemStatusData = {
         mediaKey: string;
     };
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/curation/queue/{mediaKey}';
+    url: '/umbraco/umbriciansmediacurator/api/v1/curation/queue/{mediaKey}';
 };
 
 export type GetQueueItemStatusErrors = {
@@ -600,7 +600,7 @@ export type GetRunsData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/curation/runs';
+    url: '/umbraco/umbriciansmediacurator/api/v1/curation/runs';
 };
 
 export type GetRunsErrors = {
@@ -625,7 +625,7 @@ export type GetRunItemsData = {
         runKey: string;
     };
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/curation/runs/{runKey}/items';
+    url: '/umbraco/umbriciansmediacurator/api/v1/curation/runs/{runKey}/items';
 };
 
 export type GetRunItemsErrors = {
@@ -650,7 +650,7 @@ export type UndoRunData = {
         runKey: string;
     };
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/curation/runs/{runKey}/undo';
+    url: '/umbraco/umbriciansmediacurator/api/v1/curation/runs/{runKey}/undo';
 };
 
 export type UndoRunErrors = {
@@ -673,7 +673,7 @@ export type GetAncestorFoldersData = {
     body?: AncestorFoldersRequestModel;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/people/ancestor-folders';
+    url: '/umbraco/umbriciansmediacurator/api/v1/people/ancestor-folders';
 };
 
 export type GetAncestorFoldersErrors = {
@@ -696,7 +696,7 @@ export type GetProvidersData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/providers';
+    url: '/umbraco/umbriciansmediacurator/api/v1/providers';
 };
 
 export type GetProvidersErrors = {
@@ -723,7 +723,7 @@ export type AnalyzeMediaImagesData = {
     query?: {
         all?: boolean;
     };
-    url: '/umbraco/mediacurator/api/v1/recognition/media/{mediaKey}/analyze';
+    url: '/umbraco/umbriciansmediacurator/api/v1/recognition/media/{mediaKey}/analyze';
 };
 
 export type AnalyzeMediaImagesErrors = {
@@ -760,7 +760,7 @@ export type ListImagesToAnalyzeData = {
     query?: {
         all?: boolean;
     };
-    url: '/umbraco/mediacurator/api/v1/recognition/media/{mediaKey}/images';
+    url: '/umbraco/umbriciansmediacurator/api/v1/recognition/media/{mediaKey}/images';
 };
 
 export type ListImagesToAnalyzeErrors = {
@@ -791,7 +791,7 @@ export type CountMediaImagesData = {
         mediaKey: string;
     };
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/recognition/media/{mediaKey}/images/count';
+    url: '/umbraco/umbriciansmediacurator/api/v1/recognition/media/{mediaKey}/images/count';
 };
 
 export type CountMediaImagesErrors = {
@@ -820,7 +820,7 @@ export type ReanalyzeImagesData = {
     body?: ReanalyzeImagesRequestModel;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/recognition/reanalyze';
+    url: '/umbraco/umbriciansmediacurator/api/v1/recognition/reanalyze';
 };
 
 export type ReanalyzeImagesErrors = {
@@ -847,7 +847,7 @@ export type TestPizzaOriginalData = {
     body?: PizzaRecognitionTestRequestModel;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/recognition/test-pizza/original';
+    url: '/umbraco/umbriciansmediacurator/api/v1/recognition/test-pizza/original';
 };
 
 export type TestPizzaOriginalErrors = {
@@ -874,7 +874,7 @@ export type TestPizzaPreparedData = {
     body?: PizzaRecognitionTestRequestModel;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/recognition/test-pizza/prepared';
+    url: '/umbraco/umbriciansmediacurator/api/v1/recognition/test-pizza/prepared';
 };
 
 export type TestPizzaPreparedErrors = {
@@ -901,7 +901,7 @@ export type ApplyRequirementsData = {
     body?: Array<ProvisioningApprovalModel>;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/requirements/apply';
+    url: '/umbraco/umbriciansmediacurator/api/v1/requirements/apply';
 };
 
 export type ApplyRequirementsErrors = {
@@ -926,7 +926,7 @@ export type CheckRequirementsData = {
         rulesetKey: string;
     };
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/requirements/check/{rulesetKey}';
+    url: '/umbraco/umbriciansmediacurator/api/v1/requirements/check/{rulesetKey}';
 };
 
 export type CheckRequirementsErrors = {
@@ -949,7 +949,7 @@ export type GetRulesetsData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/rulesets';
+    url: '/umbraco/umbriciansmediacurator/api/v1/rulesets';
 };
 
 export type GetRulesetsErrors = {
@@ -972,7 +972,7 @@ export type SaveRulesetData = {
     body?: RulesetModel;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/rulesets';
+    url: '/umbraco/umbriciansmediacurator/api/v1/rulesets';
 };
 
 export type SaveRulesetErrors = {
@@ -1007,7 +1007,7 @@ export type DeleteRulesetData = {
         key: string;
     };
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/rulesets/{key}';
+    url: '/umbraco/umbriciansmediacurator/api/v1/rulesets/{key}';
 };
 
 export type DeleteRulesetErrors = {
@@ -1030,7 +1030,7 @@ export type GetRulesetData = {
         key: string;
     };
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/rulesets/{key}';
+    url: '/umbraco/umbriciansmediacurator/api/v1/rulesets/{key}';
 };
 
 export type GetRulesetErrors = {
@@ -1059,7 +1059,7 @@ export type GetRulesetByScopeData = {
         scopeRootKey: string;
     };
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/rulesets/by-scope/{scopeRootKey}';
+    url: '/umbraco/umbriciansmediacurator/api/v1/rulesets/by-scope/{scopeRootKey}';
 };
 
 export type GetRulesetByScopeErrors = {
@@ -1086,7 +1086,7 @@ export type ExportRulesetsData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/rulesets/export';
+    url: '/umbraco/umbriciansmediacurator/api/v1/rulesets/export';
 };
 
 export type ExportRulesetsErrors = {
@@ -1109,7 +1109,7 @@ export type ImportRulesetsData = {
     body?: string;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/rulesets/import';
+    url: '/umbraco/umbriciansmediacurator/api/v1/rulesets/import';
 };
 
 export type ImportRulesetsErrors = {
@@ -1136,7 +1136,7 @@ export type GetSettingsData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/settings';
+    url: '/umbraco/umbriciansmediacurator/api/v1/settings';
 };
 
 export type GetSettingsErrors = {
@@ -1159,7 +1159,7 @@ export type SaveSettingsData = {
     body?: MediaCuratorSiteSettingsModel;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/settings';
+    url: '/umbraco/umbriciansmediacurator/api/v1/settings';
 };
 
 export type SaveSettingsErrors = {
@@ -1182,7 +1182,7 @@ export type GetAiOptionsData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/settings/ai-options';
+    url: '/umbraco/umbriciansmediacurator/api/v1/settings/ai-options';
 };
 
 export type GetAiOptionsErrors = {
@@ -1205,7 +1205,7 @@ export type SetTypeSafeApiKeyData = {
     body?: TypeSafeApiKeyModel;
     path?: never;
     query?: never;
-    url: '/umbraco/mediacurator/api/v1/settings/typesafe-api-key';
+    url: '/umbraco/umbriciansmediacurator/api/v1/settings/typesafe-api-key';
 };
 
 export type SetTypeSafeApiKeyErrors = {

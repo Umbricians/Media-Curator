@@ -12,7 +12,7 @@ const FALLBACKS = [
   { name: "Leave item in place", value: "stop" },
 ];
 
-@customElement("mc-rule-settings-modal")
+@customElement("umbricians-media-curator-rule-settings-modal")
 export class McRuleSettingsModalElement extends UmbModalBaseElement<McRuleSettingsModalData, McRuleSettingsModalValue> {
   @state() private _rule?: RuleNodeModel;
   /** Dataset value is only rebuilt on provider change, so typing never re-renders editors with stale values. */
@@ -164,6 +164,6 @@ export default McRuleSettingsModalElement;
 
 declare global {
   interface HTMLElementTagNameMap {
-    "mc-rule-settings-modal": McRuleSettingsModalElement;
+    "umbricians-media-curator-rule-settings-modal": McRuleSettingsModalElement;
   }
 }

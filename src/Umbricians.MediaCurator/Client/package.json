@@ -1,12 +1,12 @@
 {
-  "name": "media-curator",
+  "name": "umbricians-media-curator",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "watch": "tsc && vite build --watch",
     "build": "tsc && vite build",
-    "generate-client": "node scripts/generate-openapi.js http://localhost:40264/umbraco/swagger/mediacurator/swagger.json",
+    "generate-client": "node scripts/generate-openapi.js http://localhost:40264/umbraco/swagger/umbriciansmediacurator/swagger.json",
     "test": "vitest run"
   },
   "dependencies": {

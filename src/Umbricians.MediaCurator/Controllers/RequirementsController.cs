@@ -7,7 +7,7 @@ using Umbricians.MediaCurator.Provisioning;
 namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
-[ApiExplorerSettings(GroupName = "MediaCurator")]
+[ApiExplorerSettings(GroupName = "Media Curator")]
 public class RequirementsController : MediaCuratorApiControllerBase
 {
     private readonly IPropertyProvisioningService _provisioning;

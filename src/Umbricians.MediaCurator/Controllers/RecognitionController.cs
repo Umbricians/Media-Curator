@@ -17,7 +17,7 @@ using SixLabors.ImageSharp;
 namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
-[ApiExplorerSettings(GroupName = "MediaCurator")]
+[ApiExplorerSettings(GroupName = "Media Curator")]
 public class RecognitionController : MediaCuratorApiControllerBase
 {
     /// <summary>Most images one folder analysis will send to the AI.</summary>

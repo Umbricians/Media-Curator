@@ -10,9 +10,9 @@ export default defineConfig({
     lib: {
       entry: "src/bundle.manifests.ts", // Bundle registers one or more manifests
       formats: ["es"],
-      fileName: "media-curator",
+      fileName: "umbricians-media-curator",
     },
-    outDir: "../wwwroot/App_Plugins/MediaCurator", // your web component will be saved in this location
+    outDir: "../wwwroot/App_Plugins/UmbriciansMediaCurator", // your web component will be saved in this location
     emptyOutDir: true,
     sourcemap: true,
     rollupOptions: {

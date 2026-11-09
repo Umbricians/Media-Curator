@@ -39,7 +39,7 @@ test.describe('MediaCurator curate now (MVP)', () => {
     await createTestImage(umbracoApi, imageName, folderId);
     const folder = await umbracoApi.media.getByName(folderName);
 
-    const saveResponse = await umbracoApi.put(`${base()}/umbraco/mediacurator/api/v1/rulesets`, {
+    const saveResponse = await umbracoApi.put(`${base()}/umbraco/umbriciansmediacurator/api/v1/rulesets`, {
       scopeRootKey: folder.id,
       name: rulesetName,
       enabled: true,

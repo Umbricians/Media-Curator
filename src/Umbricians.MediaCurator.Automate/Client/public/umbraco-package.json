@@ -1,6 +1,6 @@
 {
   "id": "Umbricians.MediaCurator.Automate",
-  "name": "MediaCurator Automate",
+  "name": "Umbricians.MediaCurator.Automate",
   "version": "0.0.0",
   "allowTelemetry": false,
   "extensions": [
@@ -8,7 +8,7 @@
       "name": "MediaCurator Automate Bundle",
       "alias": "Umbricians.MediaCurator.Automate.Bundle",
       "type": "bundle",
-      "js": "/App_Plugins/MediaCuratorAutomate/media-curator-automate.js"
+      "js": "/App_Plugins/UmbriciansMediaCuratorAutomate/umbricians-media-curator-automate.js"
     }
   ]
 }

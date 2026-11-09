@@ -7,7 +7,7 @@ using Umbraco.Cms.Web.Common.Routing;
 namespace Umbricians.MediaCurator.Controllers
 {
     [ApiController]
-    [BackOfficeRoute("mediacurator/api/v{version:apiVersion}")]
+    [BackOfficeRoute("umbriciansmediacurator/api/v{version:apiVersion}")]
     [Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]
     [MapToApi(Constants.ApiName)]
     public class MediaCuratorApiControllerBase : ControllerBase

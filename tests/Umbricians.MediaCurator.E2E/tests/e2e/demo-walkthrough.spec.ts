@@ -34,7 +34,7 @@ test.describe('MediaCurator demo walkthrough', () => {
     await createTestImage(umbracoApi, imageName, folderId);
     const folder = await umbracoApi.media.getByName(folderName);
 
-    await umbracoApi.put(`${base()}/umbraco/mediacurator/api/v1/rulesets`, {
+    await umbracoApi.put(`${base()}/umbraco/umbriciansmediacurator/api/v1/rulesets`, {
       scopeRootKey: folder.id,
       name: rulesetName,
       enabled: true,

@@ -5,9 +5,9 @@ export default defineConfig({
     lib: {
       entry: "src/bundle.manifests.ts",
       formats: ["es"],
-      fileName: "media-curator-automate",
+      fileName: "umbricians-media-curator-automate",
     },
-    outDir: "../wwwroot/App_Plugins/MediaCuratorAutomate",
+    outDir: "../wwwroot/App_Plugins/UmbriciansMediaCuratorAutomate",
     emptyOutDir: true,
     sourcemap: true,
     rollupOptions: {
