@@ -247,7 +247,7 @@ public interface ICurationProvider
 }
 ```
 
-- **Registration** via standard Umbraco composers / DI (`builder.MediaCurator().AddProvider<MyProvider>()`); discovered providers automatically appear as nodes in the visual designer and participate in the provisioning flow.
+- **Registration** via standard Umbraco composers / DI (`builder.AddMediaCuratorProvider<MyProvider>()`); discovered providers automatically appear as nodes in the visual designer and participate in the provisioning flow.
 - **Per-provider configuration UI**: each provider declares its settings as a schema so the designer renders configuration without custom UI work; providers with richer needs can ship their own UI component via the standard backoffice extension manifest.
 - **CurationContext** gives providers the media item, its file stream accessor, parsed EXIF, AI tags (if available), the resolved scope and culture, the provisioned property values, and the results of parent rules in the chain — enabling conditional/nested behaviour.
 - **Classification schemes** are pluggable (`IClassificationScheme`) so additional open taxonomies can be added without touching the provider.
