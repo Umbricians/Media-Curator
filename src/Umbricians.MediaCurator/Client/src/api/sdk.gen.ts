@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AnalyzeMediaImagesData, AnalyzeMediaImagesErrors, AnalyzeMediaImagesResponses, ApplyRequirementsData, ApplyRequirementsErrors, ApplyRequirementsResponses, CheckRequirementsData, CheckRequirementsErrors, CheckRequirementsResponses, CountMediaCurationData, CountMediaCurationErrors, CountMediaCurationResponses, CountMediaImagesData, CountMediaImagesErrors, CountMediaImagesResponses, DeleteRulesetData, DeleteRulesetErrors, DeleteRulesetResponses, ExecuteCurationData, ExecuteCurationErrors, ExecuteCurationResponses, ExecuteMediaCurationData, ExecuteMediaCurationErrors, ExecuteMediaCurationResponses, ExportRulesetsData, ExportRulesetsErrors, ExportRulesetsResponses, GetAiOptionsData, GetAiOptionsErrors, GetAiOptionsResponses, GetAncestorFoldersData, GetAncestorFoldersErrors, GetAncestorFoldersResponses, GetExclusionsData, GetExclusionsErrors, GetExclusionsResponses, GetProvidersData, GetProvidersErrors, GetProvidersResponses, GetQueueItemStatusData, GetQueueItemStatusErrors, GetQueueItemStatusResponses, GetQueueStatusData, GetQueueStatusErrors, GetQueueStatusResponses, GetRulesetByScopeData, GetRulesetByScopeErrors, GetRulesetByScopeResponses, GetRulesetData, GetRulesetErrors, GetRulesetResponses, GetRulesetsData, GetRulesetsErrors, GetRulesetsResponses, GetRunItemsData, GetRunItemsErrors, GetRunItemsResponses, GetRunsData, GetRunsErrors, GetRunsResponses, GetSettingsData, GetSettingsErrors, GetSettingsResponses, ImportRulesetsData, ImportRulesetsErrors, ImportRulesetsResponses, ListImagesToAnalyzeData, ListImagesToAnalyzeErrors, ListImagesToAnalyzeResponses, PlanCurationData, PlanCurationErrors, PlanCurationResponses, PlanMediaCurationData, PlanMediaCurationErrors, PlanMediaCurationResponses, QueueCurationData, QueueCurationErrors, QueueCurationResponses, ReanalyzeImagesData, ReanalyzeImagesErrors, ReanalyzeImagesResponses, SaveRulesetData, SaveRulesetErrors, SaveRulesetResponses, SaveSettingsData, SaveSettingsErrors, SaveSettingsResponses, SetExclusionData, SetExclusionErrors, SetExclusionResponses, SetTypeSafeApiKeyData, SetTypeSafeApiKeyErrors, SetTypeSafeApiKeyResponses, TestPizzaOriginalData, TestPizzaOriginalErrors, TestPizzaOriginalResponses, TestPizzaPreparedData, TestPizzaPreparedErrors, TestPizzaPreparedResponses, UndoRunData, UndoRunErrors, UndoRunResponses } from './types.gen';
+import type { AnalyzeMediaImagesData, AnalyzeMediaImagesErrors, AnalyzeMediaImagesResponses, ApplyRequirementsData, ApplyRequirementsErrors, ApplyRequirementsResponses, CheckRequirementsData, CheckRequirementsErrors, CheckRequirementsResponses, CountMediaCurationData, CountMediaCurationErrors, CountMediaCurationResponses, CountMediaImagesData, CountMediaImagesErrors, CountMediaImagesResponses, DeleteRulesetData, DeleteRulesetErrors, DeleteRulesetResponses, ExecuteCurationData, ExecuteCurationErrors, ExecuteCurationResponses, ExecuteMediaCurationData, ExecuteMediaCurationErrors, ExecuteMediaCurationResponses, ExportRulesetsData, ExportRulesetsErrors, ExportRulesetsResponses, GetAiOptionsData, GetAiOptionsErrors, GetAiOptionsResponses, GetAncestorFoldersData, GetAncestorFoldersErrors, GetAncestorFoldersResponses, GetExclusionsData, GetExclusionsErrors, GetExclusionsResponses, GetProvidersData, GetProvidersErrors, GetProvidersResponses, GetQueueItemStatusData, GetQueueItemStatusErrors, GetQueueItemStatusResponses, GetQueueStatusData, GetQueueStatusErrors, GetQueueStatusResponses, GetRulesetByScopeData, GetRulesetByScopeErrors, GetRulesetByScopeResponses, GetRulesetData, GetRulesetErrors, GetRulesetResponses, GetRulesetsData, GetRulesetsErrors, GetRulesetsResponses, GetRunItemsData, GetRunItemsErrors, GetRunItemsResponses, GetRunsData, GetRunsErrors, GetRunsResponses, GetSettingsData, GetSettingsErrors, GetSettingsResponses, ImportRulesetsData, ImportRulesetsErrors, ImportRulesetsResponses, ListImagesToAnalyzeData, ListImagesToAnalyzeErrors, ListImagesToAnalyzeResponses, PlanCurationData, PlanCurationErrors, PlanCurationResponses, PlanMediaCurationData, PlanMediaCurationErrors, PlanMediaCurationResponses, QueueCurationData, QueueCurationErrors, QueueCurationResponses, ReanalyzeImagesData, ReanalyzeImagesErrors, ReanalyzeImagesResponses, SaveRulesetData, SaveRulesetErrors, SaveRulesetResponses, SaveSettingsData, SaveSettingsErrors, SaveSettingsResponses, SetExclusionData, SetExclusionErrors, SetExclusionResponses, SetTypeSafeApiKeyData, SetTypeSafeApiKeyErrors, SetTypeSafeApiKeyResponses, UndoRunData, UndoRunErrors, UndoRunResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -183,30 +183,6 @@ export class MediaCuratorService {
         return (options?.client ?? client).post<ReanalyzeImagesResponses, ReanalyzeImagesErrors, ThrowOnError>({
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/umbraco/umbriciansmediacurator/api/v1/recognition/reanalyze',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options?.headers
-            }
-        });
-    }
-    
-    public static testPizzaOriginal<ThrowOnError extends boolean = false>(options?: Options<TestPizzaOriginalData, ThrowOnError>): RequestResult<TestPizzaOriginalResponses, TestPizzaOriginalErrors, ThrowOnError> {
-        return (options?.client ?? client).post<TestPizzaOriginalResponses, TestPizzaOriginalErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/umbriciansmediacurator/api/v1/recognition/test-pizza/original',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options?.headers
-            }
-        });
-    }
-    
-    public static testPizzaPrepared<ThrowOnError extends boolean = false>(options?: Options<TestPizzaPreparedData, ThrowOnError>): RequestResult<TestPizzaPreparedResponses, TestPizzaPreparedErrors, ThrowOnError> {
-        return (options?.client ?? client).post<TestPizzaPreparedResponses, TestPizzaPreparedErrors, ThrowOnError>({
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/umbraco/umbriciansmediacurator/api/v1/recognition/test-pizza/prepared',
             ...options,
             headers: {
                 'Content-Type': 'application/json',

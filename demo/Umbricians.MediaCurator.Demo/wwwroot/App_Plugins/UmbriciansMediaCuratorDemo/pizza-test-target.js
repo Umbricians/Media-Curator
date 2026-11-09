@@ -1,14 +1,7 @@
 import { UmbControllerBase } from "@umbraco-cms/backoffice/class-api";
-import type { UmbControllerHost } from "@umbraco-cms/backoffice/controller-api";
 
-type PizzaTestTarget = {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-};
-
-const pizzaTarget: PizzaTestTarget = {
+// Lets Umbraco.AI's test runner offer the repository's pizza image as the target of the demo's recognition tests.
+const pizzaTarget = {
   id: "5d8d6480-40a0-4e1f-8125-e23af6f6b4f1",
   name: "Bundled pizza image",
   description: "tests/images/test-pizza.jpg",
@@ -16,15 +9,11 @@ const pizzaTarget: PizzaTestTarget = {
 };
 
 export class PizzaTestTargetRepository extends UmbControllerBase {
-  constructor(host: UmbControllerHost) {
-    super(host);
-  }
-
-  async getEntities(): Promise<PizzaTestTarget[]> {
+  async getEntities() {
     return [pizzaTarget];
   }
 
-  async getEntity(id: string): Promise<PizzaTestTarget | undefined> {
+  async getEntity(id) {
     return id === pizzaTarget.id ? pizzaTarget : undefined;
   }
 }

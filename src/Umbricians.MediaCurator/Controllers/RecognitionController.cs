@@ -1,10 +1,7 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
-using Umbraco.AI.Core.Chat;
 using Umbricians.MediaCurator.Controllers.ViewModels;
 using Umbricians.MediaCurator.Engine;
 using Umbricians.MediaCurator.People;
@@ -12,7 +9,6 @@ using Umbricians.MediaCurator.Providers;
 using Umbricians.MediaCurator.Recognition;
 using Umbricians.MediaCurator.Rules;
 using Umbricians.MediaCurator.Settings;
-using SixLabors.ImageSharp;
 
 namespace Umbricians.MediaCurator.Controllers;
 
@@ -23,15 +19,9 @@ internal class RecognitionController : MediaCuratorApiControllerBase
     /// <summary>Most images one folder analysis will send to the AI.</summary>
     public const int MaxAnalyzeImages = 200;
 
-    private const string PizzaTestImagePath = "tests/images/test-pizza.jpg";
-    private const string OriginalPizzaTestAlias = "media-curator-pizza-original-test";
-    private const string PreparedPizzaTestAlias = "media-curator-pizza-prepared-test";
-
     private readonly IRecognitionService _recognition;
     private readonly IMediaOperations _media;
     private readonly IMediaCuratorSettingsService _settings;
-    private readonly IServiceProvider _services;
-    private readonly IWebHostEnvironment _environment;
     private readonly IParallelMediaWork? _parallel;
     private readonly IClassificationSchemeLocator? _schemes;
     private readonly IPeopleDetectionService? _people;
@@ -41,8 +31,6 @@ internal class RecognitionController : MediaCuratorApiControllerBase
         IRecognitionService recognition,
         IMediaOperations media,
         IMediaCuratorSettingsService settings,
-        IServiceProvider services,
-        IWebHostEnvironment environment,
         IParallelMediaWork? parallel = null,
         IClassificationSchemeLocator? schemes = null,
         IPeopleDetectionService? people = null,
@@ -55,8 +43,6 @@ internal class RecognitionController : MediaCuratorApiControllerBase
         _recognition = recognition;
         _media = media;
         _settings = settings;
-        _services = services;
-        _environment = environment;
     }
 
     /// <summary>Runs a fresh AI vision pass on one or more images, ignoring cached descriptions.</summary>
@@ -345,194 +331,5 @@ internal class RecognitionController : MediaCuratorApiControllerBase
         return peopleRepository is null
             ? null
             : (await peopleRepository.GetManyAsync([mediaKey], cancellationToken)).GetValueOrDefault(mediaKey)?.ContainsPeople;
-    }
-
-    /// <summary>Runs the bundled pizza test image through Umbraco.AI without resizing.</summary>
-    [HttpPost("recognition/test-pizza/original")]
-    [ProducesResponseType<PizzaRecognitionTestResponseModel>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> TestPizzaOriginal(
-        PizzaRecognitionTestRequestModel request,
-        CancellationToken cancellationToken)
-    {
-        var imagePath = ResolveWorkspaceFile(PizzaTestImagePath);
-        if (imagePath is null)
-        {
-            return NotFound($"Could not find '{PizzaTestImagePath}'.");
-        }
-
-        var imageBytes = await System.IO.File.ReadAllBytesAsync(imagePath, cancellationToken);
-        return Ok(await RunPizzaRecognitionTestAsync(
-            "original",
-            OriginalPizzaTestAlias,
-            imageBytes,
-            "image/jpeg",
-            request,
-            cancellationToken));
-    }
-
-    /// <summary>Runs the bundled pizza test image through MediaCurator resize preparation before Umbraco.AI.</summary>
-    [HttpPost("recognition/test-pizza/prepared")]
-    [ProducesResponseType<PizzaRecognitionTestResponseModel>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> TestPizzaPrepared(
-        PizzaRecognitionTestRequestModel request,
-        CancellationToken cancellationToken)
-    {
-        var imagePath = ResolveWorkspaceFile(PizzaTestImagePath);
-        if (imagePath is null)
-        {
-            return NotFound($"Could not find '{PizzaTestImagePath}'.");
-        }
-
-        var imageBytes = await System.IO.File.ReadAllBytesAsync(imagePath, cancellationToken);
-        var settings = await _settings.GetAsync(cancellationToken);
-        var maxEdgePixels = request.MaxEdgePixels ?? settings.RecognitionImageSize;
-        var testOutputFolder = settings.SavePreparedImages
-            ? RecognitionImagePreparer.ResolveTestOutputFolder(MediaCuratorDefaults.PreparedImagesFolder, _environment.ContentRootPath)
-            : null;
-        var (preparedBytes, preparedMediaType) = RecognitionImagePreparer.Prepare(
-            imageBytes,
-            "image/jpeg",
-            maxEdgePixels,
-            testOutputFolder,
-            "test-pizza");
-
-        return Ok(await RunPizzaRecognitionTestAsync(
-            "prepared",
-            PreparedPizzaTestAlias,
-            preparedBytes,
-            preparedMediaType,
-            request,
-            cancellationToken));
-    }
-
-    private async Task<PizzaRecognitionTestResponseModel> RunPizzaRecognitionTestAsync(
-        string variant,
-        string inlineChatAlias,
-        byte[] imageBytes,
-        string mediaType,
-        PizzaRecognitionTestRequestModel request,
-        CancellationToken cancellationToken)
-    {
-        var profiles = ResolveProfileAliases(request, (await _settings.GetAsync(cancellationToken)).DescriptionProfileAlias);
-        var results = new List<PizzaRecognitionTestResultModel>(profiles.Count);
-        var (width, height) = ReadDimensions(imageBytes);
-        var chatService = _services.GetService<IAIChatService>();
-        if (chatService is null)
-        {
-            results.Add(new PizzaRecognitionTestResultModel
-            {
-                Variant = variant,
-                MediaType = mediaType,
-                Width = width,
-                Height = height,
-                ByteLength = imageBytes.Length,
-                Error = "Umbraco.AI chat service is not available.",
-            });
-            return new PizzaRecognitionTestResponseModel { Results = results };
-        }
-
-        foreach (var profileAlias in profiles)
-        {
-            try
-            {
-                var prompt = ClassificationPromptBuilder.BuildDescribePrompt();
-                var message = new ChatMessage(ChatRole.User,
-                [
-                    new TextContent(prompt),
-                    new DataContent(imageBytes, mediaType),
-                ]);
-                var response = await chatService.GetChatResponseAsync(
-                    chat =>
-                    {
-                        chat.WithAlias(inlineChatAlias);
-                        if (!string.IsNullOrWhiteSpace(profileAlias))
-                        {
-                            chat.WithProfile(profileAlias);
-                        }
-                    },
-                    [message],
-                    cancellationToken);
-                var parsed = RecognitionResponseParser.Parse(response.Text);
-                results.Add(new PizzaRecognitionTestResultModel
-                {
-                    Variant = variant,
-                    ProfileAlias = profileAlias,
-                    MediaType = mediaType,
-                    Width = width,
-                    Height = height,
-                    ByteLength = imageBytes.Length,
-                    RawResponse = response.Text,
-                    Description = parsed?.Description,
-                    Tags = parsed?.Tags.Select(t => t.Name).ToList() ?? [],
-                });
-            }
-            catch (Exception ex)
-            {
-                results.Add(new PizzaRecognitionTestResultModel
-                {
-                    Variant = variant,
-                    ProfileAlias = profileAlias,
-                    MediaType = mediaType,
-                    Width = width,
-                    Height = height,
-                    ByteLength = imageBytes.Length,
-                    Error = ex.Message,
-                });
-            }
-        }
-
-        return new PizzaRecognitionTestResponseModel { Results = results };
-    }
-
-    private static List<string?> ResolveProfileAliases(PizzaRecognitionTestRequestModel request, string? configured)
-    {
-        var aliases = request.ProfileAliases
-            .Where(alias => !string.IsNullOrWhiteSpace(alias))
-            .Select(alias => alias.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Cast<string?>()
-            .ToList();
-        if (aliases.Count > 0)
-        {
-            return aliases;
-        }
-
-        return [string.IsNullOrWhiteSpace(configured) ? null : configured.Trim()];
-    }
-
-    private string? ResolveWorkspaceFile(string relativePath)
-    {
-        var directory = new DirectoryInfo(_environment.ContentRootPath);
-        while (directory is not null)
-        {
-            var candidate = Path.Combine(directory.FullName, relativePath);
-            if (System.IO.File.Exists(candidate))
-            {
-                return candidate;
-            }
-
-            directory = directory.Parent;
-        }
-
-        return null;
-    }
-
-    private static (int Width, int Height) ReadDimensions(byte[] imageBytes)
-    {
-        try
-        {
-            var info = Image.Identify(imageBytes);
-            return info is null ? (0, 0) : (info.Width, info.Height);
-        }
-        catch (UnknownImageFormatException)
-        {
-            return (0, 0);
-        }
-        catch (InvalidImageContentException)
-        {
-            return (0, 0);
-        }
     }
 }

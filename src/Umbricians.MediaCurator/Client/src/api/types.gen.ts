@@ -173,28 +173,6 @@ export type MediaImagesToAnalyzeModel = {
     alreadyAnalyzedCount: number;
 };
 
-export type PizzaRecognitionTestRequestModel = {
-    profileAliases: Array<string>;
-    maxEdgePixels?: number | null;
-};
-
-export type PizzaRecognitionTestResponseModel = {
-    results: Array<PizzaRecognitionTestResultModel>;
-};
-
-export type PizzaRecognitionTestResultModel = {
-    variant: string;
-    profileAlias?: string | null;
-    mediaType: string;
-    width: number;
-    height: number;
-    byteLength: number;
-    rawResponse?: string | null;
-    description?: string | null;
-    tags: Array<string>;
-    error?: string | null;
-};
-
 export type PlannedMoveModel = {
     mediaKey: string;
     mediaName: string;
@@ -842,60 +820,6 @@ export type ReanalyzeImagesResponses = {
 };
 
 export type ReanalyzeImagesResponse = ReanalyzeImagesResponses[keyof ReanalyzeImagesResponses];
-
-export type TestPizzaOriginalData = {
-    body?: PizzaRecognitionTestRequestModel;
-    path?: never;
-    query?: never;
-    url: '/umbraco/umbriciansmediacurator/api/v1/recognition/test-pizza/original';
-};
-
-export type TestPizzaOriginalErrors = {
-    /**
-     * The resource is protected and requires an authentication token
-     */
-    401: unknown;
-    /**
-     * Not Found
-     */
-    404: unknown;
-};
-
-export type TestPizzaOriginalResponses = {
-    /**
-     * OK
-     */
-    200: PizzaRecognitionTestResponseModel;
-};
-
-export type TestPizzaOriginalResponse = TestPizzaOriginalResponses[keyof TestPizzaOriginalResponses];
-
-export type TestPizzaPreparedData = {
-    body?: PizzaRecognitionTestRequestModel;
-    path?: never;
-    query?: never;
-    url: '/umbraco/umbriciansmediacurator/api/v1/recognition/test-pizza/prepared';
-};
-
-export type TestPizzaPreparedErrors = {
-    /**
-     * The resource is protected and requires an authentication token
-     */
-    401: unknown;
-    /**
-     * Not Found
-     */
-    404: unknown;
-};
-
-export type TestPizzaPreparedResponses = {
-    /**
-     * OK
-     */
-    200: PizzaRecognitionTestResponseModel;
-};
-
-export type TestPizzaPreparedResponse = TestPizzaPreparedResponses[keyof TestPizzaPreparedResponses];
 
 export type ApplyRequirementsData = {
     body?: Array<ProvisioningApprovalModel>;

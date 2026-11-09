@@ -62,31 +62,3 @@ internal class AnalyzeMediaImagesResponseModel
     /// <summary>Images skipped because they were already analyzed.</summary>
     public int AlreadyAnalyzedCount { get; init; }
 }
-
-internal class PizzaRecognitionTestRequestModel
-{
-    /// <summary>Optional Umbraco.AI profile aliases to compare. Uses MediaCurator config/default profile when empty.</summary>
-    public List<string> ProfileAliases { get; init; } = [];
-
-    /// <summary>Longest edge used for the prepared-image test. Uses MediaCurator config when omitted.</summary>
-    public int? MaxEdgePixels { get; init; }
-}
-
-internal class PizzaRecognitionTestResultModel
-{
-    public required string Variant { get; init; }
-    public string? ProfileAlias { get; init; }
-    public required string MediaType { get; init; }
-    public required int Width { get; init; }
-    public required int Height { get; init; }
-    public required int ByteLength { get; init; }
-    public string? RawResponse { get; init; }
-    public string? Description { get; init; }
-    public List<string> Tags { get; init; } = [];
-    public string? Error { get; init; }
-}
-
-internal class PizzaRecognitionTestResponseModel
-{
-    public List<PizzaRecognitionTestResultModel> Results { get; init; } = [];
-}

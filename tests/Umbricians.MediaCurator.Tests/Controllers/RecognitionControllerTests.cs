@@ -107,7 +107,7 @@ public class RecognitionControllerTests
         var media = new FakeMedia();
         var recognition = new FakeRecognition();
         var settings = new FakeSettings(persistDescriptions);
-        return (new RecognitionController(recognition, media, settings, null!, null!, schemes: new FakeSchemes("dewey")), media, recognition);
+        return (new RecognitionController(recognition, media, settings, schemes: new FakeSchemes("dewey")), media, recognition);
     }
 
     private static void MarkAnalyzed(FakeMedia media, Guid image, string? description = "Stored", string? code = "500")
@@ -352,8 +352,6 @@ public class RecognitionControllerTests
             recognition,
             media,
             new FakeSettings(true),
-            null!,
-            null!,
             parallel);
 
         var model = Ok(await controller.AnalyzeMediaImages(root, all: true, CancellationToken.None));
@@ -394,7 +392,7 @@ public class RecognitionControllerTests
         var repository = new Tests.People.FakePeopleRepository();
         var people = new FakePeople(repository);
         var controller = new RecognitionController(
-            recognition, media, new FakeSettings(true, detectPeople), null!, null!,
+            recognition, media, new FakeSettings(true, detectPeople),
             schemes: new FakeSchemes("dewey"), people: people, peopleRepository: repository);
         return (controller, media, recognition, people, repository);
     }
