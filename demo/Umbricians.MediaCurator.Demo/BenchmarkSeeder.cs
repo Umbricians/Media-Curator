@@ -13,10 +13,10 @@ using Umbraco.Extensions;
 using Umbricians.MediaCurator.Providers;
 using Umbricians.MediaCurator.Rules;
 
-namespace Umbricians.MediaCurator.TestSite;
+namespace Umbricians.MediaCurator.Demo;
 
 /// <summary>
-/// Test site only: seeds flat folders of generated images to benchmark curation at scale. Off unless
+/// Demo site only: seeds flat folders of generated images to benchmark curation at scale. Off unless
 /// <c>MediaCuratorBenchmark:SeedCounts</c> is set (e.g. "1000,10000"), so run it against a throwaway
 /// database. Each count gets a root folder "MC Bench {count}" with that many images directly inside and
 /// a non-AI ruleset (date, orientation, format), so curation timings exclude AI calls. Idempotent: a
@@ -148,7 +148,7 @@ public sealed class BenchmarkSeeder : INotificationAsyncHandler<UmbracoApplicati
         _logger.LogInformation("MediaCurator benchmark: {Name} ready ({Count} images, folder {Key}).", name, count, folder.Key);
     }
 
-    private static MemoryStream CreateImage(int width, int height, string extension, Random random)
+    internal static MemoryStream CreateImage(int width, int height, string extension, Random random)
     {
         using var image = new Image<Rgb24>(width, height, new Rgb24((byte)random.Next(256), (byte)random.Next(256), (byte)random.Next(256)));
         var stream = new MemoryStream();

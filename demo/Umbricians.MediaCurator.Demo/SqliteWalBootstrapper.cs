@@ -1,6 +1,6 @@
 using Microsoft.Data.Sqlite;
 
-namespace Umbricians.MediaCurator.TestSite;
+namespace Umbricians.MediaCurator.Demo;
 
 /// <summary>
 /// Enables WAL mode on local SQLite files before Umbraco and Automate open connections.

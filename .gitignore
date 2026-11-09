@@ -40,6 +40,8 @@ src/*/wwwroot/App_Plugins/
 appsettings.Local.json
 appsettings.*.Local.json
 appsettings.Development.json
+!demo/**/appsettings.Development.json
+!demo/**/appsettings.Local.json
 
 # Local tool settings
 .claude/settings.local.json
@@ -50,3 +52,11 @@ tools/jev/.log/
 # Local Claude Code hooks and Jev prompt routing
 .claude/settings.json
 tools/jev/
+
+# Demo site runtime data
+demo/**/umbraco/Data/
+demo/**/umbraco/Logs/
+demo/**/umbraco/mediacache/
+demo/**/wwwroot/media/
+demo/**/appsettings-schema*.json
+demo/**/umbraco-package-schema.json

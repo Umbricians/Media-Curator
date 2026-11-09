@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
-using Umbraco.AI.Extensions;
 using Umbraco.Cms.Api.Common.OpenApi;
 using Umbraco.Cms.Api.Management.OpenApi;
 using Umbraco.Cms.Core.Composing;
@@ -46,10 +45,6 @@ public class MediaCuratorComposer : IComposer
 
         // "Contains people" detection: media tree badges, path upkeep and the People provider.
         builder.AddMediaCuratorPeopleDetection();
-
-        builder.AITestFeatures()
-            .Add<PizzaOriginalRecognitionTestFeature>()
-            .Add<PizzaPreparedRecognitionTestFeature>();
     }
 
     private static void AddServices(IUmbracoBuilder builder)

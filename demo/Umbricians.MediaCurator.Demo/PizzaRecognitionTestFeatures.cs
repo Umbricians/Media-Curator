@@ -6,10 +6,21 @@ using SixLabors.ImageSharp;
 using Umbraco.AI.Core.Chat;
 using Umbraco.AI.Core.EditableModels;
 using Umbraco.AI.Core.Tests;
+using Umbraco.AI.Extensions;
 using Umbraco.Cms.Core.Composing;
+using Umbricians.MediaCurator.Recognition;
 using Umbricians.MediaCurator.Settings;
 
-namespace Umbricians.MediaCurator.Recognition;
+namespace Umbricians.MediaCurator.Demo;
+
+/// <summary>Adds the recognition tests below to Umbraco.AI's test runner.</summary>
+public sealed class PizzaRecognitionTestComposer : IComposer
+{
+    public void Compose(IUmbracoBuilder builder)
+        => builder.AITestFeatures()
+            .Add<PizzaOriginalRecognitionTestFeature>()
+            .Add<PizzaPreparedRecognitionTestFeature>();
+}
 
 internal abstract class PizzaRecognitionTestFeature : IAITestFeature, IDiscoverable
 {

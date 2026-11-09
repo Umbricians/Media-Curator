@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Umbricians.MediaCurator.Tests" />
+    <InternalsVisibleTo Include="Umbricians.MediaCurator.Demo" />
   </ItemGroup>
 
   <ItemGroup>

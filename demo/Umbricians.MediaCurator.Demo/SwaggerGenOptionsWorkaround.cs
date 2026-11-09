@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace Umbricians.MediaCurator.TestSite;
+namespace Umbricians.MediaCurator.Demo;
 
 /// <summary>
 /// Umbraco.Automate registers <see cref="Type"/> in Swagger without checking for an existing mapping.

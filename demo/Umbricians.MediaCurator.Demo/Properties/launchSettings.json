@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "Umbricians.MediaCurator.TestSite": {
+    "Umbricians.MediaCurator.Demo": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,
