@@ -134,7 +134,7 @@ public class CurationControllerTests
     {
         var (engine, key) = TwoPlanEngine();
         engine.Images = MediaCuratorDefaults.BackgroundCurationThreshold + 1;
-        var queue = new BulkCurationQueue();
+        var queue = new BulkCurationQueue(TimeProvider.System);
 
         var result = await new CurationController(engine, null!, queue, null!, null!, null!)
             .ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: true, CancellationToken.None);
@@ -152,7 +152,7 @@ public class CurationControllerTests
     {
         var (engine, key) = TwoPlanEngine();
         engine.Images = MediaCuratorDefaults.BackgroundCurationThreshold + 1;
-        var controller = new CurationController(engine, null!, new BulkCurationQueue(), null!, null!, null!);
+        var controller = new CurationController(engine, null!, new BulkCurationQueue(TimeProvider.System), null!, null!, null!);
         await controller.ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: false, CancellationToken.None);
 
         var second = await controller.ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: false, CancellationToken.None);
@@ -164,7 +164,7 @@ public class CurationControllerTests
     public async Task A_ruleset_scope_with_more_images_than_the_threshold_is_queued()
     {
         var engine = new StubEngine { Images = MediaCuratorDefaults.BackgroundCurationThreshold + 1 };
-        var queue = new BulkCurationQueue();
+        var queue = new BulkCurationQueue(TimeProvider.System);
         var scope = Guid.NewGuid();
 
         var result = await new CurationController(engine, null!, queue, null!, null!, null!)

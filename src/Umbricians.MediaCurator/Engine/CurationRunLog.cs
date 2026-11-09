@@ -119,8 +119,13 @@ internal sealed class CurationRunItemDto
 internal sealed class CurationRunLog : ICurationRunLog
 {
     private readonly IScopeProvider _scopeProvider;
+    private readonly TimeProvider _time;
 
-    public CurationRunLog(IScopeProvider scopeProvider) => _scopeProvider = scopeProvider;
+    public CurationRunLog(IScopeProvider scopeProvider, TimeProvider time)
+    {
+        _scopeProvider = scopeProvider;
+        _time = time;
+    }
 
     public Task<Guid> StartRunAsync(Guid scopeFolderKey, Guid rulesetKey, string trigger, CancellationToken ct = default)
     {
@@ -132,7 +137,7 @@ internal sealed class CurationRunLog : ICurationRunLog
             ScopeFolderKey = scopeFolderKey,
             RulesetKey = rulesetKey,
             Trigger = trigger,
-            Started = DateTime.UtcNow,
+            Started = _time.GetUtcNow().UtcDateTime,
         });
         scope.Complete();
         return Task.FromResult(key);
@@ -162,7 +167,7 @@ internal sealed class CurationRunLog : ICurationRunLog
         var dto = scope.Database.SingleOrDefaultById<CurationRunDto>(runKey);
         if (dto is not null)
         {
-            dto.Completed = DateTime.UtcNow;
+            dto.Completed = _time.GetUtcNow().UtcDateTime;
             dto.Moved = moved;
             dto.AlreadyInPlace = alreadyInPlace;
             dto.Failed = failed;

@@ -51,7 +51,7 @@ internal sealed record BulkRunStatus(
     /// <summary>Folders whose children changed, for the backoffice to reload when the run finishes.</summary>
     public IReadOnlyList<Guid> ChangedFolderKeys { get; init; } = [];
 
-    public DateTime Updated { get; init; } = DateTime.UtcNow;
+    public DateTime Updated { get; init; }
 }
 
 /// <summary>Whether <see cref="IBulkCurationQueue.TryEnqueueMedia"/> queued the run.</summary>
@@ -98,6 +98,11 @@ internal sealed class BulkCurationQueue : IBulkCurationQueue
 {
     private readonly ConcurrentQueue<BulkCurationRequest> _queue = new();
     private readonly ConcurrentDictionary<Guid, BulkRunStatus> _statuses = new();
+    private readonly TimeProvider _time;
+
+    public BulkCurationQueue(TimeProvider time) => _time = time;
+
+    private DateTime UtcNow => _time.GetUtcNow().UtcDateTime;
 
     public int QueueLength => _queue.Count;
 
@@ -109,8 +114,8 @@ internal sealed class BulkCurationQueue : IBulkCurationQueue
             return false;
         }
 
-        _statuses[scopeFolderKey] = new BulkRunStatus(scopeFolderKey, BulkRunState.Queued, 0, 0, null, null);
-        _queue.Enqueue(new BulkCurationRequest(scopeFolderKey, recursive, DateTime.UtcNow));
+        _statuses[scopeFolderKey] = new BulkRunStatus(scopeFolderKey, BulkRunState.Queued, 0, 0, null, null) { Updated = UtcNow };
+        _queue.Enqueue(new BulkCurationRequest(scopeFolderKey, recursive, UtcNow));
         return true;
     }
 
@@ -133,11 +138,12 @@ internal sealed class BulkCurationQueue : IBulkCurationQueue
             // Total stays 0 until planning knows how many images actually move.
             _statuses[mediaKey] = new BulkRunStatus(mediaKey, BulkRunState.Queued, 0, 0, null, null)
             {
+                Updated = UtcNow,
                 Name = name,
                 Path = path,
                 ImageCount = imageCount,
             };
-            _queue.Enqueue(new BulkCurationRequest(mediaKey, Recursive: true, DateTime.UtcNow)
+            _queue.Enqueue(new BulkCurationRequest(mediaKey, Recursive: true, UtcNow)
             {
                 MediaRun = mediaRun,
                 EmptyFolders = emptyFolders,

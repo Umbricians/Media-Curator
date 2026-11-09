@@ -7,7 +7,7 @@ public class BulkCurationQueueTests
     [Fact]
     public void Enqueue_dequeue_round_trip()
     {
-        var queue = new BulkCurationQueue();
+        var queue = new BulkCurationQueue(TimeProvider.System);
         var scope = Guid.NewGuid();
 
         Assert.True(queue.TryEnqueue(scope, recursive: true));
@@ -21,7 +21,7 @@ public class BulkCurationQueueTests
     [Fact]
     public void Same_scope_cannot_be_double_queued_while_pending_or_running()
     {
-        var queue = new BulkCurationQueue();
+        var queue = new BulkCurationQueue(TimeProvider.System);
         var scope = Guid.NewGuid();
 
         Assert.True(queue.TryEnqueue(scope, true));
@@ -38,7 +38,7 @@ public class BulkCurationQueueTests
     [Fact]
     public void Statuses_reflect_reports()
     {
-        var queue = new BulkCurationQueue();
+        var queue = new BulkCurationQueue(TimeProvider.System);
         var scope = Guid.NewGuid();
         queue.TryEnqueue(scope, true);
 
@@ -52,7 +52,7 @@ public class BulkCurationQueueTests
     [Fact]
     public void Media_runs_refuse_a_folder_above_or_below_one_already_queued()
     {
-        var queue = new BulkCurationQueue();
+        var queue = new BulkCurationQueue(TimeProvider.System);
         var demo = Guid.NewGuid();
 
         Assert.Equal(BulkEnqueueResult.Queued, queue.TryEnqueueMedia(demo, "Demo", "-1,10", 500, EmptyFolderRemoval.RecycleBin));
@@ -69,7 +69,7 @@ public class BulkCurationQueueTests
     [Fact]
     public void A_finished_media_run_no_longer_blocks_its_folder()
     {
-        var queue = new BulkCurationQueue();
+        var queue = new BulkCurationQueue(TimeProvider.System);
         var demo = Guid.NewGuid();
         queue.TryEnqueueMedia(demo, "Demo", "-1,10", 500, EmptyFolderRemoval.RecycleBin);
 

@@ -14,8 +14,13 @@ internal interface IMediaCuratorSettingsRepository
 internal sealed class MediaCuratorSettingsRepository : IMediaCuratorSettingsRepository
 {
     private readonly IScopeProvider _scopeProvider;
+    private readonly TimeProvider _time;
 
-    public MediaCuratorSettingsRepository(IScopeProvider scopeProvider) => _scopeProvider = scopeProvider;
+    public MediaCuratorSettingsRepository(IScopeProvider scopeProvider, TimeProvider time)
+    {
+        _scopeProvider = scopeProvider;
+        _time = time;
+    }
 
     public async Task<SiteSettingsDto?> GetAsync(CancellationToken cancellationToken = default)
     {
@@ -28,7 +33,7 @@ internal sealed class MediaCuratorSettingsRepository : IMediaCuratorSettingsRepo
     public async Task SaveAsync(SiteSettingsDto dto, CancellationToken cancellationToken = default)
     {
         dto.Id = SiteSettingsDto.SingletonId;
-        dto.DateUpdated = DateTime.UtcNow;
+        dto.DateUpdated = _time.GetUtcNow().UtcDateTime;
 
         using var scope = _scopeProvider.CreateScope();
         var existing = await scope.Database.FirstOrDefaultAsync<SiteSettingsDto>(

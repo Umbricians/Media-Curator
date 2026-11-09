@@ -17,17 +17,20 @@ internal sealed class BulkCurationJob : IRecurringBackgroundJob
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IRuntimeState _runtimeState;
     private readonly ILogger<BulkCurationJob> _logger;
+    private readonly TimeProvider _time;
 
     public BulkCurationJob(
         IBulkCurationQueue queue,
         IServiceScopeFactory scopeFactory,
         IRuntimeState runtimeState,
-        ILogger<BulkCurationJob> logger)
+        ILogger<BulkCurationJob> logger,
+        TimeProvider time)
     {
         _queue = queue;
         _scopeFactory = scopeFactory;
         _runtimeState = runtimeState;
         _logger = logger;
+        _time = time;
     }
 
     // Short: an editor who sent a large "Curate images" to the background is waiting for it to start.
@@ -61,10 +64,10 @@ internal sealed class BulkCurationJob : IRecurringBackgroundJob
     private async Task RunAsync(BulkCurationRequest request)
     {
         var key = request.ScopeFolderKey;
-        var queued = _queue.GetStatus(key) ?? new BulkRunStatus(key, BulkRunState.Queued, 0, 0, null, null);
+        var queued = _queue.GetStatus(key) ?? new BulkRunStatus(key, BulkRunState.Queued, 0, 0, null, null) { Updated = _time.GetUtcNow().UtcDateTime };
         try
         {
-            _queue.Report(key, queued with { State = BulkRunState.Running, Updated = DateTime.UtcNow });
+            _queue.Report(key, queued with { State = BulkRunState.Running, Updated = _time.GetUtcNow().UtcDateTime });
 
             using var serviceScope = _scopeFactory.CreateScope();
             var engine = serviceScope.ServiceProvider.GetRequiredService<ICurationEngine>();
@@ -73,7 +76,7 @@ internal sealed class BulkCurationJob : IRecurringBackgroundJob
             var running = queued with { State = BulkRunState.Running };
             var progress = new InlineProgress<CurationProgress>(p =>
             {
-                running = running with { Processed = p.Processed, Total = p.Total, Updated = DateTime.UtcNow };
+                running = running with { Processed = p.Processed, Total = p.Total, Updated = _time.GetUtcNow().UtcDateTime };
                 _queue.Report(key, running);
             });
 
@@ -110,7 +113,7 @@ internal sealed class BulkCurationJob : IRecurringBackgroundJob
                 RunKeys = summary.RunKeys,
                 RunKey = summary.RunKeys.Count > 0 ? summary.RunKeys[0] : null,
                 ChangedFolderKeys = changes?.ChangedFolders.ToList() ?? [],
-                Updated = DateTime.UtcNow,
+                Updated = _time.GetUtcNow().UtcDateTime,
             });
         }
         catch (Exception ex)
@@ -120,7 +123,7 @@ internal sealed class BulkCurationJob : IRecurringBackgroundJob
             {
                 State = BulkRunState.Failed,
                 Error = ex.Message,
-                Updated = DateTime.UtcNow,
+                Updated = _time.GetUtcNow().UtcDateTime,
             });
         }
     }
