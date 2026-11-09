@@ -11,7 +11,7 @@ namespace Umbricians.MediaCurator.Engine;
 /// (ServerRoles filter) so load-balanced setups have a single worker (§13). Editors never
 /// wait on curation: the queue is fire-and-forget from the UI.
 /// </summary>
-public sealed class BulkCurationJob : IRecurringBackgroundJob
+internal sealed class BulkCurationJob : IRecurringBackgroundJob
 {
     private readonly IBulkCurationQueue _queue;
     private readonly IServiceScopeFactory _scopeFactory;

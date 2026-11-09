@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 namespace Umbricians.MediaCurator.Engine;
 
-public sealed record BulkCurationRequest(Guid ScopeFolderKey, bool Recursive, DateTime Queued)
+internal sealed record BulkCurationRequest(Guid ScopeFolderKey, bool Recursive, DateTime Queued)
 {
     /// <summary>A "Curate images" run of the clicked folder (<see cref="ICurationEngine.CurateMediaAsync"/>,
     /// every governing ruleset) rather than a scope run of one ruleset.</summary>
@@ -12,7 +12,7 @@ public sealed record BulkCurationRequest(Guid ScopeFolderKey, bool Recursive, Da
     public EmptyFolderRemoval EmptyFolders { get; init; } = EmptyFolderRemoval.RecycleBin;
 }
 
-public enum BulkRunState
+internal enum BulkRunState
 {
     Queued,
     Running,
@@ -20,7 +20,7 @@ public enum BulkRunState
     Failed,
 }
 
-public sealed record BulkRunStatus(
+internal sealed record BulkRunStatus(
     Guid ScopeFolderKey,
     BulkRunState State,
     int Processed,
@@ -55,7 +55,7 @@ public sealed record BulkRunStatus(
 }
 
 /// <summary>Whether <see cref="IBulkCurationQueue.TryEnqueueMedia"/> queued the run.</summary>
-public enum BulkEnqueueResult
+internal enum BulkEnqueueResult
 {
     Queued,
 
@@ -67,7 +67,7 @@ public enum BulkEnqueueResult
 /// In-memory queue for background bulk runs (§11.2 health view shows queue length).
 /// Processing happens on a single elected worker (main-dom / scheduling-server aware, §13).
 /// </summary>
-public interface IBulkCurationQueue
+internal interface IBulkCurationQueue
 {
     /// <summary>Enqueues a scope for background curation. Returns false when the scope is
     /// already queued or running (no double-processing).</summary>
@@ -94,7 +94,7 @@ public interface IBulkCurationQueue
     int QueueLength { get; }
 }
 
-public sealed class BulkCurationQueue : IBulkCurationQueue
+internal sealed class BulkCurationQueue : IBulkCurationQueue
 {
     private readonly ConcurrentQueue<BulkCurationRequest> _queue = new();
     private readonly ConcurrentDictionary<Guid, BulkRunStatus> _statuses = new();

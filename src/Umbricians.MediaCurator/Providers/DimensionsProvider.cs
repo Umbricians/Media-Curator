@@ -5,7 +5,7 @@ namespace Umbricians.MediaCurator.Providers;
 
 /// <summary>Sorts by aspect ratio: Landscape / Portrait / Square (§6). Bucket names are
 /// configurable so brand terms or localized labels can be used.</summary>
-public sealed class DimensionsProvider : ICurationProvider
+internal sealed class DimensionsProvider : ICurationProvider
 {
     public const string ProviderAlias = "Umbricians.MediaCurator.Dimensions";
 

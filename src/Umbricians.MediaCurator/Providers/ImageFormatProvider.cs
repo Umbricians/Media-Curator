@@ -4,7 +4,7 @@ namespace Umbricians.MediaCurator.Providers;
 
 /// <summary>Sorts by image format group (§6): Photos/JPEG, PNG, SVG/Vectors, GIF/Animated,
 /// WebP/AVIF — group names configurable.</summary>
-public sealed class ImageFormatProvider : ICurationProvider
+internal sealed class ImageFormatProvider : ICurationProvider
 {
     public const string ProviderAlias = "Umbricians.MediaCurator.Format";
 

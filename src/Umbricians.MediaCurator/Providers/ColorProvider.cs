@@ -10,7 +10,7 @@ namespace Umbricians.MediaCurator.Providers;
 /// ImageSharp and snapped to a configurable palette. Folder names come from the palette
 /// entry names — never raw hex codes. Folders are ordered as the palette lists them.
 /// </summary>
-public sealed class ColorProvider : ICurationProvider, ICurationFolderOrder
+internal sealed class ColorProvider : ICurationProvider, ICurationFolderOrder
 {
     public const string ProviderAlias = "Umbricians.MediaCurator.Color";
 

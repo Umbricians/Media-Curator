@@ -1,6 +1,6 @@
 namespace Umbricians.MediaCurator.Controllers.ViewModels;
 
-public class ReanalyzeImagesRequestModel
+internal class ReanalyzeImagesRequestModel
 {
     public required List<Guid> MediaKeys { get; init; }
 
@@ -12,7 +12,7 @@ public class ReanalyzeImagesRequestModel
     public bool KeepExistingAnalysis { get; init; }
 }
 
-public class ReanalyzeImageResultModel
+internal class ReanalyzeImageResultModel
 {
     public required Guid MediaKey { get; init; }
     public string? MediaName { get; init; }
@@ -26,12 +26,12 @@ public class ReanalyzeImageResultModel
     public string? Error { get; init; }
 }
 
-public class ReanalyzeImagesResponseModel
+internal class ReanalyzeImagesResponseModel
 {
     public List<ReanalyzeImageResultModel> Results { get; init; } = [];
 }
 
-public class MediaImageCountModel
+internal class MediaImageCountModel
 {
     public required int Count { get; init; }
 
@@ -39,14 +39,14 @@ public class MediaImageCountModel
     public required int NotAnalyzedCount { get; init; }
 }
 
-public class MediaImageModel
+internal class MediaImageModel
 {
     public required Guid MediaKey { get; init; }
 
     public required string MediaName { get; init; }
 }
 
-public class MediaImagesToAnalyzeModel
+internal class MediaImagesToAnalyzeModel
 {
     public List<MediaImageModel> Images { get; init; } = [];
 
@@ -54,7 +54,7 @@ public class MediaImagesToAnalyzeModel
     public int AlreadyAnalyzedCount { get; init; }
 }
 
-public class AnalyzeMediaImagesResponseModel
+internal class AnalyzeMediaImagesResponseModel
 {
     /// <summary>One entry per image sent to the AI.</summary>
     public List<ReanalyzeImageResultModel> Results { get; init; } = [];
@@ -63,7 +63,7 @@ public class AnalyzeMediaImagesResponseModel
     public int AlreadyAnalyzedCount { get; init; }
 }
 
-public class PizzaRecognitionTestRequestModel
+internal class PizzaRecognitionTestRequestModel
 {
     /// <summary>Optional Umbraco.AI profile aliases to compare. Uses MediaCurator config/default profile when empty.</summary>
     public List<string> ProfileAliases { get; init; } = [];
@@ -72,7 +72,7 @@ public class PizzaRecognitionTestRequestModel
     public int? MaxEdgePixels { get; init; }
 }
 
-public class PizzaRecognitionTestResultModel
+internal class PizzaRecognitionTestResultModel
 {
     public required string Variant { get; init; }
     public string? ProfileAlias { get; init; }
@@ -86,7 +86,7 @@ public class PizzaRecognitionTestResultModel
     public string? Error { get; init; }
 }
 
-public class PizzaRecognitionTestResponseModel
+internal class PizzaRecognitionTestResponseModel
 {
     public List<PizzaRecognitionTestResultModel> Results { get; init; } = [];
 }

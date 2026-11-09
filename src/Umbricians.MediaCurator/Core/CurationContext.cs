@@ -13,7 +13,7 @@ public interface IPropertyAccessor
 }
 
 /// <summary>An empty <see cref="IPropertyAccessor"/> for items without property data.</summary>
-public sealed class EmptyPropertyAccessor : IPropertyAccessor
+internal sealed class EmptyPropertyAccessor : IPropertyAccessor
 {
     public static readonly EmptyPropertyAccessor Instance = new();
     public string? GetString(string alias) => null;

@@ -2,13 +2,13 @@ using Umbricians.MediaCurator.Core;
 
 namespace Umbricians.MediaCurator.Controllers.ViewModels;
 
-public class SettingFieldOptionModel
+internal class SettingFieldOptionModel
 {
     public required string Value { get; init; }
     public required string Label { get; init; }
 }
 
-public class SettingFieldModel
+internal class SettingFieldModel
 {
     public required string Alias { get; init; }
     public required string Label { get; init; }
@@ -18,7 +18,7 @@ public class SettingFieldModel
     public List<SettingFieldOptionModel> Options { get; init; } = [];
 }
 
-public class PropertyRequirementModel
+internal class PropertyRequirementModel
 {
     public required string Alias { get; init; }
     public required string Name { get; init; }
@@ -27,7 +27,7 @@ public class PropertyRequirementModel
     public string? Description { get; init; }
 }
 
-public class ProviderModel
+internal class ProviderModel
 {
     public required string Alias { get; init; }
     public required string Name { get; init; }

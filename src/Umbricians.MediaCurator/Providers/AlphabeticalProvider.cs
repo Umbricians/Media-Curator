@@ -7,7 +7,7 @@ namespace Umbricians.MediaCurator.Providers;
 /// documented "hello world" reference provider for the developer tutorial. Names that do
 /// not start with a letter go into a configurable fallback bucket, which is ordered after the letters.
 /// </summary>
-public sealed class AlphabeticalProvider : ICurationProvider, ICurationFolderOrder
+internal sealed class AlphabeticalProvider : ICurationProvider, ICurationFolderOrder
 {
     public const string ProviderAlias = "Umbricians.MediaCurator.Alphabetical";
 

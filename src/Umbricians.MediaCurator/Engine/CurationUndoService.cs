@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Umbricians.MediaCurator.Engine;
 
-public interface ICurationUndoService
+internal interface ICurationUndoService
 {
     /// <summary>Reverses a curation run: every successfully moved item goes back to its
     /// recorded original parent (§11.2). Returns counts; items that no longer exist or

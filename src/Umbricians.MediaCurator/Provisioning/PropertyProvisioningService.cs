@@ -6,7 +6,7 @@ using Umbricians.MediaCurator.Settings;
 
 namespace Umbricians.MediaCurator.Provisioning;
 
-public interface IPropertyProvisioningService
+internal interface IPropertyProvisioningService
 {
     /// <summary>Checks every requirement declared by the providers used in a ruleset
     /// against the target media types (declare → check, §7).</summary>
@@ -17,7 +17,7 @@ public interface IPropertyProvisioningService
     Task<ProvisioningResult> ApplyAsync(IReadOnlyList<ProvisioningApproval> approvals, CancellationToken cancellationToken = default);
 }
 
-public sealed class PropertyProvisioningService : IPropertyProvisioningService
+internal sealed class PropertyProvisioningService : IPropertyProvisioningService
 {
     /// <summary>v1: requirements are checked against the built-in Image media type.
     /// (User-configurable target media types are a later milestone.)</summary>

@@ -10,7 +10,7 @@ namespace Umbricians.MediaCurator.Controllers
     [BackOfficeRoute("umbriciansmediacurator/api/v{version:apiVersion}")]
     [Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]
     [MapToApi(Constants.ApiName)]
-    public class MediaCuratorApiControllerBase : ControllerBase
+    internal class MediaCuratorApiControllerBase : ControllerBase
     {
     }
 }

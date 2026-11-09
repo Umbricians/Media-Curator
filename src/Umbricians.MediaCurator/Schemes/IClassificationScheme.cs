@@ -34,7 +34,7 @@ public interface IClassificationScheme
     string DecisionGuidance => Recognition.ClassificationPromptBuilder.DepictsNotMediumGuidance;
 }
 
-public sealed class ClassificationSchemeCollection : BuilderCollectionBase<IClassificationScheme>
+internal sealed class ClassificationSchemeCollection : BuilderCollectionBase<IClassificationScheme>
 {
     public ClassificationSchemeCollection(Func<IEnumerable<IClassificationScheme>> items)
         : base(items)
@@ -45,14 +45,14 @@ public sealed class ClassificationSchemeCollection : BuilderCollectionBase<IClas
         => this.FirstOrDefault(s => string.Equals(s.Alias, alias, StringComparison.OrdinalIgnoreCase));
 }
 
-public sealed class ClassificationSchemeCollectionBuilder
+internal sealed class ClassificationSchemeCollectionBuilder
     : LazyCollectionBuilderBase<ClassificationSchemeCollectionBuilder, ClassificationSchemeCollection, IClassificationScheme>
 {
     protected override ClassificationSchemeCollectionBuilder This => this;
 }
 
 /// <summary>Base for schemes backed by an embedded "code|name|parentCode" resource file.</summary>
-public abstract class ResourceFileScheme : IClassificationScheme
+internal abstract class ResourceFileScheme : IClassificationScheme
 {
     private readonly Lazy<Dictionary<string, ClassificationEntry>> _entries;
 
@@ -138,7 +138,7 @@ public abstract class ResourceFileScheme : IClassificationScheme
 /// <summary>Strictly the public-domain levels of the Dewey system: the ten main classes and
 /// hundred divisions as published in out-of-copyright editions. Modern DDC editions are
 /// proprietary to OCLC and are explicitly NOT embedded (§5.2).</summary>
-public sealed class DeweyPublicDomainScheme : ResourceFileScheme
+internal sealed class DeweyPublicDomainScheme : ResourceFileScheme
 {
     public DeweyPublicDomainScheme()
         : base("Umbricians.MediaCurator.Schemes.Resources.dewey-public-domain.txt")
@@ -152,7 +152,7 @@ public sealed class DeweyPublicDomainScheme : ResourceFileScheme
 
 /// <summary>The Library of Congress Classification outline (classes and subclasses),
 /// freely available from the Library of Congress (§5.2).</summary>
-public sealed class LccOutlineScheme : ResourceFileScheme
+internal sealed class LccOutlineScheme : ResourceFileScheme
 {
     public LccOutlineScheme()
         : base("Umbricians.MediaCurator.Schemes.Resources.lcc-outline.txt")
@@ -167,7 +167,7 @@ public sealed class LccOutlineScheme : ResourceFileScheme
 /// <summary>What an image is for on a website (logo, hero banner, product shot, headshot, …): Media
 /// Curator's own licence-free, two-level scheme. Codes contain no separators, so filename prefixes such
 /// as "BRD1 acme logo.png" resolve.</summary>
-public sealed class WebAssetRoleScheme : ResourceFileScheme
+internal sealed class WebAssetRoleScheme : ResourceFileScheme
 {
     public WebAssetRoleScheme()
         : base("Umbricians.MediaCurator.Schemes.Resources.web-asset-role.txt")
@@ -187,7 +187,7 @@ public sealed class WebAssetRoleScheme : ResourceFileScheme
 /// kind of picture an item is (photographs, posters, drawings, maps, …). A US government work in the public
 /// domain; the resource file is generated from the official bulk download by
 /// tools/schemes/build_tgm_genre_format.py, which also documents how one parent is picked per term.</summary>
-public sealed class TgmGenreFormatScheme : ResourceFileScheme
+internal sealed class TgmGenreFormatScheme : ResourceFileScheme
 {
     public TgmGenreFormatScheme()
         : base("Umbricians.MediaCurator.Schemes.Resources.tgm-genre-format.txt")

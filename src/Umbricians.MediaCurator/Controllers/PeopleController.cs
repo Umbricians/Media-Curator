@@ -9,7 +9,7 @@ namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
 [ApiExplorerSettings(GroupName = "Media Curator")]
-public class PeopleController : MediaCuratorApiControllerBase
+internal class PeopleController : MediaCuratorApiControllerBase
 {
     private const int RecycleBinId = -21;
 

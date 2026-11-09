@@ -11,7 +11,7 @@ public sealed record FolderSegmentOrigin(string ProviderAlias, JsonObject Settin
 
 /// <summary>The result of running an item through a rule chain. <paramref name="SegmentOrigins"/>
 /// parallels <paramref name="Segments"/> (null only when built outside the executor).</summary>
-public sealed record RuleChainResult(
+internal sealed record RuleChainResult(
     IReadOnlyList<FolderSegment> Segments,
     bool Stopped,
     IReadOnlyList<RuleOutcome> Outcomes,
@@ -27,7 +27,7 @@ public sealed record RuleChainResult(
 /// matches the parent's resolved value runs; its result contributes folder segments and its
 /// children form the next level (§4.2). Fallback behaviour applies when a rule cannot resolve.
 /// </summary>
-public sealed class RuleChainExecutor
+internal sealed class RuleChainExecutor
 {
     /// <summary>The folder an item goes into when a rule cannot resolve and its fallback is
     /// <see cref="UnresolvedBehavior.Unsorted"/>. Ordered after the level's other folders.</summary>

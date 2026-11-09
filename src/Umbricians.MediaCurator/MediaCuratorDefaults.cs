@@ -4,7 +4,7 @@ namespace Umbricians.MediaCurator;
 /// Built-in defaults and limits. Everything an administrator can change lives in the backoffice
 /// (Settings › Media Curator › Setup) and is stored in the database; Media Curator reads no app settings.
 /// </summary>
-public static class MediaCuratorDefaults
+internal static class MediaCuratorDefaults
 {
     public const int RecognitionEdgePixels = 768;
 

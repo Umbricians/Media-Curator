@@ -8,7 +8,7 @@ namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
 [ApiExplorerSettings(GroupName = "Media Curator")]
-public class ProvidersController : MediaCuratorApiControllerBase
+internal class ProvidersController : MediaCuratorApiControllerBase
 {
     private readonly CurationProviderCollection _providers;
 

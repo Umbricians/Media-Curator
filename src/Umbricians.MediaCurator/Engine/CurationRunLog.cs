@@ -4,7 +4,7 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace Umbricians.MediaCurator.Engine;
 
-public sealed record CurationRun(
+internal sealed record CurationRun(
     Guid Key,
     Guid ScopeFolderKey,
     Guid RulesetKey,
@@ -15,7 +15,7 @@ public sealed record CurationRun(
     int AlreadyInPlace,
     int Failed);
 
-public sealed record CurationRunItem(
+internal sealed record CurationRunItem(
     Guid RunKey,
     Guid MediaKey,
     string MediaName,
@@ -27,7 +27,7 @@ public sealed record CurationRunItem(
 
 /// <summary>Activity log: what moved, when, why, by which trigger — with original locations
 /// recorded so a run can be undone (§11.2). Environment-local; never synced (§13).</summary>
-public interface ICurationRunLog
+internal interface ICurationRunLog
 {
     Task<Guid> StartRunAsync(Guid scopeFolderKey, Guid rulesetKey, string trigger, CancellationToken ct = default);
 

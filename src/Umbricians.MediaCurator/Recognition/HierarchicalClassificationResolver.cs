@@ -6,7 +6,7 @@ namespace Umbricians.MediaCurator.Recognition;
 /// <param name="Parent">The code already chosen above this level (step-by-step only), or null.</param>
 /// <param name="CandidateNotes">Optional context per candidate code, shown after its name: the main class
 /// in a one-step choice ("Sociology"), or what a class contains in a step-by-step one.</param>
-public sealed record ClassificationChoice(
+internal sealed record ClassificationChoice(
     IClassificationScheme Scheme,
     string Description,
     IReadOnlyList<AiTag> Tags,

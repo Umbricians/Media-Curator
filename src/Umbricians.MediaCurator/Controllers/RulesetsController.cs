@@ -9,7 +9,7 @@ namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
 [ApiExplorerSettings(GroupName = "Media Curator")]
-public class RulesetsController : MediaCuratorApiControllerBase
+internal class RulesetsController : MediaCuratorApiControllerBase
 {
     private readonly IRulesetRepository _repository;
     private readonly CurationProviderCollection _providers;

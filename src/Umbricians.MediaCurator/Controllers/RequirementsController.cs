@@ -8,7 +8,7 @@ namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
 [ApiExplorerSettings(GroupName = "Media Curator")]
-public class RequirementsController : MediaCuratorApiControllerBase
+internal class RequirementsController : MediaCuratorApiControllerBase
 {
     private readonly IPropertyProvisioningService _provisioning;
 

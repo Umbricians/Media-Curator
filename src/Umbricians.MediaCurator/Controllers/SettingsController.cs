@@ -12,7 +12,7 @@ namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
 [ApiExplorerSettings(GroupName = "Media Curator")]
-public class SettingsController : MediaCuratorApiControllerBase
+internal class SettingsController : MediaCuratorApiControllerBase
 {
     private readonly IMediaCuratorSettingsService _settings;
     private readonly IServiceProvider _services;

@@ -10,7 +10,7 @@ namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
 [ApiExplorerSettings(GroupName = "Media Curator")]
-public class CurationController : MediaCuratorApiControllerBase
+internal class CurationController : MediaCuratorApiControllerBase
 {
     private readonly ICurationEngine _engine;
     private readonly ICurationRunLog _runLog;

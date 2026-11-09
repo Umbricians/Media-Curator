@@ -8,7 +8,7 @@ using Umbricians.MediaCurator.Settings;
 namespace Umbricians.MediaCurator.People;
 
 /// <summary>Backoffice flags (rendered as entity signs on media tree items).</summary>
-public static class PeopleFlags
+internal static class PeopleFlags
 {
     /// <summary>On an image the AI decided shows people.</summary>
     public const string ContainsPeople = "MediaCurator.ContainsPeople";
@@ -18,10 +18,10 @@ public static class PeopleFlags
 }
 
 /// <summary>A media tree item's path and whether it has children (only those can have people below them).</summary>
-public sealed record MediaTreeNode(Guid Key, string Path, bool HasChildren);
+internal sealed record MediaTreeNode(Guid Key, string Path, bool HasChildren);
 
 /// <summary>Looks up tree nodes for a page of media keys in one call.</summary>
-public interface IMediaTreeNodeLookup
+internal interface IMediaTreeNodeLookup
 {
     IReadOnlyDictionary<Guid, MediaTreeNode> GetNodes(IReadOnlyCollection<Guid> keys);
 }
@@ -42,7 +42,7 @@ internal sealed class EntityServiceMediaTreeNodeLookup : IMediaTreeNodeLookup
 }
 
 /// <summary>Works out which flags each tree item gets from the stored images with people.</summary>
-public static class PeopleFlagRollup
+internal static class PeopleFlagRollup
 {
     public static IReadOnlyDictionary<Guid, IReadOnlyList<string>> Compute(
         IEnumerable<MediaTreeNode> nodes,

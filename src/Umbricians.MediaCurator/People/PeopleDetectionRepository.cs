@@ -11,7 +11,7 @@ namespace Umbricians.MediaCurator.People;
 /// <param name="Path">The media item's Umbraco path ("-1,1051,1073"), kept current as media moves, so folders
 /// can find flagged images below them with one prefix query.</param>
 /// <param name="SourceFile">The media file the decision describes; a different file makes it stale.</param>
-public sealed record PeopleDetection(
+internal sealed record PeopleDetection(
     Guid MediaKey,
     bool ContainsPeople,
     double Confidence,
@@ -20,7 +20,7 @@ public sealed record PeopleDetection(
     string? SourceFile,
     DateTime UpdateDate);
 
-public static class PeopleDetectionSources
+internal static class PeopleDetectionSources
 {
     public const string Jev = "jev";
 
@@ -31,7 +31,7 @@ public static class PeopleDetectionSources
 /// Stored people decisions. The media tree's flag provider reads only this table, so badges never cost an
 /// AI call; analysis writes it and media notifications keep its paths current.
 /// </summary>
-public interface IPeopleDetectionRepository
+internal interface IPeopleDetectionRepository
 {
     Task<IReadOnlyDictionary<Guid, PeopleDetection>> GetManyAsync(
         IReadOnlyCollection<Guid> mediaKeys,

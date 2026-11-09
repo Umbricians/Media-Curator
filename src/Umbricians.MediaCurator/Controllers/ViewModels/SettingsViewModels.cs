@@ -3,7 +3,7 @@ using Umbricians.MediaCurator.Settings;
 
 namespace Umbricians.MediaCurator.Controllers.ViewModels;
 
-public class MediaCuratorSiteSettingsModel
+internal class MediaCuratorSiteSettingsModel
 {
     /// <summary>When false, Media Curator makes no AI calls.</summary>
     public bool AiEnabled { get; set; } = true;
@@ -81,14 +81,14 @@ public class MediaCuratorSiteSettingsModel
 }
 
 /// <summary>Sets or (with an empty key) removes the TypeSafe API key used by Jev.</summary>
-public class TypeSafeApiKeyModel
+internal class TypeSafeApiKeyModel
 {
     [MaxLength(500)]
     public string? ApiKey { get; set; }
 }
 
 /// <summary>What the AI settings form can offer on this site.</summary>
-public class AiSettingsOptionsModel
+internal class AiSettingsOptionsModel
 {
     /// <summary>Umbraco.AI chat profiles.</summary>
     public List<AiProfileOptionModel> Profiles { get; set; } = [];
@@ -105,7 +105,7 @@ public class AiSettingsOptionsModel
     public string PreparedImagesFolder { get; set; } = MediaCuratorDefaults.PreparedImagesFolder;
 }
 
-public class AiProfileOptionModel
+internal class AiProfileOptionModel
 {
     public required string Alias { get; set; }
 

@@ -18,7 +18,7 @@ namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
 [ApiExplorerSettings(GroupName = "Media Curator")]
-public class RecognitionController : MediaCuratorApiControllerBase
+internal class RecognitionController : MediaCuratorApiControllerBase
 {
     /// <summary>Most images one folder analysis will send to the AI.</summary>
     public const int MaxAnalyzeImages = 200;

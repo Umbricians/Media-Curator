@@ -5,7 +5,7 @@ namespace Umbricians.MediaCurator.Engine;
 /// folders created, removed or sorted), so the backoffice can reload exactly those tree branches.
 /// <see cref="Guid.Empty"/> stands for the media root.
 /// </summary>
-public interface IMediaChangeTracker
+internal interface IMediaChangeTracker
 {
     void FolderChanged(Guid folderKey);
 

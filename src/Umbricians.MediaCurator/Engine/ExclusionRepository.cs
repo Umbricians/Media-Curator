@@ -6,7 +6,7 @@ namespace Umbricians.MediaCurator.Engine;
 
 /// <summary>Folders or items pinned/excluded so MediaCurator never touches them (§11.2).
 /// Excluding a folder excludes its whole subtree.</summary>
-public interface IExclusionRepository
+internal interface IExclusionRepository
 {
     Task<IReadOnlySet<Guid>> GetAllAsync(CancellationToken cancellationToken = default);
 

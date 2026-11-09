@@ -2,13 +2,13 @@ using Umbricians.MediaCurator.Core;
 
 namespace Umbricians.MediaCurator.Provisioning;
 
-public sealed record MediaTypePropertyInfo(string Alias, string EditorAlias, string EditorUiAlias);
+internal sealed record MediaTypePropertyInfo(string Alias, string EditorAlias, string EditorUiAlias);
 
 /// <summary>
 /// Thin abstraction over Umbraco's media type schema so the requirement matching logic is
 /// unit-testable. MediaCurator only ever ADDS properties — never edits or removes (§13).
 /// </summary>
-public interface IMediaTypeSchema
+internal interface IMediaTypeSchema
 {
     /// <summary>Returns the properties of a media type, or null when the media type does not exist.</summary>
     Task<IReadOnlyList<MediaTypePropertyInfo>?> GetPropertiesAsync(string mediaTypeAlias, CancellationToken cancellationToken = default);

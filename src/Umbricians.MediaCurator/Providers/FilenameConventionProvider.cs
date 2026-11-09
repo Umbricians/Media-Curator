@@ -5,7 +5,7 @@ namespace Umbricians.MediaCurator.Providers;
 
 /// <summary>Extracts a folder segment from a regex pattern in the item name (§6),
 /// e.g. <c>^(PROJ-\d+)</c> turns "PROJ-1234_hero.jpg" into a PROJ-1234 folder.</summary>
-public sealed partial class FilenameConventionProvider : ICurationProvider
+internal sealed partial class FilenameConventionProvider : ICurationProvider
 {
     public const string ProviderAlias = "Umbricians.MediaCurator.Filename";
 

@@ -229,7 +229,7 @@ public sealed record ExecutedPlan(CurationPlan Plan, Guid RunKey);
 /// not part of Moved/AlreadyInPlace/Failed.</summary>
 public sealed record CurationRunSummary(Guid RunKey, int Moved, int AlreadyInPlace, int Failed, int FoldersRemoved = 0);
 
-public sealed class CurationEngine : ICurationEngine
+internal sealed class CurationEngine : ICurationEngine
 {
     /// <summary>v1 image filter: items participate only when their media type is in this list (§13).</summary>
     public static readonly string[] ImageMediaTypes = ["Image"];

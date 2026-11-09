@@ -6,7 +6,7 @@ using Umbricians.MediaCurator.Extensions;
 
 namespace Umbricians.MediaCurator.People;
 
-public static class PeopleCompositionExtensions
+internal static class PeopleCompositionExtensions
 {
     /// <summary>Registers "contains people" detection: the stored decisions, the media tree flags, the
     /// analysis enricher, path upkeep on media moves and deletes, and the People curation provider.</summary>

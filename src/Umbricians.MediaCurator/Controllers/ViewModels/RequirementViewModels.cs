@@ -2,7 +2,7 @@ using Umbricians.MediaCurator.Provisioning;
 
 namespace Umbricians.MediaCurator.Controllers.ViewModels;
 
-public class RequirementStatusItemModel
+internal class RequirementStatusItemModel
 {
     public required string ProviderAlias { get; init; }
     public required string RequirementAlias { get; init; }
@@ -18,7 +18,7 @@ public class RequirementStatusItemModel
     public string? CandidatePropertyAlias { get; init; }
 }
 
-public class RequirementReportModel
+internal class RequirementReportModel
 {
     public required bool AllSatisfied { get; init; }
     public List<RequirementStatusItemModel> Items { get; init; } = [];
@@ -46,7 +46,7 @@ public class RequirementReportModel
     };
 }
 
-public class ProvisioningApprovalModel
+internal class ProvisioningApprovalModel
 {
     public required string RequirementAlias { get; init; }
     public required string MediaTypeAlias { get; init; }
@@ -63,7 +63,7 @@ public class ProvisioningApprovalModel
         MapToPropertyAlias);
 }
 
-public class ProvisioningResultModel
+internal class ProvisioningResultModel
 {
     public List<string> CreatedProperties { get; init; } = [];
     public List<string> MappedProperties { get; init; } = [];

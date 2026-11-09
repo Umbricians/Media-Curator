@@ -9,7 +9,7 @@ namespace Umbricians.MediaCurator.Providers;
 /// additional source in the EXIF milestone. Each level is ordered by what its pattern part
 /// means (months in calendar order, weekdays in week order) — see <see cref="GetFolderComparer"/>.
 /// </summary>
-public sealed class DateFolderProvider : ICurationProvider, ICurationFolderOrder
+internal sealed class DateFolderProvider : ICurationProvider, ICurationFolderOrder
 {
     public const string ProviderAlias = "Umbricians.MediaCurator.Date";
 
