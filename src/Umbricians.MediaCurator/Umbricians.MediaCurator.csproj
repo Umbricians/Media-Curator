@@ -3,42 +3,43 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AddRazorSupportForMvc Condition="'$(SupportPagesAndViews)' == 'True'">true</AddRazorSupportForMvc>
-    <RootNamespace Condition="'$(name)' != '$(name{-VALUE-FORMS-}safe_namespace)'">Umbricians.MediaCurator</RootNamespace>
     <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
   </PropertyGroup>
 
   <PropertyGroup>
     <PackageId>Umbricians.MediaCurator</PackageId>
     <Product>Umbricians.MediaCurator</Product>
-    <Title>Umbricians.MediaCurator</Title>
+    <Title>Umbricians Media Curator</Title>
+    <Description>Automatically sorts images in the Umbraco Media section into folders using date, EXIF, AI and classification rules.</Description>
+    <Authors>Umbricians</Authors>
     <Version>0.1.0</Version>
-    <Authors>Chris (Umbricians)</Authors>
-    <Description>Automatically categorizes and organizes images in the Umbraco Media section. Pluggable curation providers (date, EXIF, AI tags, color, classification by subject, format or web role and more), scoped and nested rulesets with a visual designer, consent-based media type provisioning, dry-run preview, activity log with undo.</Description>
     <PackageTags>umbraco;umbraco-marketplace;media;ai</PackageTags>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>Copyright (c) 2026 FYIN LLC (trading as Umbricians)</Copyright>
+    <PackageProjectUrl>https://github.com/Umbricians/Media-Curator</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Umbricians/Media-Curator</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <!-- Runs before NuGet collects the package files, so the generated README below is included. -->
+    <BeforePack>$(BeforePack);GenerateNuGetReadme</BeforePack>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <InternalsVisibleTo Include="Umbricians.MediaCurator.Tests" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(SupportPagesAndViews)' == 'True'">
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
-
-
-  <!-- Per-project - with versions -->
   <ItemGroup>
-    <PackageReference Include="MetadataExtractor" Version="2.9.3" />
+    <PackageReference Include="MetadataExtractor" />
     <!-- Override Umbraco CMS' vulnerable transitive MessagePack dependency. -->
-    <PackageReference Include="MessagePack" Version="3.1.8" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
-    <PackageReference Include="Umbraco.AI" Version="17.4.0" />
-    <PackageReference Include="Umbraco.Cms.Api.Common" Version="17.7.0" />
-    <PackageReference Include="Umbraco.Cms.Api.Management" Version="17.7.0" />
+    <PackageReference Include="MessagePack" />
+    <PackageReference Include="SixLabors.ImageSharp" />
+    <!-- Overrides Umbraco/Microsoft.Data.Sqlite's vulnerable transitive SQLitePCLRaw 2.x native bundle. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" PrivateAssets="all" />
+    <PackageReference Include="Umbraco.AI" />
+    <PackageReference Include="Umbraco.Cms.Api.Common" />
+    <PackageReference Include="Umbraco.Cms.Api.Management" />
+    <PackageReference Include="Umbraco.Cms.Web.Common" />
 
     <!--
       Swashbuckle is available transitively from the Umbraco packages above, but we take a direct
@@ -51,9 +52,7 @@
       Most other transitive dependencies don't have this problem because extension code doesn't
       use their types directly - only Swashbuckle/OpenApi types are referenced in the composer.
     -->
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
-    <PackageReference Include="Umbraco.Cms.Web.Common" Version="17.7.0" />
-    <PackageReference Include="Umbraco.Cms.Web.Website" Version="17.7.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>
@@ -65,15 +64,32 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="wwwroot\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <InternalsVisibleTo Include="Umbricians.MediaCurator.Tests" />
+    <!-- Rendered from assets/logo.svg; NuGet recommends 128x128. -->
+    <None Include="..\..\assets\logo-128.png" Pack="true" PackagePath="\icon.png" Visible="false" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Schemes\Resources\*.txt" />
   </ItemGroup>
+
+  <!--
+    The package README is generated from the repository README: nuget.org cannot resolve repository-relative image
+    paths, and the contributor sections do not belong on the package page. See build/nuget-readme.mjs.
+  -->
+  <Target Name="GenerateNuGetReadme">
+    <PropertyGroup>
+      <_NuGetReadme>$(IntermediateOutputPath)nuget\README.md</_NuGetReadme>
+    </PropertyGroup>
+    <Exec Command="node &quot;$(MSBuildThisFileDirectory)..\..\build\nuget-readme.mjs&quot; &quot;$(MSBuildThisFileDirectory)..\..\README.md&quot; &quot;$(_NuGetReadme)&quot; &quot;$(RepositoryUrl)&quot;" />
+    <ItemGroup>
+      <None Include="$(_NuGetReadme)" Pack="true" PackagePath="\README.md" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The backoffice bundle is built by npm and git-ignored, so never pack a package without it. -->
+  <Target Name="EnsureClientBundleBuilt" BeforeTargets="GenerateNuspec">
+    <Error Condition="!Exists('wwwroot\App_Plugins\MediaCurator\media-curator.js')"
+           Text="The backoffice bundle is missing. Run 'npm ci' and 'npm run build' in src/Umbricians.MediaCurator/Client before packing." />
+  </Target>
 
 </Project>

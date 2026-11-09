@@ -4,9 +4,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <CompressionEnabled>false</CompressionEnabled> <!-- Disable compression. E.g. for umbraco backoffice files. These files should be precompressed by node and not let dotnet handle it -->
+    <!-- The site pins its own versions rather than using the test projects' central list. -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Overrides Umbraco/Microsoft.Data.Sqlite's vulnerable transitive SQLitePCLRaw 2.x native bundle. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" PrivateAssets="all" />
     <PackageReference Include="Umbraco.AI" Version="17.4.0" />
     <PackageReference Include="Umbraco.AI.MicrosoftFoundry" Version="17.0.3" />
     <PackageReference Include="Umbraco.AI.OpenAI" Version="17.3.0" />
