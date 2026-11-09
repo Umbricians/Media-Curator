@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using Umbricians.MediaCurator.Configuration;
 using Umbricians.MediaCurator.Persistence;
 using Umbricians.MediaCurator.Settings;
 
@@ -40,12 +42,21 @@ public class MediaCuratorSettingsServiceTests
         FakeRepository repository,
         Dictionary<string, string?>? appSettings = null,
         TimeProvider? time = null)
-        => new(
-            repository,
-            Protection,
-            new ConfigurationBuilder().AddInMemoryCollection(appSettings ?? []).Build(),
-            null,
-            time ?? TimeProvider.System);
+    {
+        var options = new MediaCuratorOptions();
+        new ConfigurationBuilder().AddInMemoryCollection(appSettings ?? []).Build()
+            .GetSection(Constants.ConfigurationSection).Bind(options);
+        return new(repository, Protection, new FixedOptionsMonitor(options), null, time ?? TimeProvider.System);
+    }
+
+    private sealed class FixedOptionsMonitor(MediaCuratorOptions value) : IOptionsMonitor<MediaCuratorOptions>
+    {
+        public MediaCuratorOptions CurrentValue => value;
+
+        public MediaCuratorOptions Get(string? name) => value;
+
+        public IDisposable? OnChange(Action<MediaCuratorOptions, string?> listener) => null;
+    }
 
     [Fact]
     public async Task Defaults_are_the_benchmarked_fast_settings()
@@ -123,46 +134,6 @@ public class MediaCuratorSettingsServiceTests
     }
 
     [Fact]
-    public async Task Old_app_settings_are_imported_once_into_settings_not_yet_saved()
-    {
-        var repository = new FakeRepository
-        {
-            Stored = new SiteSettingsDto { PersistImageDescription = true, AiSettings = """{"recognitionImageSize":512}""" },
-        };
-        var appSettings = new Dictionary<string, string?>
-        {
-            ["MediaCurator:RecognitionProfileAlias"] = "test-profile",
-            ["MediaCurator:MaxRecognitionEdgePixels"] = "1024",
-            ["MediaCurator:ClassificationSchemeAlias"] = "dewey-pd",
-            ["MediaCurator:TypeSafe:ApiKey"] = "apikey_from_config",
-            ["MediaCurator:RecognitionPreparedImageTestFolder"] = "../test-output",
-        };
-        var service = Create(repository, appSettings);
-
-        var settings = await service.GetAsync();
-
-        Assert.Equal("test-profile", settings.DescriptionProfileAlias);
-        Assert.Equal(512, settings.RecognitionImageSize); // already saved: kept
-        Assert.True(settings.SavePreparedImages);
-        Assert.Equal("apikey_from_config", await service.GetTypeSafeApiKeyAsync());
-        Assert.DoesNotContain("apikey_from_config", repository.Stored!.AiSettings);
-        Assert.Contains("\"legacyImported\":true", repository.Stored.AiSettings);
-
-        // After the import, app settings are ignored.
-        await service.SaveAsync(settings);
-        var later = Create(repository, new Dictionary<string, string?> { ["MediaCurator:RecognitionProfileAlias"] = "other" });
-        Assert.Equal("test-profile", (await later.GetAsync()).DescriptionProfileAlias);
-    }
-
-    [Fact]
-    public async Task Metadata_only_app_setting_imports_as_ai_switched_off()
-    {
-        var service = Create(new FakeRepository(), new Dictionary<string, string?> { ["MediaCurator:MetadataOnly"] = "true" });
-
-        Assert.False((await service.GetAsync()).AiEnabled);
-    }
-
-    [Fact]
     public async Task Reads_are_cached_briefly()
     {
         var repository = new FakeRepository();
@@ -208,7 +179,7 @@ public class MediaCuratorSettingsServiceTests
     public async Task A_key_in_server_configuration_wins_over_the_backoffice_key()
     {
         var repository = new FakeRepository();
-        var appSettings = new Dictionary<string, string?> { ["MediaCurator:Secrets:TypeSafeApiKey"] = " key_from_server " };
+        var appSettings = new Dictionary<string, string?> { ["Umbricians:MediaCurator:Secrets:TypeSafeApiKey"] = " key_from_server " };
         var service = Create(repository, appSettings);
         await service.SetTypeSafeApiKeyAsync("key_from_backoffice");
 
@@ -229,17 +200,6 @@ public class MediaCuratorSettingsServiceTests
 
         Assert.Equal("key_from_backoffice", await service.GetTypeSafeApiKeyAsync());
         Assert.Equal(ApiKeySource.Backoffice, (await service.GetAsync()).JevApiKeySource);
-    }
-
-    [Fact]
-    public async Task A_secrets_only_section_is_not_treated_as_old_settings()
-    {
-        var repository = new FakeRepository();
-        var service = Create(repository, new Dictionary<string, string?> { ["MediaCurator:Secrets:TypeSafeApiKey"] = "k" });
-
-        await service.GetAsync();
-
-        Assert.Null(repository.Stored); // nothing imported, nothing written
     }
 }
 

@@ -27,10 +27,10 @@ public static class MediaCuratorDefaults
 
     /// <summary>
     /// Server configuration key for the TypeSafe API key. When set (app settings, an environment variable such
-    /// as <c>MediaCurator__Secrets__TypeSafeApiKey</c>, user secrets or Azure Key Vault), it is used instead of a
+    /// as <c>Umbricians__MediaCurator__Secrets__TypeSafeApiKey</c>, user secrets or Azure Key Vault), it is used instead of a
     /// key saved in the backoffice, which is then locked. Secrets are the only Media Curator configuration keys.
     /// </summary>
-    public const string TypeSafeApiKeyConfigurationKey = "MediaCurator:Secrets:TypeSafeApiKey";
+    public const string TypeSafeApiKeyConfigurationKey = Constants.ConfigurationSection + ":Secrets:TypeSafeApiKey";
 
     public const string TypeSafeEndpoint = "https://api.typesafe.ai/v1/systemone";
 

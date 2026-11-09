@@ -1,7 +1,9 @@
-namespace Umbricians.MediaCurator
+namespace Umbricians.MediaCurator;
+
+public static class Constants
 {
-    public class Constants
-    {
-        public const string ApiName = "umbriciansmediacurator";
-    }
+    /// <summary>The appsettings section Media Curator reads.</summary>
+    public const string ConfigurationSection = "Umbricians:MediaCurator";
+
+    public const string ApiName = "umbriciansmediacurator";
 }

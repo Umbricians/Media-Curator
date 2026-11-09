@@ -1,7 +1,8 @@
 using Umbraco.Cms.Core.Packaging;
 using Umbraco.Cms.Infrastructure.Migrations;
+using Umbricians.MediaCurator.Persistence;
 
-namespace Umbricians.MediaCurator.Persistence;
+namespace Umbricians.MediaCurator.Migrations;
 
 /// <summary>Runs automatically on startup (unattended package migrations).</summary>
 public class MediaCuratorMigrationPlan : PackageMigrationPlan
@@ -13,13 +14,13 @@ public class MediaCuratorMigrationPlan : PackageMigrationPlan
 
     protected override void DefinePlan()
     {
-        To<CreateRulesetTableMigration>("mediacurator-create-ruleset-table");
-        To<CreatePropertyMapTableMigration>("mediacurator-create-property-map-table");
-        To<CreateRunLogTablesMigration>("mediacurator-create-run-log-tables");
-        To<CreateExclusionTableMigration>("mediacurator-create-exclusion-table");
-        To<CreateSiteSettingsTableMigration>("mediacurator-create-site-settings-table");
-        To<AddSiteSettingsAiColumnMigration>("mediacurator-add-site-settings-ai-column");
-        To<CreatePeopleDetectionTableMigration>("mediacurator-create-people-table");
+        To<CreateRulesetTableMigration>("8f3c1a52-6d47-4b0e-9a11-2c5e7d90b1a3");
+        To<CreatePropertyMapTableMigration>("1b7e4d09-3a6f-4c82-8e55-f40a92c6d718");
+        To<CreateRunLogTablesMigration>("c2a95f36-7e18-4d3b-b6c4-0d81e3f7a524");
+        To<CreateExclusionTableMigration>("4e60b7d1-92c3-4fa8-a07d-6b13c8e5f209");
+        To<CreateSiteSettingsTableMigration>("a7d3086e-15fb-49c6-83e2-9f2b4c6d1e70");
+        To<AddSiteSettingsAiColumnMigration>("63f1c8ab-40e7-4d95-bc18-e7a05d3c92f6");
+        To<CreatePeopleDetectionTableMigration>("d95e2b74-c801-4a3f-96d7-31b8f6a0c45e");
     }
 }
 

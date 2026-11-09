@@ -51,7 +51,7 @@ export class McRootSetupViewElement extends UmbLitElement {
         profiles: [],
         maxParallelAnalysesLimit: 16,
         preparedImagesFolder: "",
-        typeSafeApiKeyConfigurationKey: "MediaCurator:Secrets:TypeSafeApiKey",
+        typeSafeApiKeyConfigurationKey: "Umbricians:MediaCurator:Secrets:TypeSafeApiKey",
       };
     } catch {
       notify(this.#notifications, "danger", "Could not load Media Curator settings. Check the server log and reload.");

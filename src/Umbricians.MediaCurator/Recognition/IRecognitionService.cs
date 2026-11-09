@@ -64,7 +64,7 @@ public sealed class RecognitionContext
 /// <summary>
 /// Extension point (§8): registered enrichers run after the AI analysis and can add or
 /// adjust tags/description before the result is persisted (e.g. OCR, brand detection).
-/// Register via <c>builder.MediaCurator().AddRecognitionEnricher&lt;T&gt;()</c>.
+/// Register via <c>builder.AddMediaCuratorRecognitionEnricher&lt;T&gt;()</c>.
 /// </summary>
 public interface IRecognitionEnricher
 {
