@@ -40,20 +40,36 @@ internal sealed class BulkCurationJob : IRecurringBackgroundJob
 
     public ServerRole[] ServerRoles => [ServerRole.Single, ServerRole.SchedulingPublisher];
 
+    // How long to wait before checking again when Umbraco skips a run (runtime not ready, or not the scheduling
+    // server): finite, because a server can be elected scheduler later.
+    public TimeSpan IgnoredDelay => TimeSpan.FromMinutes(1);
+
     public event EventHandler? PeriodChanged
     {
         add { }
         remove { }
     }
 
-    public async Task RunJobAsync()
+    public event EventHandler? IgnoredDelayChanged
+    {
+        add { }
+        remove { }
+    }
+
+#if !UMBRACO_19_OR_GREATER
+    // Umbraco 19 removed the overload without a cancellation token; 17 and 18 may still call it.
+    public Task RunJobAsync() => RunJobAsync(CancellationToken.None);
+#endif
+
+    public async Task RunJobAsync(CancellationToken cancellationToken)
     {
         if (_runtimeState.Level != global::Umbraco.Cms.Core.RuntimeLevel.Run)
         {
             return;
         }
 
-        while (_queue.TryDequeue(out var request) && request is not null)
+        // A run already started finishes, so its moves and undo record stay consistent; shutdown stops the next one.
+        while (!cancellationToken.IsCancellationRequested && _queue.TryDequeue(out var request) && request is not null)
         {
             await RunAsync(request);
         }
