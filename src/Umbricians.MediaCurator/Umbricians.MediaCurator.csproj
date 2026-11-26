@@ -61,7 +61,9 @@
 
   <ItemGroup>
     <PackageReference Include="MetadataExtractor" />
-    <PackageReference Include="SixLabors.ImageSharp" />
+    <!-- SixLabors.ImageSharp comes from Umbraco.AI (3.2.0 or later, the version Umbraco itself uses), so the package
+         never asks for an older one. A direct reference would also run ImageSharp's build-time licence check, which
+         Umbraco.AI's dependency excludes. -->
     <!-- Overrides Umbraco/Microsoft.Data.Sqlite's vulnerable transitive SQLitePCLRaw 2.x native bundle. -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" PrivateAssets="all" />
     <PackageReference Include="Umbraco.AI" />
