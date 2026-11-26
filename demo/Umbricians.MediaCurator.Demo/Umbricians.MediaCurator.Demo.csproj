@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <!-- Overrides Umbraco/Microsoft.Data.Sqlite's vulnerable transitive SQLitePCLRaw 2.x native bundle. -->
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" PrivateAssets="all" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" PrivateAssets="all" />
     <PackageReference Include="Umbraco.AI" Version="$(UmbracoAiVersion)" />
     <PackageReference Include="Umbraco.AI.MicrosoftFoundry" Version="$(UmbracoAiMicrosoftFoundryVersion)" />
     <PackageReference Include="Umbraco.AI.OpenAI" Version="$(UmbracoAiOpenAIVersion)" />
