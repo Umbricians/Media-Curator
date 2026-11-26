@@ -6,6 +6,7 @@ internal interface IMediaAncestry
     IReadOnlyList<Guid> GetAncestorOrSelfFolderKeys(Guid mediaKey);
 }
 
+/// <summary>Finds the ruleset that governs a media item.</summary>
 public interface IRulesetResolver
 {
     /// <summary>Returns the ruleset governing the given media item: walk up the tree, the

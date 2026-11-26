@@ -7,11 +7,13 @@ namespace Umbricians.MediaCurator.Migrations;
 /// <summary>Runs automatically on startup (unattended package migrations).</summary>
 public class MediaCuratorMigrationPlan : PackageMigrationPlan
 {
+    /// <summary>Creates the plan under the package id, which matches the name in umbraco-package.json.</summary>
     public MediaCuratorMigrationPlan()
         : base("Umbricians.MediaCurator")
     {
     }
 
+    /// <inheritdoc />
     protected override void DefinePlan()
     {
         To<CreateRulesetTableMigration>("8f3c1a52-6d47-4b0e-9a11-2c5e7d90b1a3");
@@ -24,7 +26,7 @@ public class MediaCuratorMigrationPlan : PackageMigrationPlan
     }
 }
 
-public class CreatePeopleDetectionTableMigration : AsyncMigrationBase
+internal sealed class CreatePeopleDetectionTableMigration : AsyncMigrationBase
 {
     public CreatePeopleDetectionTableMigration(IMigrationContext context)
         : base(context)
@@ -42,7 +44,7 @@ public class CreatePeopleDetectionTableMigration : AsyncMigrationBase
     }
 }
 
-public class AddSiteSettingsAiColumnMigration : AsyncMigrationBase
+internal sealed class AddSiteSettingsAiColumnMigration : AsyncMigrationBase
 {
     public AddSiteSettingsAiColumnMigration(IMigrationContext context)
         : base(context)
@@ -60,7 +62,7 @@ public class AddSiteSettingsAiColumnMigration : AsyncMigrationBase
     }
 }
 
-public class CreateSiteSettingsTableMigration : AsyncMigrationBase
+internal sealed class CreateSiteSettingsTableMigration : AsyncMigrationBase
 {
     public CreateSiteSettingsTableMigration(IMigrationContext context)
         : base(context)
@@ -78,7 +80,7 @@ public class CreateSiteSettingsTableMigration : AsyncMigrationBase
     }
 }
 
-public class CreateExclusionTableMigration : AsyncMigrationBase
+internal sealed class CreateExclusionTableMigration : AsyncMigrationBase
 {
     public CreateExclusionTableMigration(IMigrationContext context)
         : base(context)
@@ -96,7 +98,7 @@ public class CreateExclusionTableMigration : AsyncMigrationBase
     }
 }
 
-public class CreateRunLogTablesMigration : AsyncMigrationBase
+internal sealed class CreateRunLogTablesMigration : AsyncMigrationBase
 {
     public CreateRunLogTablesMigration(IMigrationContext context)
         : base(context)
@@ -119,7 +121,7 @@ public class CreateRunLogTablesMigration : AsyncMigrationBase
     }
 }
 
-public class CreatePropertyMapTableMigration : AsyncMigrationBase
+internal sealed class CreatePropertyMapTableMigration : AsyncMigrationBase
 {
     public CreatePropertyMapTableMigration(IMigrationContext context)
         : base(context)
@@ -137,7 +139,7 @@ public class CreatePropertyMapTableMigration : AsyncMigrationBase
     }
 }
 
-public class CreateRulesetTableMigration : AsyncMigrationBase
+internal sealed class CreateRulesetTableMigration : AsyncMigrationBase
 {
     public CreateRulesetTableMigration(IMigrationContext context)
         : base(context)

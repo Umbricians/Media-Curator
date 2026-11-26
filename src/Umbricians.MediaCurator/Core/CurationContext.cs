@@ -9,6 +9,7 @@ public sealed record RuleOutcome(string ProviderAlias, string? ResolvedValue);
 /// <summary>Read access to property values on the media item (provisioned or pre-existing).</summary>
 public interface IPropertyAccessor
 {
+    /// <summary>Returns the property's value as a string, or null when the item has no such property or it is empty.</summary>
     string? GetString(string alias);
 }
 
@@ -25,12 +26,16 @@ internal sealed class EmptyPropertyAccessor : IPropertyAccessor
 /// </summary>
 public sealed record CurationContext
 {
+    /// <summary>The key of the media item being resolved.</summary>
     public required Guid MediaKey { get; init; }
 
+    /// <summary>The media item's name.</summary>
     public required string MediaName { get; init; }
 
+    /// <summary>When the media item was created.</summary>
     public DateTime CreateDate { get; init; }
 
+    /// <summary>When the media item was last saved.</summary>
     public DateTime UpdateDate { get; init; }
 
     /// <summary>The culture folder names are generated against (configured per ruleset, §10).</summary>
@@ -45,6 +50,7 @@ public sealed record CurationContext
     /// <summary>Outcomes of ancestor rules in the chain, nearest last.</summary>
     public IReadOnlyList<RuleOutcome> ParentOutcomes { get; init; } = [];
 
+    /// <summary>The media item's property values.</summary>
     public IPropertyAccessor Properties { get; init; } = EmptyPropertyAccessor.Instance;
 
     /// <summary>Parsed EXIF values for the image (tag name → value), or null when

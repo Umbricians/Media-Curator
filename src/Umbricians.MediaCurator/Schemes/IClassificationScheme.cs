@@ -12,8 +12,10 @@ public sealed record ClassificationEntry(string Code, string Name, string? Paren
 /// </summary>
 public interface IClassificationScheme
 {
+    /// <summary>The scheme's unique alias, which rules refer to it by.</summary>
     string Alias { get; }
 
+    /// <summary>The name editors see.</summary>
     string Name { get; }
 
     /// <summary>Returns the entry for a code, or null when the scheme does not define it.</summary>

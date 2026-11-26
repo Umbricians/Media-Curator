@@ -25,5 +25,6 @@ public sealed class PropertyRequirement
     /// <summary>Whether the provider cannot function without it (degraded when declined).</summary>
     public bool Mandatory { get; init; }
 
+    /// <summary>The description given to the property when it is created, or null for none.</summary>
     public string? Description { get; init; }
 }

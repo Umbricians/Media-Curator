@@ -6,9 +6,11 @@ namespace Umbricians.MediaCurator.Configuration;
 /// </summary>
 public class MediaCuratorOptions
 {
+    /// <summary>Secrets that can come from server configuration instead of the backoffice.</summary>
     public MediaCuratorSecretsOptions Secrets { get; set; } = new();
 }
 
+/// <summary>Secrets under <c>Umbricians:MediaCurator:Secrets</c>.</summary>
 public class MediaCuratorSecretsOptions
 {
     /// <summary>When set, used instead of a key saved in the backoffice, which is then locked.</summary>
