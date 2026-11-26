@@ -10,7 +10,7 @@ export default defineConfig({
     outDir: "../wwwroot/App_Plugins/UmbriciansMediaCuratorAutomate",
     emptyOutDir: true,
     sourcemap: true,
-    rollupOptions: {
+    rolldownOptions: {
       external: [/^@umbraco/],
     },
   },
