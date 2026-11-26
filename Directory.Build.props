@@ -33,9 +33,9 @@
     <UmbracoTargetFramework>net10.0</UmbracoTargetFramework>
     <UmbracoAiVersion>18.0.0</UmbracoAiVersion>
     <UmbracoAutomateVersion>18.0.0</UmbracoAutomateVersion>
-    <UmbracoAiOpenAIVersion>18.3.0</UmbracoAiOpenAIVersion>
-    <UmbracoAiAnthropicVersion>18.1.2</UmbracoAiAnthropicVersion>
-    <UmbracoAiMicrosoftFoundryVersion>18.0.4</UmbracoAiMicrosoftFoundryVersion>
+    <UmbracoAiOpenAIVersion>18.0.0</UmbracoAiOpenAIVersion>
+    <UmbracoAiAnthropicVersion>18.0.0</UmbracoAiAnthropicVersion>
+    <UmbracoAiMicrosoftFoundryVersion>18.0.0</UmbracoAiMicrosoftFoundryVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(UmbracoMajor)' == '19'">
     <UmbracoVersion Condition="'$(UmbracoVersion)' == ''">19.0.0-rc1</UmbracoVersion>
@@ -54,7 +54,9 @@
          the packed range. -->
     <UmbracoVersionRange>[$(UmbracoVersion), $([MSBuild]::Add($(UmbracoMajor), 1)).0.0-a)</UmbracoVersionRange>
     <!-- Umbraco.AI and Umbraco.Automate release their own versions for each Umbraco major, so they get the same kind of
-         range from their own lowest version above. The demo's AI providers use theirs exactly. -->
+         range from their own lowest version above. The demo's AI providers use theirs exactly: the newest
+         release whose Umbraco.AI.Core range starts at or below UmbracoAiVersion. A newer one lifts Umbraco.AI.Core past
+         the Umbraco.AI.Persistence that Umbraco.AI pins exactly, and the demo fails at startup with TypeLoadExceptions. -->
     <UmbracoAiVersionRange>[$(UmbracoAiVersion), $([MSBuild]::Add($(UmbracoMajor), 1)).0.0-a)</UmbracoAiVersionRange>
     <UmbracoAutomateVersionRange>[$(UmbracoAutomateVersion), $([MSBuild]::Add($(UmbracoMajor), 1)).0.0-a)</UmbracoAutomateVersionRange>
     <DefineConstants>$(DefineConstants);UMBRACO_$(UmbracoMajor)</DefineConstants>
