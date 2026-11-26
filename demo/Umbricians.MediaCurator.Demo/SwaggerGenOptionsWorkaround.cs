@@ -1,3 +1,4 @@
+#if !UMBRACO_18_OR_GREATER
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -64,3 +65,4 @@ internal static class SwaggerGenOptionsWorkaround
         }
     }
 }
+#endif

@@ -15,7 +15,10 @@ builder.CreateUmbracoBuilder()
     .AddComposers()
     .Build();
 
+#if !UMBRACO_18_OR_GREATER
+// Umbraco 17 only: Umbraco 18 replaced Swashbuckle.
 SwaggerGenOptionsWorkaround.Apply(builder.Services);
+#endif
 
 // Demo site only: allow backoffice OAuth over plain HTTP so E2E tests can run
 // without a trusted HTTPS dev certificate (OpenIddict rejects HTTP by default).
