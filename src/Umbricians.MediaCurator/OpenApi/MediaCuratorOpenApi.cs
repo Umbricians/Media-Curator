@@ -17,6 +17,9 @@ internal static class MediaCuratorOpenApi
     {
         builder.AddBackOfficeOpenApiDocument(Constants.ApiName, document => document
             .WithTitle("Umbricians Media Curator")
+            // The controllers serialize with the backoffice's JSON options, so the document's schemas use them too.
+            .WithJsonOptions(Umbraco.Cms.Core.Constants.JsonOptionsNames.BackOffice)
+            .ConfigureOpenApiOptions(options => options.AddOperationTransformer<MediaCuratorOperationIdTransformer>())
             .WithBackOfficeAuthentication());
         return builder;
     }
