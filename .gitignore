@@ -5,6 +5,7 @@ Thumbs.db
 # IDE and editor files
 .vs/
 .vscode/
+.idea/
 *.user
 *.suo
 *.userosscache
@@ -22,6 +23,7 @@ TestResults/
 *.nupkg
 *.snupkg
 packages/
+artifacts/
 
 # Node build output and dependencies
 node_modules/

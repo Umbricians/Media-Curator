@@ -1,0 +1,16 @@
+{
+  "$schema": "https://marketplace.umbraco.com/umbraco-marketplace-schema.json",
+  "Title": "Umbricians Media Curator",
+  "Description": "Automatically sorts images in the Umbraco Media section into folders using date, EXIF, AI and classification rules.",
+  "Category": "",
+  "Tags": [],
+  "LicenseTypes": ["Free"],
+  "DocumentationUrl": "https://github.com/Umbricians/Media-Curator/blob/main/docs/getting-started.md",
+  "IssueTrackerUrl": "https://github.com/Umbricians/Media-Curator/issues",
+  "Screenshots": [],
+  "AuthorDetails": {
+    "Name": "Umbricians",
+    "Url": "https://github.com/Umbricians",
+    "SyncContributorsFromRepository": true
+  }
+}

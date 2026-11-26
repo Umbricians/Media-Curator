@@ -1,0 +1,122 @@
+# Builds and tests the package against the newest Umbraco release of each supported major (17, 18, 19), because
+# Umbraco's no-breaking-minors promise does not cover its backoffice TypeScript: a minor release can still break the
+# backoffice code, and this finds out before a site does. It runs weekly and on demand, never on pull requests, and it
+# never publishes, so it can't break the normal build. The normal build keeps the lowest supported version of each
+# major (Directory.Build.props). For a major with no stable release yet, the newest pre-release counts.
+# A failure here means: look at what Umbraco changed, and fix the package within the major.
+#
+# On demand, "umbraco-version" runs only the major that version belongs to, against that exact version.
+name: Umbraco minors
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      umbraco-version:
+        description: "Umbraco.Cms version to build against, such as 18.4.0 (default: the newest of each major on NuGet)"
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  CLIENT_DIR: src/Umbricians.MediaCurator/Client
+  AUTOMATE_CLIENT_DIR: src/Umbricians.MediaCurator.Automate/Client
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # To support a new major, add an entry here (see docs/RELEASING.md).
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Plan the builds
+        id: plan
+        env:
+          REQUESTED: ${{ inputs.umbraco-version }}
+        run: |
+          matrix=$(node -e '
+            const all = [
+              { major: 17, sdk: "10.0.x" },
+              { major: 18, sdk: "10.0.x" },
+              { major: 19, sdk: "11.0.x" },
+            ];
+            const requested = process.env.REQUESTED ?? "";
+            const include = requested ? all.filter((entry) => requested.startsWith(`${entry.major}.`)) : all;
+            if (include.length === 0) {
+              console.error(`::error::${requested} is not a version of a supported Umbraco major.`);
+              process.exit(1);
+            }
+            console.log(JSON.stringify({ include }));
+          ')
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "Matrix: $matrix"
+
+  latest:
+    name: latest (Umbraco ${{ matrix.major }})
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+    env:
+      UMBRACO_MAJOR: ${{ matrix.major }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: ${{ matrix.sdk }}
+
+      # The newest stable Umbraco.Cms of this major on NuGet (the newest pre-release if it has no stable one yet), unless
+      # one was asked for.
+      - name: Find the Umbraco version
+        id: umbraco
+        env:
+          REQUESTED: ${{ inputs.umbraco-version }}
+        run: |
+          version="$REQUESTED"
+          if [[ -z "$version" ]]; then
+            # The registration pages say which versions are listed; an unlisted one is not the newest release.
+            version=$(node -e '
+              const get = async (url) => (await fetch(url)).json();
+              (async () => {
+                const index = await get("https://api.nuget.org/v3/registration5-gz-semver2/umbraco.cms/index.json");
+                const pages = await Promise.all(index.items.map((page) => (page.items ? page : get(page["@id"]))));
+                const listed = pages.flatMap((page) => page.items).map((leaf) => leaf.catalogEntry).filter((entry) => entry.listed !== false).map((entry) => entry.version);
+                const ofMajor = listed.filter((x) => x.startsWith(`${process.env.UMBRACO_MAJOR}.`));
+                const stable = ofMajor.filter((x) => !x.includes("-"));
+                console.log((stable.length > 0 ? stable : ofMajor).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).pop());
+              })();
+            ')
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Umbraco $version"
+
+      # The @umbraco-cms/backoffice with the same version, so the client compiles against what ships.
+      - name: Build and test the client against it
+        working-directory: ${{ env.CLIENT_DIR }}
+        run: |
+          npm ci
+          npm install --no-save "@umbraco-cms/backoffice@${{ steps.umbraco.outputs.version }}"
+          npm test
+          npm run build
+
+      - name: Build the Automate client against it
+        working-directory: ${{ env.AUTOMATE_CLIENT_DIR }}
+        run: |
+          npm ci
+          npm install --no-save "@umbraco-cms/backoffice@${{ steps.umbraco.outputs.version }}"
+          npm run build
+
+      - name: Build and test the package against it
+        run: |
+          dotnet build Umbricians.MediaCurator.slnx -c Release -p:UmbracoMajor="$UMBRACO_MAJOR" -p:UmbracoVersion=${{ steps.umbraco.outputs.version }}
+          dotnet test Umbricians.MediaCurator.slnx -c Release --no-build -p:UmbracoMajor="$UMBRACO_MAJOR" -p:UmbracoVersion=${{ steps.umbraco.outputs.version }}
