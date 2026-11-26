@@ -1,7 +1,10 @@
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Umbraco.Cms.Web.Common.Authorization;
+using Umbraco.Cms.Web.Common.Routing;
 using Umbricians.MediaCurator.Controllers.ViewModels;
 using Umbricians.MediaCurator.Engine;
 using Umbricians.MediaCurator.People;
@@ -14,7 +17,9 @@ namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
 [ApiExplorerSettings(GroupName = "Media Curator")]
-internal class RecognitionController : MediaCuratorApiControllerBase
+[BackOfficeRoute("umbriciansmediacurator/api/v{version:apiVersion}")]
+[Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]
+internal class RecognitionController : MediaCuratorControllerBase
 {
     /// <summary>Most images one folder analysis will send to the AI.</summary>
     public const int MaxAnalyzeImages = 200;

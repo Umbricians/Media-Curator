@@ -1,16 +1,19 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Umbraco.Cms.Api.Common.Attributes;
+using Umbraco.Cms.Api.Common.Filters;
 using Umbraco.Cms.Web.Common.Authorization;
-using Umbraco.Cms.Web.Common.Routing;
 
-namespace Umbricians.MediaCurator.Controllers
+namespace Umbricians.MediaCurator.Controllers;
+
+/// <summary>
+/// The base of every Media Curator Management API controller: signed-in backoffice users only, the backoffice's JSON
+/// settings, and the package's own API document. Each controller also requires access to the Settings section.
+/// </summary>
+[ApiController]
+[Authorize(Policy = AuthorizationPolicies.BackOfficeAccess)]
+[JsonOptionsName(Umbraco.Cms.Core.Constants.JsonOptionsNames.BackOffice)]
+[MapToApi(Constants.ApiName)]
+internal abstract class MediaCuratorControllerBase : ControllerBase
 {
-    [ApiController]
-    [BackOfficeRoute("umbriciansmediacurator/api/v{version:apiVersion}")]
-    [Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]
-    [MapToApi(Constants.ApiName)]
-    internal class MediaCuratorApiControllerBase : ControllerBase
-    {
-    }
 }

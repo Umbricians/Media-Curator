@@ -178,11 +178,24 @@ public class RulesetsControllerTests
     [Fact]
     public void Api_controllers_require_settings_section_access()
     {
-        var authorize = typeof(MediaCuratorApiControllerBase)
-            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
+        var controllers = typeof(MediaCuratorControllerBase).Assembly.GetTypes()
+            .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(MediaCuratorControllerBase).IsAssignableFrom(t))
+            .ToList();
+
+        Assert.NotEmpty(controllers);
+        Assert.All(controllers, controller => Assert.Contains(
+            controller.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false).Cast<AuthorizeAttribute>(),
+            authorize => authorize.Policy == AuthorizationPolicies.SectionAccessSettings));
+    }
+
+    [Fact]
+    public void Api_controllers_require_a_signed_in_backoffice_user()
+    {
+        var authorize = typeof(MediaCuratorControllerBase)
+            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
             .Cast<AuthorizeAttribute>()
             .Single();
 
-        Assert.Equal(AuthorizationPolicies.SectionAccessSettings, authorize.Policy);
+        Assert.Equal(AuthorizationPolicies.BackOfficeAccess, authorize.Policy);
     }
 }
