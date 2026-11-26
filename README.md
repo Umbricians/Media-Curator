@@ -172,7 +172,10 @@ The demo installs itself on first run and adds a "Sample Images" folder and rule
 while working on the backoffice, and `npm test` there for its tests. The demo's test admin login is in
 `demo/Umbricians.MediaCurator.Demo/appsettings.Development.json`.
 
-With the demo running, regenerate the API client with `npm run generate-client` in `Client/`, and run the E2E tests:
+With the demo running, regenerate the API client with `npm run generate-client` in `Client/` (on an Umbraco 18 demo,
+`npm run generate-client:18`, which reads the document from Umbraco's OpenAPI endpoint instead of Swagger). The
+committed client is generated from Umbraco 17; one generated from 18 has the same methods with slightly stricter types.
+Then run the E2E tests:
 
 ```bash
 cd tests/Umbricians.MediaCurator.E2E && npm install && cp .env.example .env && npx playwright test
