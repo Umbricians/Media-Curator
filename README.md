@@ -181,6 +181,10 @@ Then run the E2E tests:
 cd tests/Umbricians.MediaCurator.E2E && npm install && cp .env.example .env && npx playwright test
 ```
 
+The test helpers are released per Umbraco major. Version 17 of them works with Umbraco 17 and 18; for an Umbraco 19 demo,
+install that major's first (`npm install --no-save @umbraco-cms/acceptance-test-helpers@19.0.0-rc2`), or the tests fail
+to authenticate their API calls.
+
 > The demo reads `appsettings.{environment}.json`. If your machine sets `DOTNET_ENVIRONMENT` (for example to
 > `Local`), that overrides the launch profile's `Development`, so the demo settings also live in
 > `appsettings.Local.json`.
