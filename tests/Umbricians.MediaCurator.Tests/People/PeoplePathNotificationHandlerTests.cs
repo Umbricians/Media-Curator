@@ -23,6 +23,15 @@ public class PeoplePathNotificationHandlerTests
         return (new PeoplePathNotificationHandler(repository, NullLogger<PeoplePathNotificationHandler>.Instance), repository);
     }
 
+    // The handler reads only the original and new paths. Umbraco 18 makes the parent id constructor obsolete (it goes in
+    // 19), and 17 has no constructor without the parent id.
+    private static MoveEventInfo<IMedia> Moved(IMedia entity, string originalPath, int newParentId)
+#if UMBRACO_18_OR_GREATER
+        => new(entity, originalPath, (Guid?)null);
+#else
+        => new(entity, originalPath, newParentId);
+#endif
+
     private static IMedia Media(Guid key, string path)
     {
         var mediaType = new MediaType(new DefaultShortStringHelper(new DefaultShortStringHelperConfig()), -1);
@@ -36,7 +45,7 @@ public class PeoplePathNotificationHandlerTests
         var moved = Media(Folder, "-1,200,101");
 
         await handler.HandleAsync(
-            new MediaMovedNotification(new MoveEventInfo<IMedia>(moved, "-1,100,101", 200), new EventMessages()),
+            new MediaMovedNotification(Moved(moved, "-1,100,101", 200), new EventMessages()),
             CancellationToken.None);
 
         Assert.Equal("-1,200,101,102", repository.Rows[Photo].Path);
@@ -54,8 +63,8 @@ public class PeoplePathNotificationHandlerTests
         await handler.HandleAsync(
             new MediaMovedNotification(
                 [
-                    new MoveEventInfo<IMedia>(folder, "-1,100,101", 200),
-                    new MoveEventInfo<IMedia>(photo, "-1,100,101,102", 101),
+                    Moved(folder, "-1,100,101", 200),
+                    Moved(photo, "-1,100,101,102", 101),
                 ],
                 new EventMessages()),
             CancellationToken.None);
