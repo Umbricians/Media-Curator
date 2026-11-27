@@ -1,11 +1,14 @@
 // Checks a packed .nupkg before it can be published, and fails naming each problem:
 //
-//   node build/check-package.mjs <.nupkg> <version> <Umbraco version> <bundle URL path>
+//   node build/check-package.mjs <.nupkg> <version> <Umbraco version> <bundle URL path> [<package it extends>]
 //
 // - the .nuspec's version is the version the build packed;
 // - every Umbraco CMS dependency's (Umbraco.Cms.*) range is [<Umbraco version>, <next major>.0.0-a), so the package
 //   installs on its own Umbraco major only, and there is at least one. Other Umbraco packages, such as Umbraco Forms
 //   or Umbraco.Community.*, have version lines of their own;
+// - an extension package (one that names the package it extends) depends on that package with the range
+//   [<version>, <next major>.0.0-a): the same release or later, of the same major. It reaches Umbraco through that
+//   package, so it needs no Umbraco dependency of its own;
 // - a stable package has no other dependency on a pre-release (its lower bound has a label). The project silences
 //   NuGet's own warning for that (NU5104), which the CMS range's upper bound always trips;
 // - the package carries its README, its icon and the backoffice bundle (static web assets under staticwebassets/).
@@ -17,27 +20,29 @@ import { inflateRawSync } from "node:zlib";
 import { pathToFileURL } from "node:url";
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  const [, , packagePath, version, umbracoVersion, bundlePath] = process.argv;
+  const [, , packagePath, version, umbracoVersion, bundlePath, extendsPackage] = process.argv;
   if (!packagePath || !version || !umbracoVersion || !bundlePath) {
-    console.error("Usage: node build/check-package.mjs <.nupkg> <version> <Umbraco version> <bundle URL path>");
+    console.error("Usage: node build/check-package.mjs <.nupkg> <version> <Umbraco version> <bundle URL path> [<package it extends>]");
     process.exit(1);
   }
-  const problems = checkPackage(readZip(readFileSync(packagePath)), { version, umbracoVersion, bundlePath });
+  const problems = checkPackage(readZip(readFileSync(packagePath)), { version, umbracoVersion, bundlePath, extendsPackage });
   if (problems.length) {
     console.error(`${packagePath} isn't fit to publish:\n${problems.map((problem) => `- ${problem}`).join("\n")}`);
     process.exit(1);
   }
-  console.log(`${packagePath}: version ${version}, Umbraco ${umbracoRange(umbracoVersion)}, README, icon and bundle present.`);
+  const dependsOn = extendsPackage ? `${extendsPackage} ${majorRange(version)}` : `Umbraco ${majorRange(umbracoVersion)}`;
+  console.log(`${packagePath}: version ${version}, ${dependsOn}, README, icon and bundle present.`);
 }
 
-/** The Umbraco range a package for umbracoVersion's major must depend on. */
-export function umbracoRange(umbracoVersion) {
-  const major = Number(umbracoVersion.split(".")[0]);
-  return `[${umbracoVersion}, ${major + 1}.0.0-a)`;
+/** lowest or later, before the next major and its pre-releases: the range of a dependency on Umbraco's lowest version
+ *  of a major, or on the release of the package an extension package extends. */
+export function majorRange(lowest) {
+  const major = Number(lowest.split(".")[0]);
+  return `[${lowest}, ${major + 1}.0.0-a)`;
 }
 
 /** The problems with a package, given its files as a Map of path to contents. */
-export function checkPackage(files, { version, umbracoVersion, bundlePath }) {
+export function checkPackage(files, { version, umbracoVersion, bundlePath, extendsPackage }) {
   const problems = [];
   const nuspecs = [...files.keys()].filter((path) => !path.includes("/") && path.endsWith(".nuspec"));
   if (nuspecs.length !== 1) return [`expected one .nuspec at the root, found ${nuspecs.length}`];
@@ -46,11 +51,18 @@ export function checkPackage(files, { version, umbracoVersion, bundlePath }) {
   const packed = nuspec.match(/<version>([^<]*)<\/version>/)?.[1];
   if (packed !== version) problems.push(`its version is ${packed}, not ${version}`);
 
-  const range = umbracoRange(umbracoVersion);
+  const range = majorRange(umbracoVersion);
   const dependencies = [...nuspec.matchAll(/<dependency\b[^>]*>/g)].map(([tag]) => ({ id: attribute(tag, "id"), version: attribute(tag, "version") }));
   const isUmbraco = (dependency) => dependency.id?.startsWith("Umbraco.Cms.");
   const umbraco = dependencies.filter(isUmbraco);
-  if (umbraco.length === 0) problems.push("it has no Umbraco dependency");
+  if (extendsPackage) {
+    const extended = dependencies.find((dependency) => dependency.id === extendsPackage);
+    const extendedRange = majorRange(version);
+    if (!extended) problems.push(`it has no dependency on ${extendsPackage}, the package it extends`);
+    else if (extended.version !== extendedRange) problems.push(`${extendsPackage} is ${extended.version}, not ${extendedRange}`);
+  } else if (umbraco.length === 0) {
+    problems.push("it has no Umbraco dependency");
+  }
   for (const dependency of umbraco) {
     if (dependency.version !== range) problems.push(`${dependency.id} is ${dependency.version}, not ${range}`);
   }

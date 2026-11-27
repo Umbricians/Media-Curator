@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { crc32, deflateRawSync } from "node:zlib";
-import { checkPackage, readZip, umbracoRange } from "./check-package.mjs";
+import { checkPackage, readZip, majorRange } from "./check-package.mjs";
 
 const BUNDLE = "/App_Plugins/UmbriciansExample/umbricians-example.js";
 const expected = { version: "17.2.0", umbracoVersion: "17.8.2", bundlePath: BUNDLE };
@@ -81,8 +81,8 @@ function packageFiles(overrides = {}) {
 }
 
 test("the Umbraco range runs from the lowest version to before the next major's pre-releases", () => {
-  assert.equal(umbracoRange("17.8.2"), "[17.8.2, 18.0.0-a)");
-  assert.equal(umbracoRange("19.0.0-rc2"), "[19.0.0-rc2, 20.0.0-a)");
+  assert.equal(majorRange("17.8.2"), "[17.8.2, 18.0.0-a)");
+  assert.equal(majorRange("19.0.0-rc2"), "[19.0.0-rc2, 20.0.0-a)");
 });
 
 test("a zip's stored and deflated files are read back", () => {
@@ -178,4 +178,41 @@ test("a package missing its README, icon or bundle fails, naming each", () => {
 
 test("a package without exactly one .nuspec at the root fails", () => {
   assert.deepEqual(checkPackage(packageFiles({ "Umbricians.Example.nuspec": undefined }), expected), ["expected one .nuspec at the root, found 0"]);
+});
+
+// An extension package, such as Umbricians.Example.Delivery, reaches Umbraco through the package it extends.
+const extension = { ...expected, extendsPackage: "Umbricians.Example" };
+const extensionFiles = (range) =>
+  packageFiles({ "Umbricians.Example.nuspec": nuspec({ dependencies: [
+    ...(range ? [`<dependency id="Umbricians.Example" version="${range}" />`] : []),
+    `<dependency id="Umbraco.Automate.Core" version="[17.6.0, 18.0.0-a)" />`,
+  ] }) });
+
+test("an extension package depending on the same release of the package it extends, or later in the major, passes", () => {
+  assert.deepEqual(checkPackage(extensionFiles("[17.2.0, 18.0.0-a)"), extension), []);
+});
+
+for (const range of ["17.2.0", "[17.2.0]", "[17.1.0, 18.0.0-a)", "[17.2.0, 19.0.0-a)"]) {
+  test(`an extension package depending on ${range} of the package it extends fails`, () => {
+    assert.deepEqual(checkPackage(extensionFiles(range), extension), [`Umbricians.Example is ${range}, not [17.2.0, 18.0.0-a)`]);
+  });
+}
+
+test("an extension package that doesn't depend on the package it extends fails", () => {
+  assert.deepEqual(checkPackage(extensionFiles(), extension), ["it has no dependency on Umbricians.Example, the package it extends"]);
+});
+
+test("an extension package's own Umbraco dependencies still need the Umbraco range", () => {
+  const files = packageFiles({ "Umbricians.Example.nuspec": nuspec({ dependencies: [
+    `<dependency id="Umbricians.Example" version="[17.2.0, 18.0.0-a)" />`,
+    `<dependency id="Umbraco.Cms.Core" version="17.8.2" />`,
+  ] }) });
+  assert.deepEqual(checkPackage(files, extension), ["Umbraco.Cms.Core is 17.8.2, not [17.8.2, 18.0.0-a)"]);
+});
+
+test("a pre-release extension package depends on the same pre-release of the package it extends", () => {
+  const files = packageFiles({ "Umbricians.Example.nuspec": nuspec({ version: "19.0.0-rc.1", dependencies: [
+    `<dependency id="Umbricians.Example" version="[19.0.0-rc.1, 20.0.0-a)" />`,
+  ] }) });
+  assert.deepEqual(checkPackage(files, { version: "19.0.0-rc.1", umbracoVersion: "19.0.0-rc2", bundlePath: BUNDLE, extendsPackage: "Umbricians.Example" }), []);
 });
