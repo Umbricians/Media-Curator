@@ -37,6 +37,9 @@ updates:
       interval: weekly
     ignore:
       - dependency-name: "@umbraco-cms/backoffice"
+      # Kept on the same TypeScript as the other client (see there).
+      - dependency-name: "typescript"
+        versions: [">=7"]
 
   - package-ecosystem: npm
     directory: /src/Umbricians.MediaCurator/Client
@@ -48,3 +51,7 @@ updates:
       # The types follow the Node major CI runs (node-version in build.yml), so they only offer APIs it has.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # @hey-api/openapi-ts generates the API client with TypeScript's JavaScript compiler API, which TypeScript 7
+      # no longer exports, so client generation fails under it. Lift this once openapi-ts supports TypeScript 7.
+      - dependency-name: "typescript"
+        versions: [">=7"]
