@@ -3,9 +3,13 @@ using Umbricians.MediaCurator.Schemes;
 namespace Umbricians.MediaCurator.Recognition;
 
 /// <summary>One classification decision: pick the best of <see cref="Candidates"/> for the described image.</summary>
+/// <param name="Scheme">The scheme the codes come from.</param>
+/// <param name="Description">The AI's description of the image.</param>
+/// <param name="Tags">The AI's tags for the image.</param>
 /// <param name="Parent">The code already chosen above this level (step-by-step only), or null.</param>
 /// <param name="CandidateNotes">Optional context per candidate code, shown after its name: the main class
 /// in a one-step choice ("Sociology"), or what a class contains in a step-by-step one.</param>
+/// <param name="Candidates">The codes to choose from.</param>
 internal sealed record ClassificationChoice(
     IClassificationScheme Scheme,
     string Description,
@@ -56,9 +60,14 @@ internal static class HierarchicalClassificationResolver
     /// <summary>Most sub-category names listed per class when drilling down step by step.</summary>
     private const int MaxChildHints = 12;
 
+    /// <param name="scheme">The scheme to pick a code from.</param>
+    /// <param name="description">The AI's description of the image.</param>
+    /// <param name="tags">The AI's tags for the image.</param>
     /// <param name="chooseAsync">Returns the picked code for one decision, or null when none was made.</param>
     /// <param name="oneStepLimit">Decide in one step when the scheme has at most this many final codes;
     /// 0 always drills down step by step.</param>
+    /// <param name="maxDepth">The deepest scheme level to drill down to.</param>
+    /// <param name="cancellationToken">Cancels the AI calls.</param>
     public static async Task<string?> ResolveAsync(
         IClassificationScheme scheme,
         string description,

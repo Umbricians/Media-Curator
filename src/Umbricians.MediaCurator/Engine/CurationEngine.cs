@@ -773,15 +773,20 @@ internal sealed class CurationEngine : ICurationEngine
         }
     }
 
+    /// <summary>Counts the empty sub-folders below <paramref name="folderKey"/> that curation would remove, without
+    /// removing anything.</summary>
+    public Task<int> CountEmptyFoldersAsync(Guid folderKey, CancellationToken cancellationToken = default)
+        => RemoveEmptyFoldersAsync(folderKey, EmptyFolderRemoval.None, _ => Guid.Empty, cancellationToken);
+
     /// <summary>Removes every empty sub-folder below <paramref name="processedFolderKey"/>, deepest first
     /// (never the folder itself). A folder is empty when it holds no media at all, recursively, so a
     /// folder whose only descendants are empty folders goes too. Excluded folders (and everything below
     /// them) and ruleset scope roots are never removed. Each removal is recorded in the run log; a
     /// failure is logged, recorded as failed, and the cleanup carries on.</summary>
-    public Task<int> CountEmptyFoldersAsync(Guid folderKey, CancellationToken cancellationToken = default)
-        => RemoveEmptyFoldersAsync(folderKey, EmptyFolderRemoval.None, _ => Guid.Empty, cancellationToken);
-
+    /// <param name="processedFolderKey">The folder curation ran on.</param>
     /// <param name="mode">None counts what would be removed without touching anything.</param>
+    /// <param name="runFor">The run that records the removal of a folder, by the folder's key.</param>
+    /// <param name="cancellationToken">Stops the cleanup.</param>
     private async Task<int> RemoveEmptyFoldersAsync(
         Guid processedFolderKey,
         EmptyFolderRemoval mode,

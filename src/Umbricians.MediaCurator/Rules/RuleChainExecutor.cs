@@ -6,7 +6,9 @@ namespace Umbricians.MediaCurator.Rules;
 /// <summary>Which rule produced a folder segment: the rule's provider and settings, and which of
 /// that provider's own segments it is (0 = the first one it produced). Used to order each folder
 /// level by the provider that produced it (<see cref="ICurationFolderOrder"/>).</summary>
+/// <param name="ProviderAlias">The alias of the rule's provider.</param>
 /// <param name="Settings">The rule's settings (shared with the rule; treat as read-only).</param>
+/// <param name="SegmentIndex">Which of the provider's segments it is (0 = the first).</param>
 public sealed record FolderSegmentOrigin(string ProviderAlias, JsonObject Settings, int SegmentIndex);
 
 /// <summary>The result of running an item through a rule chain. <paramref name="SegmentOrigins"/>
