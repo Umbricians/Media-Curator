@@ -164,7 +164,7 @@ the Settings section. It exists for the backoffice and may change between versio
 src/Umbricians.MediaCurator           the package (Razor class library + Client/ TypeScript)
 src/Umbricians.MediaCurator.Automate  Umbraco.Automate triggers and actions, its own package
 demo/Umbricians.MediaCurator.Demo     Umbraco 17.7.0 site on SQLite that references the package
-tests/Umbricians.MediaCurator.Tests   xUnit tests, run with `dotnet test`
+tests/Umbricians.MediaCurator.Tests   NUnit tests, run with `dotnet test`
 tests/Umbricians.MediaCurator.E2E     Playwright tests against the demo site
 ```
 

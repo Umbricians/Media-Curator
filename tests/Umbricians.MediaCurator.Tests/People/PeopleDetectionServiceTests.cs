@@ -91,10 +91,9 @@ public class PeopleDetectionServiceTests
 
     private static readonly AiTag[] Tags = [new("street", 0.9), new("crowd", 0.8)];
 
-    [Theory]
-    [InlineData(0.93, true, 0.93)]
-    [InlineData(0.5, true, 0.5)]
-    [InlineData(0.2, false, 0.8)]
+    [TestCase(0.93, true, 0.93)]
+    [TestCase(0.5, true, 0.5)]
+    [TestCase(0.2, false, 0.8)]
     public async Task Jev_probability_is_thresholded_and_stored_with_the_confidence_of_the_answer(
         double probability, bool containsPeople, double confidence)
     {
@@ -102,31 +101,31 @@ public class PeopleDetectionServiceTests
 
         var result = await service.DetectAsync(Key, "A busy street", Tags);
 
-        Assert.NotNull(result);
-        Assert.Equal(containsPeople, result.ContainsPeople);
-        Assert.Equal(confidence, result.Confidence, 4);
-        Assert.Equal(PeopleDetectionSources.Jev, result.Source);
-        Assert.Equal("-1,100,102", repository.Rows[Key].Path);
-        Assert.Equal("/media/a.jpg", repository.Rows[Key].SourceFile);
-        Assert.Empty(chat.Prompts);
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.ContainsPeople, Is.EqualTo(containsPeople));
+        Assert.That(result.Confidence, Is.EqualTo(confidence).Within(0.00005));
+        Assert.That(result.Source, Is.EqualTo(PeopleDetectionSources.Jev));
+        Assert.That(repository.Rows[Key].Path, Is.EqualTo("-1,100,102"));
+        Assert.That(repository.Rows[Key].SourceFile, Is.EqualTo("/media/a.jpg"));
+        Assert.That(chat.Prompts, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task Without_a_Jev_decision_it_falls_back_to_Umbraco_AI()
     {
         var (service, repository, chat) = Create(new FakeJev(null));
 
         var result = await service.DetectAsync(Key, "A busy street", Tags);
 
-        Assert.NotNull(result);
-        Assert.True(result.ContainsPeople);
-        Assert.Equal(0.8, result.Confidence);
-        Assert.Equal(PeopleDetectionSources.UmbracoAi, result.Source);
-        Assert.Contains("A busy street", Assert.Single(chat.Prompts));
-        Assert.True(repository.Rows.ContainsKey(Key));
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.ContainsPeople, Is.True);
+        Assert.That(result.Confidence, Is.EqualTo(0.8));
+        Assert.That(result.Source, Is.EqualTo(PeopleDetectionSources.UmbracoAi));
+        Assert.That(TestAssert.Single(chat.Prompts), Does.Contain("A busy street"));
+        Assert.That(repository.Rows.ContainsKey(Key), Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task Umbraco_AI_is_used_when_it_is_the_decision_engine()
     {
         var jev = new FakeJev(0.9);
@@ -135,11 +134,11 @@ public class PeopleDetectionServiceTests
 
         var result = await service.DetectAsync(Key, "A bowl of fruit", Tags);
 
-        Assert.False(result!.ContainsPeople);
-        Assert.Equal(0, jev.Calls);
+        Assert.That(result!.ContainsPeople, Is.False);
+        Assert.That(jev.Calls, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task A_current_stored_decision_is_reused_without_asking_again()
     {
         var jev = new FakeJev(0.1);
@@ -148,11 +147,11 @@ public class PeopleDetectionServiceTests
 
         var result = await service.DetectAsync(Key, "A busy street", Tags);
 
-        Assert.True(result!.ContainsPeople);
-        Assert.Equal(0, jev.Calls);
+        Assert.That(result!.ContainsPeople, Is.True);
+        Assert.That(jev.Calls, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task A_decision_for_a_replaced_file_is_made_again()
     {
         var jev = new FakeJev(0.1);
@@ -161,59 +160,58 @@ public class PeopleDetectionServiceTests
 
         var result = await service.DetectAsync(Key, "A bowl of fruit", Tags);
 
-        Assert.False(result!.ContainsPeople);
-        Assert.Equal(1, jev.Calls);
+        Assert.That(result!.ContainsPeople, Is.False);
+        Assert.That(jev.Calls, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task Nothing_is_decided_without_a_description_or_with_AI_off()
     {
         var jev = new FakeJev(0.9);
         var (service, _, _) = Create(jev);
         var (off, _, _) = Create(jev, aiEnabled: false);
 
-        Assert.Null(await service.DetectAsync(Key, " ", Tags));
-        Assert.Null(await off.DetectAsync(Key, "A busy street", Tags));
-        Assert.Equal(0, jev.Calls);
+        Assert.That(await service.DetectAsync(Key, " ", Tags), Is.Null);
+        Assert.That(await off.DetectAsync(Key, "A busy street", Tags), Is.Null);
+        Assert.That(jev.Calls, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task An_unreadable_answer_stores_nothing()
     {
         var (service, repository, chat) = Create(engine: DecisionEngine.UmbracoAi);
         chat.Response = "I think so";
 
-        Assert.Null(await service.DetectAsync(Key, "A busy street", Tags));
-        Assert.Empty(repository.Rows);
+        Assert.That(await service.DetectAsync(Key, "A busy street", Tags), Is.Null);
+        Assert.That(repository.Rows, Is.Empty);
     }
 
-    [Theory]
-    [InlineData("""{"containsPeople": true, "confidence": 0.7}""", true, 0.7)]
-    [InlineData("""Here: {"ContainsPeople": "false"}""", false, 0.75)]
-    [InlineData("""{"containsPeople": true, "confidence": 7}""", true, 0.75)]
+    [TestCase("""{"containsPeople": true, "confidence": 0.7}""", true, 0.7)]
+    [TestCase("""Here: {"ContainsPeople": "false"}""", false, 0.75)]
+    [TestCase("""{"containsPeople": true, "confidence": 7}""", true, 0.75)]
     public void Umbraco_AI_answers_are_parsed_leniently(string text, bool containsPeople, double confidence)
     {
         var parsed = PeopleDetectionService.ParseUmbracoAiAnswer(text);
 
-        Assert.Equal((containsPeople, confidence), parsed);
+        Assert.That(parsed, Is.EqualTo((containsPeople, confidence)));
     }
 
-    [Fact]
+    [Test]
     public void Jev_request_is_one_noul_question_over_the_summary_and_tags()
     {
         var json = JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(
             JevPeopleDecider.BuildRequest("A busy street", Tags, "jev-latest")))!;
 
-        Assert.Equal("jev-latest", (string?)json["model"]);
-        Assert.Equal("A busy street", (string?)json["state"]!["image_summary"]);
-        Assert.Equal("crowd", (string?)json["state"]!["tags"]![1]);
+        Assert.That((string?)json["model"], Is.EqualTo("jev-latest"));
+        Assert.That((string?)json["state"]!["image_summary"], Is.EqualTo("A busy street"));
+        Assert.That((string?)json["state"]!["tags"]![1], Is.EqualTo("crowd"));
         var question = json["questions"]![JevPeopleDecider.QuestionId]!;
-        Assert.Equal("noul", (string?)question["type"]);
-        Assert.NotNull(question["criteria"]!["true"]);
-        Assert.NotNull(question["criteria"]!["false"]);
+        Assert.That((string?)question["type"], Is.EqualTo("noul"));
+        Assert.That(question["criteria"]!["true"], Is.Not.Null);
+        Assert.That(question["criteria"]!["false"], Is.Not.Null);
     }
 
-    [Fact]
+    [Test]
     public async Task Jev_decider_reads_the_noul_probability()
     {
         var handler = new StubHandler(new HttpResponseMessage(HttpStatusCode.OK)
@@ -229,11 +227,11 @@ public class PeopleDetectionServiceTests
             NullLogger<JevPeopleDecider>.Instance,
             (_, _) => Task.CompletedTask);
 
-        Assert.Equal(0.97, await decider.ProbabilityAsync("A busy street", Tags));
-        Assert.Equal("Bearer", handler.Request!.Headers.Authorization!.Scheme);
+        Assert.That(await decider.ProbabilityAsync("A busy street", Tags), Is.EqualTo(0.97));
+        Assert.That(handler.Request!.Headers.Authorization!.Scheme, Is.EqualTo("Bearer"));
     }
 
-    [Fact]
+    [Test]
     public async Task Jev_decider_returns_nothing_without_an_API_key()
     {
         var handler = new StubHandler(new HttpResponseMessage(HttpStatusCode.OK));
@@ -242,8 +240,8 @@ public class PeopleDetectionServiceTests
             new FakePeopleSettings(new MediaCuratorSiteSettings()),
             NullLogger<JevPeopleDecider>.Instance);
 
-        Assert.Null(await decider.ProbabilityAsync("A busy street", Tags));
-        Assert.Null(handler.Request);
+        Assert.That(await decider.ProbabilityAsync("A busy street", Tags), Is.Null);
+        Assert.That(handler.Request, Is.Null);
     }
 
     private sealed class StubHandler(HttpResponseMessage response) : HttpMessageHandler

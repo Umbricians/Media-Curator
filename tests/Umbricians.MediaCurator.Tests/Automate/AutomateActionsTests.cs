@@ -199,7 +199,7 @@ public class AutomateActionsTests
     private static CurationPlan PlanWith(params PlannedMove[] moves)
         => new(Guid.NewGuid(), Guid.NewGuid(), "rs", moves, []);
 
-    [Fact]
+    [Test]
     public async Task CurateFolder_dry_run_plans_without_executing()
     {
         var engine = new FakeEngine
@@ -212,16 +212,15 @@ public class AutomateActionsTests
             Context(new CurateFolderSettings { ScopeFolderKey = Guid.NewGuid().ToString(), DryRun = true }),
             CancellationToken.None);
 
-        Assert.Equal(ActionResultStatus.Success, result.Status);
-        Assert.Null(engine.ExecutedPlan);
-        Assert.Null(engine.ExecutedRemoval);
-        Assert.Equal(1, ((CurateFolderOutput)result.OutputData!).Planned);
-        Assert.Equal(0, ((CurateFolderOutput)result.OutputData!).FoldersRemoved);
+        Assert.That(result.Status, Is.EqualTo(ActionResultStatus.Success));
+        Assert.That(engine.ExecutedPlan, Is.Null);
+        Assert.That(engine.ExecutedRemoval, Is.Null);
+        Assert.That(((CurateFolderOutput)result.OutputData!).Planned, Is.EqualTo(1));
+        Assert.That(((CurateFolderOutput)result.OutputData!).FoldersRemoved, Is.EqualTo(0));
     }
 
-    [Theory]
-    [InlineData(false, EmptyFolderRemoval.RecycleBin)]
-    [InlineData(true, EmptyFolderRemoval.Delete)]
+    [TestCase(false, EmptyFolderRemoval.RecycleBin)]
+    [TestCase(true, EmptyFolderRemoval.Delete)]
     public async Task CurateFolder_removes_empty_folders_per_setting_and_outputs_the_count(bool permanent, EmptyFolderRemoval expected)
     {
         var engine = new FakeEngine
@@ -235,13 +234,13 @@ public class AutomateActionsTests
             Context(new CurateFolderSettings { ScopeFolderKey = Guid.NewGuid().ToString(), PermanentlyDeleteEmptyFolders = permanent }),
             CancellationToken.None);
 
-        Assert.Equal(expected, engine.ExecutedRemoval);
+        Assert.That(engine.ExecutedRemoval, Is.EqualTo(expected));
         // A whole-scope run sorts the whole scope tree.
-        Assert.Equal(FolderSorting.Subtree, engine.ExecutedSorting);
-        Assert.Equal(2, ((CurateFolderOutput)result.OutputData!).FoldersRemoved);
+        Assert.That(engine.ExecutedSorting, Is.EqualTo(FolderSorting.Subtree));
+        Assert.That(((CurateFolderOutput)result.OutputData!).FoldersRemoved, Is.EqualTo(2));
     }
 
-    [Fact]
+    [Test]
     public async Task CurateFolder_executes_with_automate_trigger()
     {
         var engine = new FakeEngine
@@ -254,13 +253,13 @@ public class AutomateActionsTests
             Context(new CurateFolderSettings { ScopeFolderKey = Guid.NewGuid().ToString() }),
             CancellationToken.None);
 
-        Assert.Equal(ActionResultStatus.Success, result.Status);
-        Assert.NotNull(engine.ExecutedPlan);
-        Assert.Equal("automate", engine.ExecutedTrigger);
-        Assert.Equal(1, ((CurateFolderOutput)result.OutputData!).Moved);
+        Assert.That(result.Status, Is.EqualTo(ActionResultStatus.Success));
+        Assert.That(engine.ExecutedPlan, Is.Not.Null);
+        Assert.That(engine.ExecutedTrigger, Is.EqualTo("automate"));
+        Assert.That(((CurateFolderOutput)result.OutputData!).Moved, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task CurateFolder_without_ruleset_fails_with_validation_category()
     {
         var action = new CurateFolderAction(Infrastructure(), Origins, ScopeFactory(new FakeEngine()));
@@ -269,10 +268,10 @@ public class AutomateActionsTests
             Context(new CurateFolderSettings { ScopeFolderKey = Guid.NewGuid().ToString() }),
             CancellationToken.None);
 
-        Assert.Equal(ActionResultStatus.Failed, result.Status);
+        Assert.That(result.Status, Is.EqualTo(ActionResultStatus.Failed));
     }
 
-    [Fact]
+    [Test]
     public async Task CategorizeMedia_moves_only_the_requested_item()
     {
         var mediaKey = Guid.NewGuid();
@@ -289,19 +288,19 @@ public class AutomateActionsTests
             Context(new CategorizeMediaSettings { MediaKey = mediaKey.ToString() }),
             CancellationToken.None);
 
-        Assert.Equal(ActionResultStatus.Success, result.Status);
+        Assert.That(result.Status, Is.EqualTo(ActionResultStatus.Success));
         var output = (CategorizeMediaOutput)result.OutputData!;
-        Assert.True(output.Moved);
-        Assert.Equal("2026", output.TargetPath);
-        Assert.Equal(mediaKey, Assert.Single(engine.ExecutedPlan!.Moves).MediaKey);
+        Assert.That(output.Moved, Is.True);
+        Assert.That(output.TargetPath, Is.EqualTo("2026"));
+        Assert.That(TestAssert.Single(engine.ExecutedPlan!.Moves).MediaKey, Is.EqualTo(mediaKey));
         // Planning the whole scope runs every rule (and AI recognition) for every image in it.
-        Assert.False(engine.PlannedWholeScope);
+        Assert.That(engine.PlannedWholeScope, Is.False);
         // Single-item action: no empty-folder cleanup; only the folders along its new path are sorted.
-        Assert.Equal(EmptyFolderRemoval.None, engine.ExecutedRemoval);
-        Assert.Equal(FolderSorting.TargetPaths, engine.ExecutedSorting);
+        Assert.That(engine.ExecutedRemoval, Is.EqualTo(EmptyFolderRemoval.None));
+        Assert.That(engine.ExecutedSorting, Is.EqualTo(FolderSorting.TargetPaths));
     }
 
-    [Fact]
+    [Test]
     public async Task CategorizeMedia_dry_run_reports_target_without_moving()
     {
         var mediaKey = Guid.NewGuid();
@@ -318,12 +317,12 @@ public class AutomateActionsTests
             CancellationToken.None);
 
         var output = (CategorizeMediaOutput)result.OutputData!;
-        Assert.False(output.Moved);
-        Assert.Equal("2026", output.TargetPath);
-        Assert.Null(engine.ExecutedPlan);
+        Assert.That(output.Moved, Is.False);
+        Assert.That(output.TargetPath, Is.EqualTo("2026"));
+        Assert.That(engine.ExecutedPlan, Is.Null);
     }
 
-    [Fact]
+    [Test]
     public async Task CategorizeMedia_without_governing_ruleset_reports_reason()
     {
         var action = new CategorizeMediaAction(Infrastructure(), Origins, ScopeFactory(new FakeResolver(), new FakeEngine()));
@@ -333,13 +332,13 @@ public class AutomateActionsTests
             CancellationToken.None);
 
         var output = (CategorizeMediaOutput)result.OutputData!;
-        Assert.False(output.Moved);
-        Assert.Contains("No ruleset", output.Reason);
+        Assert.That(output.Moved, Is.False);
+        Assert.That(output.Reason, Does.Contain("No ruleset"));
     }
 
     // Regression: the actions ran on a thread without the ambient execution context, so the
     // media saves they caused looked user-made and re-fired "Media Saved" automations forever.
-    [Fact]
+    [Test]
     public async Task AnalyzeImage_keeps_the_automation_origin_so_its_saves_are_recognised()
     {
         var recognition = new FakeRecognition { Result = new RecognitionResult([], "a planet") };
@@ -357,24 +356,24 @@ public class AutomateActionsTests
                 CancellationToken.None);
         }
 
-        Assert.Equal(origin, recognition.OriginSeen);
+        Assert.That(recognition.OriginSeen, Is.EqualTo(origin));
     }
 
-    [Fact]
+    [Test]
     public void AnalyzeImageSettings_accepts_binding_expression_for_mediaKey()
     {
         var schema = EditableModelSchemaBuilder.Build(typeof(AnalyzeImageSettings));
-        var mediaKeyField = Assert.Single(schema!.Fields, f => f.PropertyName == "MediaKey");
-        Assert.Equal(typeof(string), mediaKeyField.PropertyType);
+        var mediaKeyField = TestAssert.Single(schema!.Fields, f => f.PropertyName == "MediaKey");
+        Assert.That(mediaKeyField.PropertyType, Is.EqualTo(typeof(string)));
 
         var settings = JsonSerializer.Deserialize<AnalyzeImageSettings>(
             """{"mediaKey":"${trigger.mediaKey}","force":true}""",
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-        Assert.Equal("${trigger.mediaKey}", settings!.MediaKey);
+        Assert.That(settings!.MediaKey, Is.EqualTo("${trigger.mediaKey}"));
     }
 
-    [Fact]
+    [Test]
     public async Task AnalyzeImage_returns_tags_and_passes_force_flag()
     {
         var recognition = new FakeRecognition
@@ -392,12 +391,12 @@ public class AutomateActionsTests
             CancellationToken.None);
 
         var output = (AnalyzeImageOutput)result.OutputData!;
-        Assert.True(output.Analyzed);
-        Assert.Equal(["people"], output.Tags);
-        Assert.True(recognition.ForceSeen);
+        Assert.That(output.Analyzed, Is.True);
+        Assert.That(output.Tags, Is.EqualTo(["people"]));
+        Assert.That(recognition.ForceSeen, Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task AnalyzeImage_passes_step_scheme_and_outputs_classification_code()
     {
         var recognition = new FakeRecognition
@@ -419,11 +418,11 @@ public class AutomateActionsTests
             CancellationToken.None);
 
         var output = (AnalyzeImageOutput)result.OutputData!;
-        Assert.Equal("dewey-pd", recognition.SchemeSeen);
-        Assert.Equal("770", output.ClassificationCode);
+        Assert.That(recognition.SchemeSeen, Is.EqualTo("dewey-pd"));
+        Assert.That(output.ClassificationCode, Is.EqualTo("770"));
     }
 
-    [Fact]
+    [Test]
     public async Task AnalyzeImage_uses_the_scheme_of_the_images_ruleset_when_the_step_has_none()
     {
         var recognition = new FakeRecognition { Result = RecognitionResult.Empty };
@@ -437,6 +436,6 @@ public class AutomateActionsTests
             Context(new AnalyzeImageSettings { MediaKey = Guid.NewGuid().ToString() }),
             CancellationToken.None);
 
-        Assert.Equal("dewey-pd", recognition.SchemeSeen);
+        Assert.That(recognition.SchemeSeen, Is.EqualTo("dewey-pd"));
     }
 }

@@ -70,7 +70,7 @@ public class JevClassificationDeciderTests
         return new ClassificationChoice(scheme, "a church with a bell tower", [new AiTag("church", 0.9)], null, scheme.GetChildren(null));
     }
 
-    [Fact]
+    [Test]
     public async Task Asks_one_choice_question_with_every_candidate_and_returns_the_pick()
     {
         var (decider, handler, _) = Create();
@@ -78,23 +78,23 @@ public class JevClassificationDeciderTests
 
         var code = await decider.ChooseAsync(TopLevel());
 
-        Assert.Equal("200", code);
-        var (request, body) = Assert.Single(handler.Requests);
-        Assert.Equal("https://api.typesafe.ai/v1/systemone", request.RequestUri!.ToString());
-        Assert.Equal("Bearer test-key", request.Headers.Authorization!.ToString());
+        Assert.That(code, Is.EqualTo("200"));
+        var (request, body) = TestAssert.Single(handler.Requests);
+        Assert.That(request.RequestUri!.ToString(), Is.EqualTo("https://api.typesafe.ai/v1/systemone"));
+        Assert.That(request.Headers.Authorization!.ToString(), Is.EqualTo("Bearer test-key"));
 
         var json = JsonNode.Parse(body)!;
-        Assert.Equal("jev-latest", (string?)json["model"]);
-        Assert.Equal("a church with a bell tower", (string?)json["state"]!["image_summary"]);
-        Assert.Null(json["state"]!["already_classified_under"]);
+        Assert.That((string?)json["model"], Is.EqualTo("jev-latest"));
+        Assert.That((string?)json["state"]!["image_summary"], Is.EqualTo("a church with a bell tower"));
+        Assert.That(json["state"]!["already_classified_under"], Is.Null);
         var question = json["questions"]!["classification"]!;
-        Assert.Equal("choice", (string?)question["type"]);
-        Assert.Contains("DEPICTS, not the medium", (string?)question["instructions"]);
-        Assert.Equal("200 Religion", (string?)question["criteria"]!["200"]);
-        Assert.Equal(10, question["criteria"]!.AsObject().Count);
+        Assert.That((string?)question["type"], Is.EqualTo("choice"));
+        Assert.That((string?)question["instructions"], Does.Contain("DEPICTS, not the medium"));
+        Assert.That((string?)question["criteria"]!["200"], Is.EqualTo("200 Religion"));
+        Assert.That(question["criteria"]!.AsObject().Count, Is.EqualTo(10));
     }
 
-    [Fact]
+    [Test]
     public async Task Lower_levels_carry_the_parent_classification()
     {
         var (decider, handler, _) = Create();
@@ -104,13 +104,13 @@ public class JevClassificationDeciderTests
 
         var code = await decider.ChooseAsync(new ClassificationChoice(scheme, "a church", [], parent, scheme.GetChildren("200")));
 
-        Assert.Equal("280", code);
+        Assert.That(code, Is.EqualTo("280"));
         var json = JsonNode.Parse(handler.Requests[0].Body)!;
-        Assert.Equal("200 Religion", (string?)json["state"]!["already_classified_under"]);
-        Assert.Contains("within `already_classified_under`", (string?)json["questions"]!["classification"]!["instructions"]);
+        Assert.That((string?)json["state"]!["already_classified_under"], Is.EqualTo("200 Religion"));
+        Assert.That((string?)json["questions"]!["classification"]!["instructions"], Does.Contain("within `already_classified_under`"));
     }
 
-    [Fact]
+    [Test]
     public async Task Retries_when_rate_limited_or_overloaded()
     {
         var (decider, handler, delays) = Create();
@@ -120,30 +120,30 @@ public class JevClassificationDeciderTests
 
         var code = await decider.ChooseAsync(TopLevel());
 
-        Assert.Equal("700", code);
-        Assert.Equal([TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4)], delays);
+        Assert.That(code, Is.EqualTo("700"));
+        Assert.That(delays, Is.EqualTo([TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4)]));
     }
 
-    [Fact]
+    [Test]
     public async Task Returns_null_on_failure_so_the_caller_can_fall_back()
     {
         var (decider, handler, _) = Create();
         handler.Responses.Enqueue(new HttpResponseMessage(HttpStatusCode.Unauthorized));
 
-        Assert.Null(await decider.ChooseAsync(TopLevel()));
-        Assert.Single(handler.Requests);
+        Assert.That(await decider.ChooseAsync(TopLevel()), Is.Null);
+        Assert.That(handler.Requests, Has.Exactly(1).Items);
     }
 
-    [Fact]
+    [Test]
     public async Task Makes_no_call_without_an_api_key()
     {
         var (decider, handler, _) = Create(apiKey: " ");
 
-        Assert.Null(await decider.ChooseAsync(TopLevel()));
-        Assert.Empty(handler.Requests);
+        Assert.That(await decider.ChooseAsync(TopLevel()), Is.Null);
+        Assert.That(handler.Requests, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task One_step_choices_label_each_option_with_its_classes()
     {
         var (decider, handler, _) = Create();
@@ -155,8 +155,8 @@ public class JevClassificationDeciderTests
         await decider.ChooseAsync(new ClassificationChoice(scheme, "a selfie at an airport", [], null, finals, notes));
 
         var criteria = JsonNode.Parse(handler.Requests[0].Body)!["questions"]!["classification"]!["criteria"]!.AsObject();
-        Assert.Equal(finals.Count, criteria.Count);
-        Assert.Equal("910 Geography and Travels (History)", (string?)criteria["910"]);
+        Assert.That(criteria.Count, Is.EqualTo(finals.Count));
+        Assert.That((string?)criteria["910"], Is.EqualTo("910 Geography and Travels (History)"));
     }
 }
 

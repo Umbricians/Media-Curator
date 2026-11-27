@@ -117,7 +117,7 @@ public class RecognitionControllerTests
     }
 
     private static AnalyzeMediaImagesResponseModel Ok(IActionResult result)
-        => Assert.IsType<AnalyzeMediaImagesResponseModel>(Assert.IsType<OkObjectResult>(result).Value);
+        => TestAssert.IsType<AnalyzeMediaImagesResponseModel>(TestAssert.IsType<OkObjectResult>(result).Value);
 
     private static (FakeMedia Media, Guid Root, Guid Image1, Guid Image2) Tree(FakeMedia media)
     {
@@ -129,7 +129,7 @@ public class RecognitionControllerTests
         return (media, root, i1, i2);
     }
 
-    [Fact]
+    [Test]
     public async Task Analyze_all_forces_every_image_in_subfolders_and_skips_non_images()
     {
         var (c, m, r) = Create();
@@ -137,14 +137,21 @@ public class RecognitionControllerTests
 
         var result = await c.AnalyzeMediaImages(root, all: true, CancellationToken.None);
 
-        var model = Assert.IsType<AnalyzeMediaImagesResponseModel>(Assert.IsType<OkObjectResult>(result).Value);
-        Assert.Equal(2, model.Results.Count);
-        Assert.All(model.Results, x => Assert.True(x.Analyzed));
-        Assert.Equal(new[] { i1, i2 }.Order(), r.Calls.Select(x => x.Key).Order());
-        Assert.All(r.Calls, x => { Assert.True(x.Force); Assert.Equal("dewey", x.Scheme); });
+        var model = TestAssert.IsType<AnalyzeMediaImagesResponseModel>(TestAssert.IsType<OkObjectResult>(result).Value);
+        Assert.That(model.Results.Count, Is.EqualTo(2));
+        foreach (var x in model.Results)
+        {
+            Assert.That(x.Analyzed, Is.True);
+        }
+        Assert.That(r.Calls.Select(x => x.Key).Order(), Is.EqualTo(new[] { i1, i2 }.Order()));
+        foreach (var x in r.Calls)
+        {
+            Assert.That(x.Force, Is.True);
+            Assert.That(x.Scheme, Is.EqualTo("dewey"));
+        }
     }
 
-    [Fact]
+    [Test]
     public async Task Single_image_is_analyzed_alone()
     {
         var (c, m, r) = Create();
@@ -152,12 +159,12 @@ public class RecognitionControllerTests
 
         var result = await c.AnalyzeMediaImages(i1, all: true, CancellationToken.None);
 
-        var model = Assert.IsType<AnalyzeMediaImagesResponseModel>(Assert.IsType<OkObjectResult>(result).Value);
-        Assert.Single(model.Results);
-        Assert.Equal(i1, Assert.Single(r.Calls).Key);
+        var model = TestAssert.IsType<AnalyzeMediaImagesResponseModel>(TestAssert.IsType<OkObjectResult>(result).Value);
+        Assert.That(model.Results, Has.Exactly(1).Items);
+        Assert.That(TestAssert.Single(r.Calls).Key, Is.EqualTo(i1));
     }
 
-    [Fact]
+    [Test]
     public async Task Non_image_item_yields_no_results()
     {
         var (c, m, r) = Create();
@@ -165,11 +172,11 @@ public class RecognitionControllerTests
 
         var result = await c.AnalyzeMediaImages(pdf, all: true, CancellationToken.None);
 
-        Assert.Empty(Assert.IsType<AnalyzeMediaImagesResponseModel>(Assert.IsType<OkObjectResult>(result).Value).Results);
-        Assert.Empty(r.Calls);
+        Assert.That(TestAssert.IsType<AnalyzeMediaImagesResponseModel>(TestAssert.IsType<OkObjectResult>(result).Value).Results, Is.Empty);
+        Assert.That(r.Calls, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task A_failing_image_is_reported_and_the_rest_continue()
     {
         var (c, m, r) = Create();
@@ -178,12 +185,12 @@ public class RecognitionControllerTests
 
         var result = await c.AnalyzeMediaImages(root, all: true, CancellationToken.None);
 
-        var model = Assert.IsType<AnalyzeMediaImagesResponseModel>(Assert.IsType<OkObjectResult>(result).Value);
-        Assert.Equal("boom", model.Results.Single(x => x.MediaKey == i1).Error);
-        Assert.True(model.Results.Single(x => x.MediaKey == i2).Analyzed);
+        var model = TestAssert.IsType<AnalyzeMediaImagesResponseModel>(TestAssert.IsType<OkObjectResult>(result).Value);
+        Assert.That(model.Results.Single(x => x.MediaKey == i1).Error, Is.EqualTo("boom"));
+        Assert.That(model.Results.Single(x => x.MediaKey == i2).Analyzed, Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task Unknown_media_key_is_a_404_problem()
     {
         var (c, _, _) = Create();
@@ -193,12 +200,12 @@ public class RecognitionControllerTests
 
         foreach (var r in new[] { reanalyze, count })
         {
-            var problem = Assert.IsType<ProblemDetails>(Assert.IsType<NotFoundObjectResult>(r).Value);
-            Assert.Equal("Error", problem.Type);
+            var problem = TestAssert.IsType<ProblemDetails>(TestAssert.IsType<NotFoundObjectResult>(r).Value);
+            Assert.That(problem.Type, Is.EqualTo("Error"));
         }
     }
 
-    [Fact]
+    [Test]
     public async Task Too_many_images_is_a_400_and_nothing_is_analyzed()
     {
         var (c, m, r) = Create();
@@ -207,22 +214,22 @@ public class RecognitionControllerTests
 
         var result = await c.AnalyzeMediaImages(root, all: true, CancellationToken.None);
 
-        var problem = Assert.IsType<ProblemDetails>(Assert.IsType<BadRequestObjectResult>(result).Value);
-        Assert.Equal("This folder has 201 images to analyze; analyze at most 200 at a time.", problem.Title);
-        Assert.Empty(r.Calls);
+        var problem = TestAssert.IsType<ProblemDetails>(TestAssert.IsType<BadRequestObjectResult>(result).Value);
+        Assert.That(problem.Title, Is.EqualTo("This folder has 201 images to analyze; analyze at most 200 at a time."));
+        Assert.That(r.Calls, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task Count_covers_subfolders_and_ignores_non_images()
     {
         var (c, m, _) = Create();
         var (_, root, i1, _) = Tree(m);
 
-        Assert.Equal(2, Assert.IsType<MediaImageCountModel>(Assert.IsType<OkObjectResult>(await c.CountMediaImages(root, CancellationToken.None)).Value).Count);
-        Assert.Equal(1, Assert.IsType<MediaImageCountModel>(Assert.IsType<OkObjectResult>(await c.CountMediaImages(i1, CancellationToken.None)).Value).Count);
+        Assert.That(TestAssert.IsType<MediaImageCountModel>(TestAssert.IsType<OkObjectResult>(await c.CountMediaImages(root, CancellationToken.None)).Value).Count, Is.EqualTo(2));
+        Assert.That(TestAssert.IsType<MediaImageCountModel>(TestAssert.IsType<OkObjectResult>(await c.CountMediaImages(i1, CancellationToken.None)).Value).Count, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task By_default_only_images_without_a_stored_description_are_analyzed()
     {
         var (c, m, r) = Create();
@@ -231,13 +238,13 @@ public class RecognitionControllerTests
 
         var model = Ok(await c.AnalyzeMediaImages(root, all: false, CancellationToken.None));
 
-        Assert.Equal(i2, Assert.Single(r.Calls).Key);
-        Assert.True(r.Calls[0].Force); // a not-yet-analyzed image is analyzed from scratch
-        Assert.Equal(i2, Assert.Single(model.Results).MediaKey);
-        Assert.Equal(1, model.AlreadyAnalyzedCount);
+        Assert.That(TestAssert.Single(r.Calls).Key, Is.EqualTo(i2));
+        Assert.That(r.Calls[0].Force, Is.True); // a not-yet-analyzed image is analyzed from scratch
+        Assert.That(TestAssert.Single(model.Results).MediaKey, Is.EqualTo(i2));
+        Assert.That(model.AlreadyAnalyzedCount, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task A_classification_code_without_a_description_does_not_count_as_analyzed()
     {
         var (c, m, r) = Create();
@@ -247,10 +254,10 @@ public class RecognitionControllerTests
 
         await c.AnalyzeMediaImages(root, all: false, CancellationToken.None);
 
-        Assert.Equal(i1, Assert.Single(r.Calls).Key);
+        Assert.That(TestAssert.Single(r.Calls).Key, Is.EqualTo(i1));
     }
 
-    [Fact]
+    [Test]
     public async Task Analyze_all_includes_already_analyzed_images()
     {
         var (c, m, r) = Create();
@@ -260,11 +267,11 @@ public class RecognitionControllerTests
 
         var model = Ok(await c.AnalyzeMediaImages(root, all: true, CancellationToken.None));
 
-        Assert.Equal(2, r.Calls.Count);
-        Assert.Equal(0, model.AlreadyAnalyzedCount);
+        Assert.That(r.Calls.Count, Is.EqualTo(2));
+        Assert.That(model.AlreadyAnalyzedCount, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Without_stored_descriptions_a_classification_code_marks_an_image_analyzed()
     {
         var (c, m, r) = Create(persistDescriptions: false);
@@ -273,23 +280,23 @@ public class RecognitionControllerTests
 
         await c.AnalyzeMediaImages(root, all: false, CancellationToken.None);
 
-        Assert.Equal(i2, Assert.Single(r.Calls).Key);
+        Assert.That(TestAssert.Single(r.Calls).Key, Is.EqualTo(i2));
     }
 
-    [Fact]
+    [Test]
     public async Task Count_reports_images_not_yet_analyzed()
     {
         var (c, m, _) = Create();
         var (_, root, i1, _) = Tree(m);
         MarkAnalyzed(m, i1);
 
-        var count = Assert.IsType<MediaImageCountModel>(Assert.IsType<OkObjectResult>(await c.CountMediaImages(root, CancellationToken.None)).Value);
+        var count = TestAssert.IsType<MediaImageCountModel>(TestAssert.IsType<OkObjectResult>(await c.CountMediaImages(root, CancellationToken.None)).Value);
 
-        Assert.Equal(2, count.Count);
-        Assert.Equal(1, count.NotAnalyzedCount);
+        Assert.That(count.Count, Is.EqualTo(2));
+        Assert.That(count.NotAnalyzedCount, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task The_image_limit_applies_only_to_images_being_analyzed()
     {
         var (c, m, r) = Create();
@@ -302,38 +309,36 @@ public class RecognitionControllerTests
 
         var model = Ok(await c.AnalyzeMediaImages(root, all: false, CancellationToken.None));
 
-        Assert.Single(r.Calls);
-        Assert.Equal(RecognitionController.MaxAnalyzeImages + 4, model.AlreadyAnalyzedCount);
+        Assert.That(r.Calls, Has.Exactly(1).Items);
+        Assert.That(model.AlreadyAnalyzedCount, Is.EqualTo(RecognitionController.MaxAnalyzeImages + 4));
     }
 
-    [Fact]
+    [Test]
     public async Task Listing_images_to_analyze_matches_what_a_folder_run_would_send()
     {
         var (c, m, _) = Create();
         var (_, root, i1, i2) = Tree(m);
         MarkAnalyzed(m, i1);
 
-        var pending = Assert.IsType<MediaImagesToAnalyzeModel>(Assert.IsType<OkObjectResult>(
-            await c.ListImagesToAnalyze(root, all: false, CancellationToken.None)).Value);
-        var everything = Assert.IsType<MediaImagesToAnalyzeModel>(Assert.IsType<OkObjectResult>(
-            await c.ListImagesToAnalyze(root, all: true, CancellationToken.None)).Value);
+        var pending = TestAssert.IsType<MediaImagesToAnalyzeModel>(TestAssert.IsType<OkObjectResult>(await c.ListImagesToAnalyze(root, all: false, CancellationToken.None)).Value);
+        var everything = TestAssert.IsType<MediaImagesToAnalyzeModel>(TestAssert.IsType<OkObjectResult>(await c.ListImagesToAnalyze(root, all: true, CancellationToken.None)).Value);
 
-        Assert.Equal(i2, Assert.Single(pending.Images).MediaKey);
-        Assert.Equal("b.jpg", pending.Images[0].MediaName);
-        Assert.Equal(1, pending.AlreadyAnalyzedCount);
-        Assert.Equal(new[] { i1, i2 }.Order(), everything.Images.Select(i => i.MediaKey).Order());
-        Assert.Equal(0, everything.AlreadyAnalyzedCount);
+        Assert.That(TestAssert.Single(pending.Images).MediaKey, Is.EqualTo(i2));
+        Assert.That(pending.Images[0].MediaName, Is.EqualTo("b.jpg"));
+        Assert.That(pending.AlreadyAnalyzedCount, Is.EqualTo(1));
+        Assert.That(everything.Images.Select(i => i.MediaKey).Order(), Is.EqualTo(new[] { i1, i2 }.Order()));
+        Assert.That(everything.AlreadyAnalyzedCount, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Listing_images_for_an_unknown_key_is_a_404()
     {
         var (c, _, _) = Create();
 
-        Assert.IsType<NotFoundObjectResult>(await c.ListImagesToAnalyze(Guid.NewGuid(), all: false, CancellationToken.None));
+        Assert.That(await c.ListImagesToAnalyze(Guid.NewGuid(), all: false, CancellationToken.None), Is.TypeOf<NotFoundObjectResult>());
     }
 
-    [Fact]
+    [Test]
     public async Task Folder_analysis_runs_images_in_parallel_and_keeps_their_order()
     {
         var media = new FakeMedia();
@@ -356,14 +361,17 @@ public class RecognitionControllerTests
 
         var model = Ok(await controller.AnalyzeMediaImages(root, all: true, CancellationToken.None));
 
-        Assert.Equal(1, parallel.Runs);
-        Assert.Equal(images, model.Results.Select(r => r.MediaKey));
-        Assert.False(model.Results[2].Analyzed);
-        Assert.Equal("boom", model.Results[2].Error);
-        Assert.Equal(5, model.Results.Count(r => r.Analyzed));
+        Assert.That(parallel.Runs, Is.EqualTo(1));
+        Assert.That(model.Results.Select(r => r.MediaKey), Is.EqualTo(images));
+        Assert.That(model.Results[2].Analyzed, Is.False);
+        Assert.That(model.Results[2].Error, Is.EqualTo("boom"));
+        Assert.That(model.Results.Count(r => r.Analyzed), Is.EqualTo(5));
         // Each image is classified with its own ruleset's scheme; one outside any classification ruleset gets none.
-        Assert.Null(recognition.Calls.Single(c => c.Key == images[0]).Scheme);
-        Assert.All(recognition.Calls.Where(c => c.Key != images[0]), c => Assert.Equal("dewey", c.Scheme));
+        Assert.That(recognition.Calls.Single(c => c.Key == images[0]).Scheme, Is.Null);
+        foreach (var c in recognition.Calls.Where(c => c.Key != images[0]))
+        {
+            Assert.That(c.Scheme, Is.EqualTo("dewey"));
+        }
     }
 
     private sealed class FakePeople(Tests.People.FakePeopleRepository repository) : IPeopleDetectionService
@@ -397,7 +405,7 @@ public class RecognitionControllerTests
         return (controller, media, recognition, people, repository);
     }
 
-    [Fact]
+    [Test]
     public async Task With_people_detection_on_analyzed_images_without_a_people_decision_count_as_not_analyzed()
     {
         var (c, m, _, _, repository) = CreateWithPeople();
@@ -406,14 +414,13 @@ public class RecognitionControllerTests
         MarkAnalyzed(m, i2);
         repository.Add(i2, "-1,1,2");
 
-        var count = Assert.IsType<MediaImageCountModel>(Assert.IsType<OkObjectResult>(
-            await c.CountMediaImages(root, CancellationToken.None)).Value);
+        var count = TestAssert.IsType<MediaImageCountModel>(TestAssert.IsType<OkObjectResult>(await c.CountMediaImages(root, CancellationToken.None)).Value);
 
-        Assert.Equal(2, count.Count);
-        Assert.Equal(1, count.NotAnalyzedCount);
+        Assert.That(count.Count, Is.EqualTo(2));
+        Assert.That(count.NotAnalyzedCount, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task With_people_detection_off_people_decisions_do_not_affect_the_count()
     {
         var (c, m, _, _, _) = CreateWithPeople(detectPeople: false);
@@ -421,41 +428,40 @@ public class RecognitionControllerTests
         MarkAnalyzed(m, i1);
         MarkAnalyzed(m, i2);
 
-        var count = Assert.IsType<MediaImageCountModel>(Assert.IsType<OkObjectResult>(
-            await c.CountMediaImages(root, CancellationToken.None)).Value);
+        var count = TestAssert.IsType<MediaImageCountModel>(TestAssert.IsType<OkObjectResult>(await c.CountMediaImages(root, CancellationToken.None)).Value);
 
-        Assert.Equal(0, count.NotAnalyzedCount);
+        Assert.That(count.NotAnalyzedCount, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Keeping_existing_analysis_decides_people_from_it_without_sending_the_image_again()
     {
         var (c, m, r, people, _) = CreateWithPeople();
         var (_, _, analyzed, fresh) = Tree(m);
         MarkAnalyzed(m, analyzed);
 
-        var result = Assert.IsType<ReanalyzeImagesResponseModel>(Assert.IsType<OkObjectResult>(await c.ReanalyzeImages(
+        var result = TestAssert.IsType<ReanalyzeImagesResponseModel>(TestAssert.IsType<OkObjectResult>(await c.ReanalyzeImages(
             new ReanalyzeImagesRequestModel { MediaKeys = [analyzed, fresh], KeepExistingAnalysis = true },
             CancellationToken.None)).Value);
 
-        Assert.False(r.Calls.Single(x => x.Key == analyzed).Force);
-        Assert.True(r.Calls.Single(x => x.Key == fresh).Force);
-        var decided = Assert.Single(people.Calls);
-        Assert.Equal((analyzed, "A cat", false), decided);
-        Assert.True(result.Results.Single(x => x.MediaKey == analyzed).ContainsPeople);
+        Assert.That(r.Calls.Single(x => x.Key == analyzed).Force, Is.False);
+        Assert.That(r.Calls.Single(x => x.Key == fresh).Force, Is.True);
+        var decided = TestAssert.Single(people.Calls);
+        Assert.That(decided, Is.EqualTo((analyzed, "A cat", false)));
+        Assert.That(result.Results.Single(x => x.MediaKey == analyzed).ContainsPeople, Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task Re_analysis_reports_no_people_result_while_detection_is_off()
     {
         var (c, m, _, people, _) = CreateWithPeople(detectPeople: false);
         var (_, _, image, _) = Tree(m);
 
-        var result = Assert.IsType<ReanalyzeImagesResponseModel>(Assert.IsType<OkObjectResult>(await c.ReanalyzeImages(
+        var result = TestAssert.IsType<ReanalyzeImagesResponseModel>(TestAssert.IsType<OkObjectResult>(await c.ReanalyzeImages(
             new ReanalyzeImagesRequestModel { MediaKeys = [image] },
             CancellationToken.None)).Value);
 
-        Assert.Null(Assert.Single(result.Results).ContainsPeople);
-        Assert.Empty(people.Calls);
+        Assert.That(TestAssert.Single(result.Results).ContainsPeople, Is.Null);
+        Assert.That(people.Calls, Is.Empty);
     }
 }

@@ -5,7 +5,7 @@ using Umbricians.MediaCurator.Core;
 
 namespace Umbricians.MediaCurator.Tests;
 
-internal static class TestContext
+internal static class CurationContexts
 {
     public static CurationContext Create(
         string name = "Sample Image",

@@ -5,19 +5,19 @@ namespace Umbricians.MediaCurator.Tests.Recognition;
 
 public class ClassificationCodeValidatorTests
 {
-    [Fact]
+    [Test]
     public void Validate_accepts_known_scheme_code()
     {
         var scheme = new DeweyPublicDomainScheme();
 
-        Assert.Equal("770", ClassificationCodeValidator.Validate(scheme, "770"));
+        Assert.That(ClassificationCodeValidator.Validate(scheme, "770"), Is.EqualTo("770"));
     }
 
-    [Fact]
+    [Test]
     public void Validate_rejects_unknown_code()
     {
         var scheme = new DeweyPublicDomainScheme();
 
-        Assert.Null(ClassificationCodeValidator.Validate(scheme, "XYZ999"));
+        Assert.That(ClassificationCodeValidator.Validate(scheme, "XYZ999"), Is.Null);
     }
 }

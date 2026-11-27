@@ -46,7 +46,7 @@ public class ParallelMediaWorkTests
         return new ParallelMediaWork(provider.GetRequiredService<IServiceScopeFactory>(), new Settings(parallel), flows);
     }
 
-    [Fact]
+    [Test]
     public async Task Runs_up_to_the_configured_number_at_once_and_keeps_input_order()
     {
         var work = Create(parallel: 3);
@@ -68,11 +68,11 @@ public class ParallelMediaWorkTests
                 return i * 10;
             });
 
-        Assert.Equal(Enumerable.Range(0, 12).Select(i => i * 10), results);
-        Assert.Equal(3, maxSeen);
+        Assert.That(results, Is.EqualTo(Enumerable.Range(0, 12).Select(i => i * 10)));
+        Assert.That(maxSeen, Is.EqualTo(3));
     }
 
-    [Fact]
+    [Test]
     public async Task Each_item_gets_its_own_service_scope()
     {
         var work = Create(parallel: 4);
@@ -81,10 +81,10 @@ public class ParallelMediaWorkTests
             Enumerable.Range(0, 6).ToList(),
             (services, _, _) => Task.FromResult(services.GetRequiredService<PerScope>().Id));
 
-        Assert.Equal(6, ids.Distinct().Count());
+        Assert.That(ids.Distinct().Count(), Is.EqualTo(6));
     }
 
-    [Fact]
+    [Test]
     public async Task Workers_do_not_inherit_the_callers_ambient_context()
     {
         var work = Create(parallel: 2);
@@ -92,11 +92,11 @@ public class ParallelMediaWorkTests
 
         var seen = await work.RunAsync([1, 2], (_, _, _) => Task.FromResult(Ambient.Value));
 
-        Assert.All(seen, Assert.Null);
-        Assert.Equal("caller", Ambient.Value);
+        Assert.That(seen, Is.All.Null);
+        Assert.That(Ambient.Value, Is.EqualTo("caller"));
     }
 
-    [Fact]
+    [Test]
     public async Task Context_flows_carry_chosen_state_into_workers()
     {
         var work = Create(parallel: 2, new AmbientFlow());
@@ -104,10 +104,13 @@ public class ParallelMediaWorkTests
 
         var seen = await work.RunAsync([1, 2, 3], (_, _, _) => Task.FromResult(Ambient.Value));
 
-        Assert.All(seen, v => Assert.Equal("automation-42", v));
+        foreach (var v in seen)
+        {
+            Assert.That(v, Is.EqualTo("automation-42"));
+        }
     }
 
-    [Fact]
+    [Test]
     public async Task A_failing_item_fails_the_run()
     {
         var work = Create(parallel: 2);

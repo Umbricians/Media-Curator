@@ -33,7 +33,7 @@ public class RulesetResolverTests
     private static Ruleset RulesetFor(Guid scope, bool enabled = true, string name = "rs")
         => new() { ScopeRootKey = scope, Name = name, Enabled = enabled };
 
-    [Fact]
+    [Test]
     public async Task Nearest_ancestor_ruleset_wins()
     {
         var item = Guid.NewGuid();
@@ -47,10 +47,10 @@ public class RulesetResolverTests
 
         var resolved = await new RulesetResolver(repo, ancestry).ResolveForItemAsync(item);
 
-        Assert.Equal("B", resolved!.Name);
+        Assert.That(resolved!.Name, Is.EqualTo("B"));
     }
 
-    [Fact]
+    [Test]
     public async Task Disabled_rulesets_are_passed_over_for_an_enabled_ancestor()
     {
         var item = Guid.NewGuid();
@@ -64,10 +64,10 @@ public class RulesetResolverTests
 
         var resolved = await new RulesetResolver(repo, ancestry).ResolveForItemAsync(item);
 
-        Assert.Equal("active", resolved!.Name);
+        Assert.That(resolved!.Name, Is.EqualTo("active"));
     }
 
-    [Fact]
+    [Test]
     public async Task Null_when_no_ancestor_has_a_ruleset()
     {
         var item = Guid.NewGuid();
@@ -75,6 +75,6 @@ public class RulesetResolverTests
 
         var resolved = await new RulesetResolver(new FakeRepository(), ancestry).ResolveForItemAsync(item);
 
-        Assert.Null(resolved);
+        Assert.That(resolved, Is.Null);
     }
 }
