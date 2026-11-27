@@ -8,7 +8,12 @@
   "LicenseTypes": ["Free"],
   "DocumentationUrl": "https://github.com/Umbricians/Media-Curator/blob/main/docs/getting-started.md",
   "IssueTrackerUrl": "https://github.com/Umbricians/Media-Curator/issues",
-  "Screenshots": [],
+  "Screenshots": [
+    {
+      "ImageUrl": "https://raw.githubusercontent.com/Umbricians/Media-Curator/main/docs/images/people-detection-tree-badges.png",
+      "Caption": "The media tree, sorted by Media Curator, with badges on images that show people"
+    }
+  ],
   "RelatedPackages": [
     { "PackageId": "Umbricians.MediaCurator.Automate", "Description": "Media Curator triggers and actions for Umbraco.Automate workflows." }
   ],
