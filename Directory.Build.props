@@ -71,6 +71,10 @@
     <!-- The default excludes cover only the folders above, so a plain bin or obj (from another tool) would be compiled as
          source. -->
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+    <!-- XML doc comment mistakes fail the build, so they can't build up in the published IntelliSense docs: a public
+         member without docs (CS1591), a parameter missing from a member's docs (CS1573), a doc comment C# ignores
+         (CS1587) or one that names a parameter that doesn't exist (CS1572, CS1734). -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS1572;CS1573;CS1587;CS1591;CS1734</WarningsAsErrors>
   </PropertyGroup>
 
   <Target Name="CheckUmbracoMajor" BeforeTargets="Restore;Build" Condition="'$(UmbracoTargetFramework)' == ''">
