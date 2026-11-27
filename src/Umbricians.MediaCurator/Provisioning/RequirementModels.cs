@@ -16,12 +16,16 @@ internal enum RequirementStatus
 }
 
 /// <summary>The status of one requirement against one media type.</summary>
+/// <param name="ProviderAlias">The alias of the provider that declares the requirement.</param>
+/// <param name="Requirement">The property the provider needs.</param>
+/// <param name="MediaTypeAlias">The media type checked.</param>
+/// <param name="Status">Whether the media type has the property.</param>
+/// <param name="CandidatePropertyAlias">For PartialMatch: an existing property the requirement could map onto.</param>
 internal sealed record RequirementStatusItem(
     string ProviderAlias,
     PropertyRequirement Requirement,
     string MediaTypeAlias,
     RequirementStatus Status,
-    /// <summary>For PartialMatch: an existing property the requirement could map onto.</summary>
     string? CandidatePropertyAlias);
 
 internal sealed record RequirementReport(IReadOnlyList<RequirementStatusItem> Items)
@@ -40,11 +44,14 @@ internal enum ApprovalAction
 
 /// <summary>One user-approved provisioning action (consent is granular per
 /// requirement / media type combination, §7).</summary>
+/// <param name="RequirementAlias">The alias of the property the provider needs.</param>
+/// <param name="MediaTypeAlias">The media type to change.</param>
+/// <param name="Action">Whether to create the property or map onto an existing one.</param>
+/// <param name="MapToPropertyAlias">Required when Action is Map: the existing property alias to map onto.</param>
 internal sealed record ProvisioningApproval(
     string RequirementAlias,
     string MediaTypeAlias,
     ApprovalAction Action,
-    /// <summary>Required when Action is Map: the existing property alias to map onto.</summary>
     string? MapToPropertyAlias = null);
 
 internal sealed record ProvisioningResult(

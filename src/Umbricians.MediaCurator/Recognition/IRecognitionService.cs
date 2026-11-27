@@ -3,6 +3,10 @@ namespace Umbricians.MediaCurator.Recognition;
 /// <summary>A tag the AI gave an image, with how sure it is, from 0 to 1.</summary>
 public sealed record AiTag(string Name, double Confidence);
 
+/// <param name="Tags">The tags the AI gave the image.</param>
+/// <param name="Description">The AI's description of the image.</param>
+/// <param name="ClassificationCode">The classification code the AI chose, or null.</param>
+/// <param name="SourceUpdateDate">The media item's update date at the time it was analysed.</param>
 /// <param name="ClassificationMethod">How the AI chose <paramref name="ClassificationCode"/>, e.g.
 /// "dewey-pd:one-step-v1". A code stored by an older method is re-decided from the saved description;
 /// null for results from before methods were recorded.</param>

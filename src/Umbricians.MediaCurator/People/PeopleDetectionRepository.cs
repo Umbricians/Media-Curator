@@ -6,11 +6,14 @@ using Umbraco.Extensions;
 namespace Umbricians.MediaCurator.People;
 
 /// <summary>Whether one image shows people, as decided from its AI description.</summary>
+/// <param name="MediaKey">The media item the decision is for.</param>
+/// <param name="ContainsPeople">Whether the image shows people.</param>
 /// <param name="Confidence">Probability (0–1) of the stored answer, so 0.9 means "90% sure".</param>
 /// <param name="Source">What decided it: <see cref="PeopleDetectionSources"/>.</param>
 /// <param name="Path">The media item's Umbraco path ("-1,1051,1073"), kept current as media moves, so folders
 /// can find flagged images below them with one prefix query.</param>
 /// <param name="SourceFile">The media file the decision describes; a different file makes it stale.</param>
+/// <param name="UpdateDate">When the decision was made.</param>
 internal sealed record PeopleDetection(
     Guid MediaKey,
     bool ContainsPeople,
