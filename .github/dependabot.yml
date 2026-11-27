@@ -27,6 +27,9 @@ updates:
       # (docs/RELEASING.md), not an update.
       - dependency-name: "Umbraco.*"
         update-types: ["version-update:semver-major"]
+      # Only the Umbraco 17 build uses Swashbuckle, and it stays on the major Umbraco 17 ships with.
+      - dependency-name: "Swashbuckle.AspNetCore"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /src/Umbricians.MediaCurator.Automate/Client
