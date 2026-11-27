@@ -69,11 +69,20 @@ function check(text) {
 }
 
 function rewriteProse(text) {
-  return text
-    .replace(/<!--[\s\S]*?-->/g, "")
+  return withoutComments(text)
     .replace(/<img [^>]*>/g, toMarkdownImage)
     .replace(/(!?)\[([^\]]*)\]\(([^)\s]+)\)/g, toRepositoryLink)
     .replace(/\n{3,}/g, "\n\n");
+}
+
+// Removing one comment can join the text around it into another, so this repeats until none is left.
+function withoutComments(text) {
+  let previous;
+  do {
+    previous = text;
+    text = text.replace(/<!--[\s\S]*?-->/g, "");
+  } while (text !== previous);
+  return text;
 }
 
 function toRepositoryLink(match, bang, text, target) {

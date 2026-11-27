@@ -70,6 +70,14 @@ test("the ref defaults to main", () => {
   assert.match(readme, /raw\.githubusercontent\.com\/Owner\/Repo\/main\/docs\/images\/screenshot\.png/);
 });
 
+test("a comment left by removing another is removed too", () => {
+  const { status, stderr, readme } = run(`# Package\n\nBefore <!<!-- inner -->-- outer --> after\n`);
+
+  assert.equal(status, 0, stderr);
+  assert.match(readme, /Before {2}after/);
+  assert.doesNotMatch(readme, /<!|-->/);
+});
+
 const broken = [
   ["a link with a title stays relative", `See [docs](docs/a.md "Docs").\n`, /relative link or image: "docs\/a\.md"/],
   ["an image tag over two lines is left", `<p>x</p>\n\n<img\n  src="a.png">\n`, /<img left in the text/],
