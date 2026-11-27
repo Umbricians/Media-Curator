@@ -1,5 +1,7 @@
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp.PixelFormats;
+using Umbraco.Cms.Imaging.ImageSharp.Media;
 using Umbricians.MediaCurator.Core;
 using Umbricians.MediaCurator.Providers;
 
@@ -7,7 +9,10 @@ namespace Umbricians.MediaCurator.Tests.Providers;
 
 public class SmallProvidersTests
 {
-    private static CurationContext WithImage(CurationContext ctx, int w, int h)
+    // The extractor a site uses, from Umbraco.Cms.Imaging.ImageSharp.
+    private static DimensionsProvider Dimensions() => new(new ImageSharpDimensionExtractor(SixLabors.ImageSharp.Configuration.Default));
+
+    private static CurationContext WithImage(CurationContext ctx, int w, int h, ushort? exifOrientation = null)
         => ctx with
         {
             OpenFile = () =>
@@ -15,7 +20,16 @@ public class SmallProvidersTests
                 var stream = new MemoryStream();
                 using (var image = new Image<Rgb24>(w, h, new Rgb24(1, 2, 3)))
                 {
-                    image.SaveAsPng(stream);
+                    if (exifOrientation is { } orientation)
+                    {
+                        image.Metadata.ExifProfile = new ExifProfile();
+                        image.Metadata.ExifProfile.SetValue(ExifTag.Orientation, orientation);
+                        image.SaveAsJpeg(stream);
+                    }
+                    else
+                    {
+                        image.SaveAsPng(stream);
+                    }
                 }
 
                 stream.Position = 0;
@@ -30,9 +44,30 @@ public class SmallProvidersTests
     [InlineData(500, 510, "Square")] // within 5% tolerance
     public async Task Dimensions_buckets_by_orientation(int w, int h, string expected)
     {
-        var result = await new DimensionsProvider().ResolveAsync(WithImage(TestContext.Create(), w, h));
+        var result = await Dimensions().ResolveAsync(WithImage(TestContext.Create(), w, h));
 
         Assert.Equal(expected, result.ResolvedValue);
+    }
+
+    // A camera held upright often stores the photo sideways with an EXIF orientation that turns it upright (6 and 8
+    // turn it a quarter), so it is sorted as it is shown.
+    [Theory]
+    [InlineData((ushort)1, "Landscape")]
+    [InlineData((ushort)6, "Portrait")]
+    [InlineData((ushort)8, "Portrait")]
+    public async Task Dimensions_follow_the_EXIF_orientation(ushort orientation, string expected)
+    {
+        var result = await Dimensions().ResolveAsync(WithImage(TestContext.Create(), 800, 400, orientation));
+
+        Assert.Equal(expected, result.ResolvedValue);
+    }
+
+    [Fact]
+    public async Task Dimensions_unresolved_for_a_file_that_isnt_an_image()
+    {
+        var context = TestContext.Create() with { OpenFile = () => new MemoryStream("not an image"u8.ToArray()) };
+
+        Assert.False((await Dimensions().ResolveAsync(context)).IsResolved);
     }
 
     [Theory]

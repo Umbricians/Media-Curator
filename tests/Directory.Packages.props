@@ -9,6 +9,8 @@
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.9.0" />
+    <!-- Umbraco's image dimension extractor, which the Dimensions provider uses on a site. -->
+    <PackageVersion Include="Umbraco.Cms.Imaging.ImageSharp" Version="$(UmbracoVersion)" />
 
     <!-- Overrides Umbraco/Microsoft.Data.Sqlite's vulnerable transitive SQLitePCLRaw 2.x native bundle. -->
     <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
