@@ -1,5 +1,5 @@
 {
-  "name": "media-curator-automate",
+  "name": "umbricians-media-curator-automate",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -8,8 +8,11 @@
     "watch": "tsc && vite build --watch"
   },
   "devDependencies": {
-    "@umbraco-cms/backoffice": "^17.7.0",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.1"
+    "@umbraco-cms/backoffice": "17.8.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.4.0"
+  },
+  "overrides": {
+    "js-yaml": "^4.3.2"
   }
 }

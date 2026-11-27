@@ -91,7 +91,12 @@ internal static class RecognitionImagePreparer
         {
             Quality = JpegQuality,
             Interleaved = true,
+#if UMBRACO_19_OR_GREATER
+            // Umbraco 19 brings ImageSharp 4, which renamed JpegEncodingColor.
+            ColorType = JpegColorType.YCbCrRatio420,
+#else
             ColorType = JpegEncodingColor.YCbCrRatio420,
+#endif
         });
         return output.ToArray();
     }

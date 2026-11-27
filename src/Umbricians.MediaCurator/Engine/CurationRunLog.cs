@@ -4,7 +4,7 @@ using Umbraco.Cms.Infrastructure.Scoping;
 
 namespace Umbricians.MediaCurator.Engine;
 
-public sealed record CurationRun(
+internal sealed record CurationRun(
     Guid Key,
     Guid ScopeFolderKey,
     Guid RulesetKey,
@@ -15,7 +15,7 @@ public sealed record CurationRun(
     int AlreadyInPlace,
     int Failed);
 
-public sealed record CurationRunItem(
+internal sealed record CurationRunItem(
     Guid RunKey,
     Guid MediaKey,
     string MediaName,
@@ -27,7 +27,7 @@ public sealed record CurationRunItem(
 
 /// <summary>Activity log: what moved, when, why, by which trigger — with original locations
 /// recorded so a run can be undone (§11.2). Environment-local; never synced (§13).</summary>
-public interface ICurationRunLog
+internal interface ICurationRunLog
 {
     Task<Guid> StartRunAsync(Guid scopeFolderKey, Guid rulesetKey, string trigger, CancellationToken ct = default);
 
@@ -119,8 +119,13 @@ internal sealed class CurationRunItemDto
 internal sealed class CurationRunLog : ICurationRunLog
 {
     private readonly IScopeProvider _scopeProvider;
+    private readonly TimeProvider _time;
 
-    public CurationRunLog(IScopeProvider scopeProvider) => _scopeProvider = scopeProvider;
+    public CurationRunLog(IScopeProvider scopeProvider, TimeProvider time)
+    {
+        _scopeProvider = scopeProvider;
+        _time = time;
+    }
 
     public Task<Guid> StartRunAsync(Guid scopeFolderKey, Guid rulesetKey, string trigger, CancellationToken ct = default)
     {
@@ -132,7 +137,7 @@ internal sealed class CurationRunLog : ICurationRunLog
             ScopeFolderKey = scopeFolderKey,
             RulesetKey = rulesetKey,
             Trigger = trigger,
-            Started = DateTime.UtcNow,
+            Started = _time.GetUtcNow().UtcDateTime,
         });
         scope.Complete();
         return Task.FromResult(key);
@@ -162,7 +167,7 @@ internal sealed class CurationRunLog : ICurationRunLog
         var dto = scope.Database.SingleOrDefaultById<CurationRunDto>(runKey);
         if (dto is not null)
         {
-            dto.Completed = DateTime.UtcNow;
+            dto.Completed = _time.GetUtcNow().UtcDateTime;
             dto.Moved = moved;
             dto.AlreadyInPlace = alreadyInPlace;
             dto.Failed = failed;

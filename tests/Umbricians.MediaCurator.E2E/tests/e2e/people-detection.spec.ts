@@ -14,14 +14,14 @@ test.describe('MediaCurator people detection', () => {
   let original: Settings | undefined;
 
   test.beforeEach(async ({ umbracoApi }) => {
-    original = (await (await umbracoApi.get(`${base()}/umbraco/mediacurator/api/v1/settings`)).json()) as Settings;
+    original = (await (await umbracoApi.get(`${base()}/umbraco/umbriciansmediacurator/api/v1/settings`)).json()) as Settings;
     await removeTestMedia(umbracoApi, imageName);
     await removeTestMedia(umbracoApi, subFolderName);
     await removeTestMedia(umbracoApi, rootFolderName);
   });
 
   test.afterEach(async ({ umbracoApi }) => {
-    if (original) await umbracoApi.put(`${base()}/umbraco/mediacurator/api/v1/settings`, original);
+    if (original) await umbracoApi.put(`${base()}/umbraco/umbriciansmediacurator/api/v1/settings`, original);
     await removeTestMedia(umbracoApi, imageName);
     await removeTestMedia(umbracoApi, subFolderName);
     await removeTestMedia(umbracoApi, rootFolderName);
@@ -29,7 +29,7 @@ test.describe('MediaCurator people detection', () => {
 
   test('the Detect people setting is saved from the setup', async ({ umbracoUi, umbracoApi }) => {
     const page = umbracoUi.page;
-    await umbracoApi.put(`${base()}/umbraco/mediacurator/api/v1/settings`, { ...original, detectPeople: false });
+    await umbracoApi.put(`${base()}/umbraco/umbriciansmediacurator/api/v1/settings`, { ...original, detectPeople: false });
 
     await umbracoUi.goToBackOffice();
     await openMediaCuratorRoot(page, 'setup');
@@ -37,7 +37,7 @@ test.describe('MediaCurator people detection', () => {
     await page.getByTestId('mc:settings-save').click();
 
     await expect
-      .poll(async () => ((await (await umbracoApi.get(`${base()}/umbraco/mediacurator/api/v1/settings`)).json()) as Settings).detectPeople)
+      .poll(async () => ((await (await umbracoApi.get(`${base()}/umbraco/umbriciansmediacurator/api/v1/settings`)).json()) as Settings).detectPeople)
       .toBe(true);
   });
 
@@ -46,7 +46,7 @@ test.describe('MediaCurator people detection', () => {
     const subId = await createFolderUnder(umbracoApi, subFolderName, rootId);
     const imageId = await createTestImage(umbracoApi, imageName, subId);
 
-    const response = await umbracoApi.post(`${base()}/umbraco/mediacurator/api/v1/people/ancestor-folders`, {
+    const response = await umbracoApi.post(`${base()}/umbraco/umbriciansmediacurator/api/v1/people/ancestor-folders`, {
       mediaKeys: [imageId],
     });
     const { folderKeys } = (await response.json()) as { folderKeys: string[] };

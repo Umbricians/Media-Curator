@@ -1,15 +1,20 @@
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Services;
+using Umbraco.Cms.Web.Common.Authorization;
+using Umbraco.Cms.Web.Common.Routing;
 using Umbricians.MediaCurator.Controllers.ViewModels;
 
 namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
-[ApiExplorerSettings(GroupName = "MediaCurator")]
-public class PeopleController : MediaCuratorApiControllerBase
+[ApiExplorerSettings(GroupName = "Media Curator")]
+[BackOfficeRoute("umbriciansmediacurator/api/v{version:apiVersion}")]
+[Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]
+internal class PeopleController : MediaCuratorControllerBase
 {
     private const int RecycleBinId = -21;
 

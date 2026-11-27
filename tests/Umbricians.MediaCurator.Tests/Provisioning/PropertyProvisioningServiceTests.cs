@@ -118,19 +118,19 @@ public class PropertyProvisioningServiceTests
         return (service, schema, maps, ruleset.Key);
     }
 
-    [Fact]
+    [Test]
     public async Task Missing_property_is_reported_missing()
     {
         var (service, _, _, key) = Setup();
 
         var report = await service.CheckAsync(key);
 
-        var item = Assert.Single(report.Items);
-        Assert.Equal(RequirementStatus.Missing, item.Status);
-        Assert.False(report.AllSatisfied);
+        var item = TestAssert.Single(report.Items);
+        Assert.That(item.Status, Is.EqualTo(RequirementStatus.Missing));
+        Assert.That(report.AllSatisfied, Is.False);
     }
 
-    [Fact]
+    [Test]
     public async Task Exact_alias_and_editor_match_is_satisfied()
     {
         var (service, schema, _, key) = Setup();
@@ -138,10 +138,10 @@ public class PropertyProvisioningServiceTests
 
         var report = await service.CheckAsync(key);
 
-        Assert.Equal(RequirementStatus.Satisfied, Assert.Single(report.Items).Status);
+        Assert.That(TestAssert.Single(report.Items).Status, Is.EqualTo(RequirementStatus.Satisfied));
     }
 
-    [Fact]
+    [Test]
     public async Task Same_alias_different_editor_is_partial_match()
     {
         var (service, schema, _, key) = Setup();
@@ -149,12 +149,12 @@ public class PropertyProvisioningServiceTests
 
         var report = await service.CheckAsync(key);
 
-        var item = Assert.Single(report.Items);
-        Assert.Equal(RequirementStatus.PartialMatch, item.Status);
-        Assert.Equal("mcTestProp", item.CandidatePropertyAlias);
+        var item = TestAssert.Single(report.Items);
+        Assert.That(item.Status, Is.EqualTo(RequirementStatus.PartialMatch));
+        Assert.That(item.CandidatePropertyAlias, Is.EqualTo("mcTestProp"));
     }
 
-    [Fact]
+    [Test]
     public async Task Compatible_editor_under_different_alias_is_partial_match_candidate()
     {
         var (service, schema, _, key) = Setup();
@@ -162,12 +162,12 @@ public class PropertyProvisioningServiceTests
 
         var report = await service.CheckAsync(key);
 
-        var item = Assert.Single(report.Items);
-        Assert.Equal(RequirementStatus.PartialMatch, item.Status);
-        Assert.Equal("photoDescription", item.CandidatePropertyAlias);
+        var item = TestAssert.Single(report.Items);
+        Assert.That(item.Status, Is.EqualTo(RequirementStatus.PartialMatch));
+        Assert.That(item.CandidatePropertyAlias, Is.EqualTo("photoDescription"));
     }
 
-    [Fact]
+    [Test]
     public async Task Administrator_mapping_satisfies_requirement()
     {
         var (service, schema, maps, key) = Setup();
@@ -176,23 +176,23 @@ public class PropertyProvisioningServiceTests
 
         var report = await service.CheckAsync(key);
 
-        Assert.Equal(RequirementStatus.Satisfied, Assert.Single(report.Items).Status);
+        Assert.That(TestAssert.Single(report.Items).Status, Is.EqualTo(RequirementStatus.Satisfied));
     }
 
-    [Fact]
+    [Test]
     public async Task Apply_create_adds_property_and_subsequent_check_is_satisfied()
     {
         var (service, schema, _, key) = Setup();
 
         var result = await service.ApplyAsync([new ProvisioningApproval("mcTestProp", MediaType, ApprovalAction.Create)]);
 
-        Assert.Empty(result.Errors);
-        Assert.Single(schema.Added);
+        Assert.That(result.Errors, Is.Empty);
+        Assert.That(schema.Added, Has.Exactly(1).Items);
         var report = await service.CheckAsync(key);
-        Assert.True(report.AllSatisfied);
+        Assert.That(report.AllSatisfied, Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task Apply_map_persists_mapping()
     {
         var (service, schema, maps, key) = Setup();
@@ -201,25 +201,24 @@ public class PropertyProvisioningServiceTests
         var result = await service.ApplyAsync(
             [new ProvisioningApproval("mcTestProp", MediaType, ApprovalAction.Map, "photoDescription")]);
 
-        Assert.Empty(result.Errors);
-        Assert.Single(maps.Maps);
-        Assert.True((await service.CheckAsync(key)).AllSatisfied);
+        Assert.That(result.Errors, Is.Empty);
+        Assert.That(maps.Maps, Has.Exactly(1).Items);
+        Assert.That((await service.CheckAsync(key)).AllSatisfied, Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task Apply_map_without_target_is_an_error()
     {
         var (service, _, _, _) = Setup();
 
         var result = await service.ApplyAsync([new ProvisioningApproval("mcTestProp", MediaType, ApprovalAction.Map)]);
 
-        Assert.NotEmpty(result.Errors);
+        Assert.That(result.Errors, Is.Not.Empty);
     }
 
     // Classification needs the recognition cache to tell AI codes (which it may update) from editors' codes.
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
+    [TestCase(false)]
+    [TestCase(true)]
     public async Task Classification_rules_require_the_recognition_cache_once(bool withAiTagRule)
     {
         var rulesets = new FakeRulesets();
@@ -236,7 +235,7 @@ public class PropertyProvisioningServiceTests
 
         var report = await service.CheckAsync(rulesets.Ruleset.Key);
 
-        Assert.Single(report.Items, i => i.Requirement.Alias == "mediaCuratorTags");
+        TestAssert.Single(report.Items, i => i.Requirement.Alias == "mediaCuratorTags");
     }
 }
 

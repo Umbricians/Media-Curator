@@ -2,7 +2,7 @@ using Umbraco.Cms.Core.Composing;
 
 namespace Umbricians.MediaCurator.Core;
 
-public sealed class CurationProviderCollection : BuilderCollectionBase<ICurationProvider>
+internal sealed class CurationProviderCollection : BuilderCollectionBase<ICurationProvider>
 {
     public CurationProviderCollection(Func<IEnumerable<ICurationProvider>> items)
         : base(items)
@@ -13,7 +13,7 @@ public sealed class CurationProviderCollection : BuilderCollectionBase<ICuration
         => this.FirstOrDefault(p => string.Equals(p.Alias, alias, StringComparison.OrdinalIgnoreCase));
 }
 
-public sealed class CurationProviderCollectionBuilder
+internal sealed class CurationProviderCollectionBuilder
     : LazyCollectionBuilderBase<CurationProviderCollectionBuilder, CurationProviderCollection, ICurationProvider>
 {
     protected override CurationProviderCollectionBuilder This => this;

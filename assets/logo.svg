@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="title">
+  <!-- Umbricians Media Curator: a folder with a landscape picture inside it, in Electric Blue #0F90FF, on the
+       Umbricians Navy #0B1F3A tile, as in the Feature Flags and Live View logos. -->
+  <title id="title">Media Curator</title>
+  <rect width="512" height="512" rx="112" fill="#0B1F3A"/>
+  <!-- Folder outline, with its tab at the top left. -->
+  <path fill="none" stroke="#FFFFFF" stroke-width="32" stroke-linejoin="round"
+        d="M96 152 a24 24 0 0 1 24-24 h80 l32 32 h160 a24 24 0 0 1 24 24 v176 a24 24 0 0 1 -24 24 H120 a24 24 0 0 1 -24-24 Z"/>
+  <!-- The picture in it: mountains and a sun. -->
+  <path fill="#0F90FF" d="M148 336 L216 240 L262 296 L300 256 L364 336 Z"/>
+  <circle cx="340" cy="216" r="22" fill="#0F90FF"/>
+</svg>

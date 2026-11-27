@@ -110,7 +110,7 @@ file static class AutomateActionConcurrency
     }
 }
 
-public class AnalyzeImageSettings
+internal sealed class AnalyzeImageSettings
 {
     [Field(SupportsBindings = true, SortOrder = 0)]
     public string? MediaKey { get; set; }
@@ -124,7 +124,7 @@ public class AnalyzeImageSettings
     public string? Scheme { get; set; }
 }
 
-public class AnalyzeImageOutput
+internal sealed class AnalyzeImageOutput
 {
     public bool Analyzed { get; set; }
     public string? Description { get; set; }
@@ -134,8 +134,8 @@ public class AnalyzeImageOutput
 
 /// <summary>Runs the recognition pipeline on a media item; outputs tags/description for
 /// binding into subsequent steps (§9.2).</summary>
-[Action("mediaCurator.analyzeImage", "Analyze image (MediaCurator)")]
-public class AnalyzeImageAction : ActionBase<AnalyzeImageSettings, AnalyzeImageOutput>
+[Action("umbriciansMediaCurator.analyzeImage", "Analyze image (Media Curator)")]
+internal sealed class AnalyzeImageAction : ActionBase<AnalyzeImageSettings, AnalyzeImageOutput>
 {
     private readonly IAutomationOriginAccessor _originAccessor;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -191,7 +191,7 @@ public class AnalyzeImageAction : ActionBase<AnalyzeImageSettings, AnalyzeImageO
     }
 }
 
-public class CategorizeMediaSettings
+internal sealed class CategorizeMediaSettings
 {
     [Field(SupportsBindings = true, SortOrder = 0)]
     public string? MediaKey { get; set; }
@@ -200,7 +200,7 @@ public class CategorizeMediaSettings
     public bool DryRun { get; set; }
 }
 
-public class CategorizeMediaOutput
+internal sealed class CategorizeMediaOutput
 {
     public bool Moved { get; set; }
     public string? TargetPath { get; set; }
@@ -209,8 +209,8 @@ public class CategorizeMediaOutput
 
 /// <summary>Resolves the target folder for an item using the ruleset for its scope and
 /// moves it; supports a dry-run flag (§9.2).</summary>
-[Action("mediaCurator.categorizeMedia", "Categorize media (MediaCurator)")]
-public class CategorizeMediaAction : ActionBase<CategorizeMediaSettings, CategorizeMediaOutput>
+[Action("umbriciansMediaCurator.categorizeMedia", "Categorize media (Media Curator)")]
+internal sealed class CategorizeMediaAction : ActionBase<CategorizeMediaSettings, CategorizeMediaOutput>
 {
     private readonly IAutomationOriginAccessor _originAccessor;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -291,7 +291,7 @@ public class CategorizeMediaAction : ActionBase<CategorizeMediaSettings, Categor
     }
 }
 
-public class CurateFolderSettings
+internal sealed class CurateFolderSettings
 {
     [Field(SupportsBindings = true, SortOrder = 0)]
     public string? ScopeFolderKey { get; set; }
@@ -308,7 +308,7 @@ public class CurateFolderSettings
     public bool PermanentlyDeleteEmptyFolders { get; set; }
 }
 
-public class CurateFolderOutput
+internal sealed class CurateFolderOutput
 {
     public int Planned { get; set; }
     public int Moved { get; set; }
@@ -318,8 +318,8 @@ public class CurateFolderOutput
 }
 
 /// <summary>Runs a full ruleset over a folder, optionally recursive, with dry-run support (§9.2).</summary>
-[Action("mediaCurator.curateFolder", "Curate folder (MediaCurator)")]
-public class CurateFolderAction : ActionBase<CurateFolderSettings, CurateFolderOutput>
+[Action("umbriciansMediaCurator.curateFolder", "Curate folder (Media Curator)")]
+internal sealed class CurateFolderAction : ActionBase<CurateFolderSettings, CurateFolderOutput>
 {
     private readonly IAutomationOriginAccessor _originAccessor;
     private readonly IServiceScopeFactory _scopeFactory;

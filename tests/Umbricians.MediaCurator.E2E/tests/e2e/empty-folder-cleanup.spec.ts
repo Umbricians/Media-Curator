@@ -36,7 +36,7 @@ async function arrange(umbracoApi: Api) {
   await createTestFolder(umbracoApi, alreadyEmptyName, rootId);
   const keptId = await createTestFolder(umbracoApi, keptName, rootId);
   await createTestFile(umbracoApi, fileName, keptId);
-  const response = await umbracoApi.put(`${base()}/umbraco/mediacurator/api/v1/rulesets`, {
+  const response = await umbracoApi.put(`${base()}/umbraco/umbriciansmediacurator/api/v1/rulesets`, {
     scopeRootKey: rootId,
     name: rulesetName,
     enabled: true,
@@ -47,14 +47,14 @@ async function arrange(umbracoApi: Api) {
 }
 
 async function undoLatestRun(umbracoApi: Api, rootId: string) {
-  const runs = (await (await umbracoApi.get(`${base()}/umbraco/mediacurator/api/v1/curation/runs`)).json()) as Array<{
+  const runs = (await (await umbracoApi.get(`${base()}/umbraco/umbriciansmediacurator/api/v1/curation/runs`)).json()) as Array<{
     key: string;
     scopeFolderKey: string;
     trigger: string;
   }>;
   const run = runs.find((r) => r.scopeFolderKey === rootId && !r.trigger.startsWith('undo:'));
   expect(run).toBeTruthy();
-  const undo = await umbracoApi.post(`${base()}/umbraco/mediacurator/api/v1/curation/runs/${run!.key}/undo`);
+  const undo = await umbracoApi.post(`${base()}/umbraco/umbriciansmediacurator/api/v1/curation/runs/${run!.key}/undo`);
   expect(undo.status()).toBe(200);
 }
 
@@ -145,7 +145,7 @@ test.describe('MediaCurator empty folder cleanup', () => {
     const yearId = await createFolderUnder(umbracoApi, year, rootId);
     await createTestImage(umbracoApi, imageName, yearId);
     await createTestFolder(umbracoApi, oldName, rootId);
-    await api.put(`${base()}/umbraco/mediacurator/api/v1/rulesets`, {
+    await api.put(`${base()}/umbraco/umbriciansmediacurator/api/v1/rulesets`, {
       scopeRootKey: rootId,
       name: rulesetName,
       enabled: true,

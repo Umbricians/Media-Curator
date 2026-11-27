@@ -9,7 +9,7 @@ namespace Umbricians.MediaCurator.Tests.Schemes;
 
 public class BuiltInSchemeTests
 {
-    public static TheoryData<string> SchemeAliases => ["dewey-pd", "lcc", "tgm-genre-format", "web-asset-role"];
+    public static string[] SchemeAliases => ["dewey-pd", "lcc", "tgm-genre-format", "web-asset-role"];
 
     private static readonly IClassificationScheme[] _schemes =
         [new DeweyPublicDomainScheme(), new LccOutlineScheme(), new TgmGenreFormatScheme(), new WebAssetRoleScheme()];
@@ -18,13 +18,12 @@ public class BuiltInSchemeTests
 
     private static ClassificationProvider Provider() => new(new ClassificationSchemeCollection(() => _schemes));
 
-    [Theory]
-    [MemberData(nameof(SchemeAliases))]
+    [TestCaseSource(nameof(SchemeAliases))]
     public void Every_parent_exists_and_no_code_is_its_own_ancestor(string alias)
     {
         var scheme = Scheme(alias);
         var entries = scheme.GetAllEntries();
-        Assert.NotEmpty(entries);
+        Assert.That(entries, Is.Not.Empty);
 
         foreach (var entry in entries)
         {
@@ -34,77 +33,84 @@ public class BuiltInSchemeTests
             while (current.ParentCode is { } parentCode)
             {
                 current = scheme.GetEntry(parentCode);
-                Assert.True(current is not null, $"{entry.Code}: parent {parentCode} is not in the scheme");
-                Assert.True(seen.Add(current!.Code), $"{entry.Code}: cycle through {current.Code}");
+                Assert.That(current is not null, Is.True, $"{entry.Code}: parent {parentCode} is not in the scheme");
+                Assert.That(seen.Add(current!.Code), Is.True, $"{entry.Code}: cycle through {current.Code}");
             }
 
             var path = scheme.GetPath(entry.Code);
-            Assert.Equal(seen.Count, path.Count);
-            Assert.Null(path[0].ParentCode);
-            Assert.Equal(entry.Code, path[^1].Code);
+            Assert.That(path.Count, Is.EqualTo(seen.Count));
+            Assert.That(path[0].ParentCode, Is.Null);
+            Assert.That(path[^1].Code, Is.EqualTo(entry.Code));
         }
     }
 
-    [Theory]
-    [MemberData(nameof(SchemeAliases))]
+    [TestCaseSource(nameof(SchemeAliases))]
     public void Every_code_passes_validation(string alias)
     {
         var scheme = Scheme(alias);
 
-        Assert.All(scheme.GetAllEntries(), e => Assert.Equal(e.Code, ClassificationCodeValidator.Validate(scheme, e.Code)));
+        foreach (var e in scheme.GetAllEntries())
+        {
+            Assert.That(ClassificationCodeValidator.Validate(scheme, e.Code), Is.EqualTo(e.Code));
+        }
     }
 
-    [Theory]
-    [InlineData("tgm-genre-format")]
-    [InlineData("web-asset-role")]
+    [TestCase("tgm-genre-format")]
+    [TestCase("web-asset-role")]
     public void Every_code_survives_the_filename_source(string alias)
     {
         // The filename source takes the first token before a space, dash, underscore or dot.
-        Assert.All(Scheme(alias).GetAllEntries(), e => Assert.Equal(e.Code, e.Code.Split(' ', '-', '_', '.')[0]));
+        foreach (var e in Scheme(alias).GetAllEntries())
+        {
+            Assert.That(e.Code.Split(' ', '-', '_', '.')[0], Is.EqualTo(e.Code));
+        }
     }
 
-    [Theory]
-    [InlineData("BRD1 acme logo.png", "web-asset-role", new[] { "Branding", "Logo" })]
-    [InlineData("ppl2-team-day.jpg", "web-asset-role", new[] { "People", "Team or group photo" })]
-    [InlineData("tgm007721 harbour.jpg", "tgm-genre-format", new[] { "Pictures", "Photographs" })]
+    [TestCase("BRD1 acme logo.png", "web-asset-role", new[] { "Branding", "Logo" })]
+    [TestCase("ppl2-team-day.jpg", "web-asset-role", new[] { "People", "Team or group photo" })]
+    [TestCase("tgm007721 harbour.jpg", "tgm-genre-format", new[] { "Pictures", "Photographs" })]
     public async Task Filename_codes_resolve_to_nested_folders(string name, string scheme, string[] folders)
     {
-        var ctx = TestContext.Create(name: name, settings: TestContext.Settings(("scheme", scheme), ("source", "filename")));
+        var ctx = CurationContexts.Create(name: name, settings: CurationContexts.Settings(("scheme", scheme), ("source", "filename")));
 
         var result = await Provider().ResolveAsync(ctx);
 
-        Assert.Equal(folders, result.Segments.Select(s => s.Name));
+        Assert.That(result.Segments.Select(s => s.Name), Is.EqualTo(folders));
     }
 
-    [Theory]
-    [InlineData("in-store.jpg")]
-    [InlineData("ed_sheeran.jpg")]
-    [InlineData("pr-photo.jpg")]
+    [TestCase("in-store.jpg")]
+    [TestCase("ed_sheeran.jpg")]
+    [TestCase("pr-photo.jpg")]
     public async Task Ordinary_filenames_are_not_mistaken_for_web_asset_role_codes(string name)
     {
-        var ctx = TestContext.Create(name: name, settings: TestContext.Settings(("scheme", "web-asset-role"), ("source", "filename")));
+        var ctx = CurationContexts.Create(name: name, settings: CurationContexts.Settings(("scheme", "web-asset-role"), ("source", "filename")));
 
-        Assert.False((await Provider().ResolveAsync(ctx)).IsResolved);
+        Assert.That((await Provider().ResolveAsync(ctx)).IsResolved, Is.False);
     }
 
-    [Fact]
+    [Test]
     public void Web_asset_role_has_two_levels_and_is_decided_in_one_step()
     {
         var scheme = new WebAssetRoleScheme();
         var roots = scheme.GetChildren(null);
         var finals = HierarchicalClassificationResolver.FinalEntries(scheme, MediaCuratorDefaults.MaxClassificationDepth);
 
-        Assert.Equal(["BKG", "BRD", "EDT", "INF", "MKT", "PPL", "PRD"], roots.Select(r => r.Code));
-        Assert.All(roots, r => Assert.NotEmpty(scheme.GetChildren(r.Code)));
-        Assert.All(finals, f => Assert.Equal(2, scheme.GetPath(f.Code).Count));
-        Assert.InRange(finals.Count, 2, MediaCuratorDefaults.OneStepClassificationLimit);
-        Assert.Equal(
-            "web-asset-role:one-step-v1",
-            HierarchicalClassificationResolver.MethodFor(
-                scheme, ClassificationMethod.OneStep, MediaCuratorDefaults.MaxClassificationDepth, MediaCuratorDefaults.OneStepClassificationLimit));
+        Assert.That(roots.Select(r => r.Code), Is.EqualTo(["BKG", "BRD", "EDT", "INF", "MKT", "PPL", "PRD"]));
+        foreach (var r in roots)
+        {
+            Assert.That(scheme.GetChildren(r.Code), Is.Not.Empty);
+        }
+        foreach (var f in finals)
+        {
+            Assert.That(scheme.GetPath(f.Code).Count, Is.EqualTo(2));
+        }
+        Assert.That(finals.Count, Is.InRange(2, MediaCuratorDefaults.OneStepClassificationLimit));
+        var method = HierarchicalClassificationResolver.MethodFor(
+            scheme, ClassificationMethod.OneStep, MediaCuratorDefaults.MaxClassificationDepth, MediaCuratorDefaults.OneStepClassificationLimit);
+        Assert.That(method, Is.EqualTo("web-asset-role:one-step-v1"));
     }
 
-    [Fact]
+    [Test]
     public async Task Web_asset_role_one_step_choice_lists_every_role_with_its_group()
     {
         var scheme = new WebAssetRoleScheme();
@@ -123,29 +129,35 @@ public class BuiltInSchemeTests
             CancellationToken.None,
             MediaCuratorDefaults.OneStepClassificationLimit);
 
-        Assert.Equal("BRD1", code);
-        Assert.NotNull(seen);
-        Assert.Equal(22, seen!.Candidates.Count);
-        Assert.Equal("BRD1 Logo (Branding)", seen.Label(scheme.GetEntry("BRD1")!));
+        Assert.That(code, Is.EqualTo("BRD1"));
+        Assert.That(seen, Is.Not.Null);
+        Assert.That(seen!.Candidates.Count, Is.EqualTo(22));
+        Assert.That(seen.Label(scheme.GetEntry("BRD1")!), Is.EqualTo("BRD1 Logo (Branding)"));
         var prompt = ClassificationPromptBuilder.BuildRefinePrompt(seen);
-        Assert.Contains("ROLE the image plays on a website", prompt);
-        Assert.DoesNotContain("DEPICTS", prompt);
+        Assert.That(prompt, Does.Contain("ROLE the image plays on a website"));
+        Assert.That(prompt, Does.Not.Contain("DEPICTS"));
     }
 
-    [Fact]
+    [Test]
     public void Tgm_genre_format_terms_load_with_tgm_identifiers()
     {
         var scheme = new TgmGenreFormatScheme();
         var entries = scheme.GetAllEntries();
 
-        Assert.True(entries.Count >= 700, $"Only {entries.Count} TGM genre/format terms loaded.");
-        Assert.All(entries, e => Assert.Matches(new Regex("^tgm[0-9]{6}$"), e.Code));
-        Assert.All(entries, e => Assert.False(string.IsNullOrWhiteSpace(e.Name)));
-        Assert.Equal("Photographs", scheme.GetEntry("tgm007721")!.Name);
-        Assert.Equal(["Pictures", "Photographs"], scheme.GetPath("tgm007721").Select(e => e.Name));
+        Assert.That(entries.Count >= 700, Is.True, $"Only {entries.Count} TGM genre/format terms loaded.");
+        foreach (var e in entries)
+        {
+            Assert.That(e.Code, Does.Match(new Regex("^tgm[0-9]{6}$")));
+        }
+        foreach (var e in entries)
+        {
+            Assert.That(string.IsNullOrWhiteSpace(e.Name), Is.False);
+        }
+        Assert.That(scheme.GetEntry("tgm007721")!.Name, Is.EqualTo("Photographs"));
+        Assert.That(scheme.GetPath("tgm007721").Select(e => e.Name), Is.EqualTo(["Pictures", "Photographs"]));
     }
 
-    [Fact]
+    [Test]
     public void Tgm_levels_fit_a_single_jev_choice_and_the_scheme_drills_down()
     {
         var scheme = new TgmGenreFormatScheme();
@@ -153,15 +165,17 @@ public class BuiltInSchemeTests
         var finals = HierarchicalClassificationResolver.FinalEntries(scheme, MediaCuratorDefaults.MaxClassificationDepth);
 
         // Jev accepts at most 255 options per choice.
-        Assert.All(parents, p => Assert.True(scheme.GetChildren(p).Count <= 255, $"{p} has too many children"));
-        Assert.True(finals.Count > MediaCuratorDefaults.OneStepClassificationLimit);
-        Assert.Equal(
-            "tgm-genre-format:drill-down-v2",
-            HierarchicalClassificationResolver.MethodFor(
-                scheme, ClassificationMethod.OneStep, MediaCuratorDefaults.MaxClassificationDepth, MediaCuratorDefaults.OneStepClassificationLimit));
+        foreach (var p in parents)
+        {
+            Assert.That(scheme.GetChildren(p).Count <= 255, Is.True, $"{p} has too many children");
+        }
+        Assert.That(finals.Count > MediaCuratorDefaults.OneStepClassificationLimit, Is.True);
+        var method = HierarchicalClassificationResolver.MethodFor(
+            scheme, ClassificationMethod.OneStep, MediaCuratorDefaults.MaxClassificationDepth, MediaCuratorDefaults.OneStepClassificationLimit);
+        Assert.That(method, Is.EqualTo("tgm-genre-format:drill-down-v2"));
     }
 
-    [Fact]
+    [Test]
     public async Task Tgm_drill_down_reaches_a_fourth_level_term()
     {
         var scheme = new TgmGenreFormatScheme();
@@ -183,16 +197,19 @@ public class BuiltInSchemeTests
             CancellationToken.None,
             MediaCuratorDefaults.OneStepClassificationLimit);
 
-        Assert.Equal(target.Code, code);
-        Assert.Null(choices[0].Parent);
-        Assert.Equal(scheme.GetChildren(null).Count, choices[0].Candidates.Count);
-        Assert.All(choices.Skip(1), c => Assert.Contains(path, p => p.Code == c.Parent!.Code));
+        Assert.That(code, Is.EqualTo(target.Code));
+        Assert.That(choices[0].Parent, Is.Null);
+        Assert.That(choices[0].Candidates.Count, Is.EqualTo(scheme.GetChildren(null).Count));
+        foreach (var c in choices.Skip(1))
+        {
+            Assert.That(path.Any(p => p.Code == c.Parent!.Code), Is.True);
+        }
         var prompt = ClassificationPromptBuilder.BuildRefinePrompt(choices[0]);
-        Assert.Contains("GENRE or FORMAT", prompt);
-        Assert.DoesNotContain("DEPICTS", prompt);
+        Assert.That(prompt, Does.Contain("GENRE or FORMAT"));
+        Assert.That(prompt, Does.Not.Contain("DEPICTS"));
     }
 
-    [Fact]
+    [Test]
     public void Jev_instructions_use_the_scheme_guidance()
     {
         var scheme = new TgmGenreFormatScheme();
@@ -201,9 +218,9 @@ public class BuiltInSchemeTests
         var request = JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(JevClassificationDecider.BuildRequest(choice, "jev-latest")))!;
         var instructions = (string?)request["questions"]!["classification"]!["instructions"];
 
-        Assert.Contains("\"Thesaurus for Graphic Materials (genre/format)\" classification scheme", instructions);
-        Assert.Contains("GENRE or FORMAT", instructions);
-        Assert.DoesNotContain("library", instructions, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("DEPICTS", instructions);
+        Assert.That(instructions, Does.Contain("\"Thesaurus for Graphic Materials (genre/format)\" classification scheme"));
+        Assert.That(instructions, Does.Contain("GENRE or FORMAT"));
+        Assert.That(instructions, Does.Not.Contain("library").IgnoreCase);
+        Assert.That(instructions, Does.Not.Contain("DEPICTS"));
     }
 }

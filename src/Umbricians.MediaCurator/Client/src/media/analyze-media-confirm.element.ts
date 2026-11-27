@@ -3,7 +3,7 @@ import { UmbLitElement } from "@umbraco-cms/backoffice/lit-element";
 import { analyzeAllDescription, dialogMessage } from "./analyze-media.summary.js";
 
 /** Body of the "Analyze images" confirmation: the summary follows the "Analyze all images" box. */
-@customElement("mc-analyze-media-confirm")
+@customElement("umbricians-media-curator-analyze-media-confirm")
 export class McAnalyzeMediaConfirmElement extends UmbLitElement {
   @property() folderName = "";
   @property({ type: Number }) total = 0;
@@ -52,6 +52,6 @@ export class McAnalyzeMediaConfirmElement extends UmbLitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    "mc-analyze-media-confirm": McAnalyzeMediaConfirmElement;
+    "umbricians-media-curator-analyze-media-confirm": McAnalyzeMediaConfirmElement;
   }
 }

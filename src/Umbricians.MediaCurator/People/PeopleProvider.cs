@@ -4,7 +4,7 @@ namespace Umbricians.MediaCurator.People;
 
 /// <summary>Sorts images by whether the AI decided they show people ("People" / "No people", configurable).
 /// Uses the stored decision when there is one; otherwise decides from the image's description.</summary>
-public sealed class PeopleProvider : ICurationProvider
+internal sealed class PeopleProvider : ICurationProvider
 {
     public const string ProviderAlias = "Umbricians.MediaCurator.People";
 

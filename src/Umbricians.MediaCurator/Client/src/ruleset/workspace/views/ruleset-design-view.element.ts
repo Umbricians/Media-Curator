@@ -5,7 +5,7 @@ import "../../../designer/rule-flow.element.js";
 import { MC_RULESET_WORKSPACE_CONTEXT } from "../ruleset-workspace.context-token.js";
 
 /** Design tab: the rule flow chart filling the whole workspace area. */
-@customElement("mc-ruleset-design-view")
+@customElement("umbricians-media-curator-ruleset-design-view")
 export class McRulesetDesignViewElement extends UmbLitElement {
   @state() private _rules: RuleNodeModel[] = [];
   @state() private _providers: ProviderModel[] = [];
@@ -30,13 +30,13 @@ export class McRulesetDesignViewElement extends UmbLitElement {
 
   override render() {
     return html`
-      <mc-rule-flow
+      <umbricians-media-curator-rule-flow
         fill
         .rules=${this._rules}
         .providers=${this._providers}
         .scopeName=${this._name || "Scope"}
         @rules-change=${this.#onRulesChange}
-      ></mc-rule-flow>
+      ></umbricians-media-curator-rule-flow>
     `;
   }
 
@@ -54,6 +54,6 @@ export default McRulesetDesignViewElement;
 
 declare global {
   interface HTMLElementTagNameMap {
-    "mc-ruleset-design-view": McRulesetDesignViewElement;
+    "umbricians-media-curator-ruleset-design-view": McRulesetDesignViewElement;
   }
 }

@@ -6,7 +6,7 @@ namespace Umbricians.MediaCurator.Rules;
 
 /// <summary>One ruleset in the transfer document. Scope folders are referenced by key, which
 /// is stable across environments when media flows through uSync/Deploy (§13).</summary>
-public sealed class RulesetTransferModel
+internal sealed class RulesetTransferModel
 {
     public Guid Key { get; set; }
     public Guid ScopeRootKey { get; set; }
@@ -16,7 +16,7 @@ public sealed class RulesetTransferModel
     public string RulesJson { get; set; } = "[]";
 }
 
-public interface IRulesetTransferService
+internal interface IRulesetTransferService
 {
     /// <summary>Exports all rulesets as a configuration-friendly JSON document.</summary>
     Task<string> ExportAsync(CancellationToken cancellationToken = default);

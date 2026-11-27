@@ -2,11 +2,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Core.Notifications;
 using Umbraco.Extensions;
-using Umbricians.MediaCurator.Composing;
+using Umbricians.MediaCurator.Extensions;
 
 namespace Umbricians.MediaCurator.People;
 
-public static class PeopleCompositionExtensions
+internal static class PeopleCompositionExtensions
 {
     /// <summary>Registers "contains people" detection: the stored decisions, the media tree flags, the
     /// analysis enricher, path upkeep on media moves and deletes, and the People curation provider.</summary>
@@ -29,9 +29,8 @@ public static class PeopleCompositionExtensions
         builder.AddNotificationAsyncHandler<MediaMovedToRecycleBinNotification, PeoplePathNotificationHandler>();
         builder.AddNotificationAsyncHandler<MediaDeletedNotification, PeoplePathNotificationHandler>();
 
-        builder.MediaCurator()
-            .AddRecognitionEnricher<PeopleRecognitionEnricher>()
-            .AddProvider<PeopleProvider>();
+        builder.AddMediaCuratorRecognitionEnricher<PeopleRecognitionEnricher>();
+        builder.AddMediaCuratorProvider<PeopleProvider>();
         return builder;
     }
 }

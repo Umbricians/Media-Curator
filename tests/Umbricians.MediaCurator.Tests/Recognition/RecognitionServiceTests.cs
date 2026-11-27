@@ -63,7 +63,7 @@ public class RecognitionServiceTests
             configure(builder);
             // The builder's state is internal to Umbraco.AI; read it the way its chat service would.
             // Umbraco.AI drops ChatOptions.Reasoning on this path, so it must never carry one.
-            Assert.Null(ReadBuilder<ChatOptions>(builder, "ChatOptions")?.Reasoning);
+            Assert.That(ReadBuilder<ChatOptions>(builder, "ChatOptions")?.Reasoning, Is.Null);
             lock (Requests)
             {
                 Requests.Add((ReadBuilder<string>(builder, "ProfileAlias"), null));
@@ -273,7 +273,7 @@ public class RecognitionServiceTests
         }
     }
 
-    [Fact]
+    [Test]
     public async Task Analyzes_image_normalizes_tags_and_caches_result()
     {
         var media = new FakeMediaOps();
@@ -282,15 +282,15 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid());
 
-        Assert.NotNull(result);
-        Assert.Equal("a red product photo", result!.Description);
-        Assert.Equal("product-shot", result.Tags[0].Name); // lowercased
-        Assert.Equal(1.0, result.Tags[1].Confidence);      // clamped
-        Assert.True(media.Properties.ContainsKey(UmbracoAiRecognitionService.TagsPropertyAlias));
-        Assert.Equal(1, chat.Calls);
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result!.Description, Is.EqualTo("a red product photo"));
+        Assert.That(result.Tags[0].Name, Is.EqualTo("product-shot")); // lowercased
+        Assert.That(result.Tags[1].Confidence, Is.EqualTo(1.0));      // clamped
+        Assert.That(media.Properties.ContainsKey(UmbracoAiRecognitionService.TagsPropertyAlias), Is.True);
+        Assert.That(chat.Calls, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task Sends_detected_image_media_type_to_chat()
     {
         var media = new FakeMediaOps
@@ -307,10 +307,10 @@ public class RecognitionServiceTests
             .SelectMany(m => m.Contents)
             .OfType<DataContent>()
             .Single();
-        Assert.Equal("image/png", dataContent.MediaType);
+        Assert.That(dataContent.MediaType, Is.EqualTo("image/png"));
     }
 
-    [Fact]
+    [Test]
     public async Task Sends_same_prepared_image_bytes_that_are_written_to_test_folder()
     {
         var outputDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), MediaCuratorDefaults.PreparedImagesFolder));
@@ -335,14 +335,14 @@ public class RecognitionServiceTests
             await service.AnalyzeAsync(mediaKey, force: true);
 
             var written = Directory.GetFiles(outputDir, $"*{mediaKey:N}*_prepared_*.jpg");
-            Assert.Single(written);
+            Assert.That(written, Has.Exactly(1).Items);
             var writtenBytes = File.ReadAllBytes(written[0]);
             var dataContent = chat.ReceivedMessages
                 .SelectMany(m => m.Contents)
                 .OfType<DataContent>()
                 .Single();
-            Assert.Equal("image/jpeg", dataContent.MediaType);
-            Assert.Equal(writtenBytes, dataContent.Data.ToArray());
+            Assert.That(dataContent.MediaType, Is.EqualTo("image/jpeg"));
+            Assert.That(dataContent.Data.ToArray(), Is.EqualTo(writtenBytes));
         }
         finally
         {
@@ -353,7 +353,7 @@ public class RecognitionServiceTests
         }
     }
 
-    [Fact]
+    [Test]
     public async Task Cached_result_short_circuits_without_an_ai_call()
     {
         var media = new FakeMediaOps();
@@ -364,11 +364,11 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid());
 
-        Assert.Equal("cached", result!.Tags[0].Name);
-        Assert.Equal(0, chat.Calls);
+        Assert.That(result!.Tags[0].Name, Is.EqualTo("cached"));
+        Assert.That(chat.Calls, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Force_reruns_recognition_despite_cache()
     {
         var media = new FakeMediaOps();
@@ -379,11 +379,11 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), force: true);
 
-        Assert.Equal(1, chat.Calls);
-        Assert.Equal("product-shot", result!.Tags[0].Name);
+        Assert.That(chat.Calls, Is.EqualTo(1));
+        Assert.That(result!.Tags[0].Name, Is.EqualTo("product-shot"));
     }
 
-    [Fact]
+    [Test]
     public async Task Metadata_only_mode_makes_no_ai_calls()
     {
         var media = new FakeMediaOps();
@@ -392,19 +392,19 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid());
 
-        Assert.Null(result);
-        Assert.Equal(0, chat.Calls);
+        Assert.That(result, Is.Null);
+        Assert.That(chat.Calls, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Missing_ai_service_returns_null_instead_of_throwing()
     {
         var service = Create(new FakeMediaOps(), chat: null);
 
-        Assert.Null(await service.AnalyzeAsync(Guid.NewGuid()));
+        Assert.That(await service.AnalyzeAsync(Guid.NewGuid()), Is.Null);
     }
 
-    [Fact]
+    [Test]
     public async Task Enrichers_run_before_persisting()
     {
         var media = new FakeMediaOps();
@@ -412,11 +412,11 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid());
 
-        Assert.Contains(result!.Tags, t => t.Name == "enriched");
-        Assert.Contains("enriched", media.Properties[UmbracoAiRecognitionService.TagsPropertyAlias]);
+        Assert.That(result!.Tags.Any(t => t.Name == "enriched"), Is.True);
+        Assert.That(media.Properties[UmbracoAiRecognitionService.TagsPropertyAlias], Does.Contain("enriched"));
     }
 
-    [Fact]
+    [Test]
     public async Task Unprovisioned_cache_property_degrades_gracefully()
     {
         var media = new FakeMediaOps { ThrowOnSet = true };
@@ -424,30 +424,28 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid());
 
-        Assert.NotNull(result); // analysis still returned, just not cached
+        Assert.That(result, Is.Not.Null); // analysis still returned, just not cached
     }
 
-    [Theory]
-    [InlineData("""{"description":"d","tags":[{"name":"a","confidence":0.5}]}""", "a")]
-    [InlineData("```json\n{\"description\":\"d\",\"tags\":[{\"name\":\"b\",\"confidence\":0.5}]}\n```", "b")]
+    [TestCase("""{"description":"d","tags":[{"name":"a","confidence":0.5}]}""", "a")]
+    [TestCase("```json\n{\"description\":\"d\",\"tags\":[{\"name\":\"b\",\"confidence\":0.5}]}\n```", "b")]
     public void Parse_handles_plain_and_fenced_json(string text, string expectedTag)
     {
         var result = UmbracoAiRecognitionService.Parse(text);
 
-        Assert.Equal(expectedTag, result!.Tags[0].Name);
+        Assert.That(result!.Tags[0].Name, Is.EqualTo(expectedTag));
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("not json at all")]
-    [InlineData("```\nstill no json\n```")]
+    [TestCase(null)]
+    [TestCase("")]
+    [TestCase("not json at all")]
+    [TestCase("```\nstill no json\n```")]
     public void Parse_returns_null_for_garbage(string? text)
     {
-        Assert.Null(UmbracoAiRecognitionService.Parse(text));
+        Assert.That(UmbracoAiRecognitionService.Parse(text), Is.Null);
     }
 
-    [Fact]
+    [Test]
     public async Task Scheme_analysis_persists_valid_classification_code()
     {
         var media = new FakeMediaOps();
@@ -462,13 +460,13 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal("770", result!.ClassificationCode);
-        Assert.Equal("770", media.Properties[ClassificationProvider.CodePropertyAlias]);
-        Assert.Contains("770", media.Properties[UmbracoAiRecognitionService.TagsPropertyAlias]);
-        Assert.Contains("ClassificationCode", media.Properties[UmbracoAiRecognitionService.TagsPropertyAlias]);
+        Assert.That(result!.ClassificationCode, Is.EqualTo("770"));
+        Assert.That(media.Properties[ClassificationProvider.CodePropertyAlias], Is.EqualTo("770"));
+        Assert.That(media.Properties[UmbracoAiRecognitionService.TagsPropertyAlias], Does.Contain("770"));
+        Assert.That(media.Properties[UmbracoAiRecognitionService.TagsPropertyAlias], Does.Contain("ClassificationCode"));
     }
 
-    [Fact]
+    [Test]
     public async Task Invalid_classification_code_is_ignored_but_tags_persist()
     {
         var media = new FakeMediaOps();
@@ -483,12 +481,12 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
 
-        Assert.Null(result!.ClassificationCode);
-        Assert.False(media.Properties.ContainsKey(ClassificationProvider.CodePropertyAlias));
-        Assert.Equal("building", result.Tags[0].Name);
+        Assert.That(result!.ClassificationCode, Is.Null);
+        Assert.That(media.Properties.ContainsKey(ClassificationProvider.CodePropertyAlias), Is.False);
+        Assert.That(result.Tags[0].Name, Is.EqualTo("building"));
     }
 
-    [Fact]
+    [Test]
     public async Task Existing_classification_code_is_not_overwritten_without_force()
     {
         var media = new FakeMediaOps();
@@ -504,10 +502,10 @@ public class RecognitionServiceTests
 
         await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal("700", media.Properties[ClassificationProvider.CodePropertyAlias]);
+        Assert.That(media.Properties[ClassificationProvider.CodePropertyAlias], Is.EqualTo("700"));
     }
 
-    [Fact]
+    [Test]
     public async Task Force_overwrites_existing_classification_code()
     {
         var media = new FakeMediaOps();
@@ -523,10 +521,10 @@ public class RecognitionServiceTests
 
         await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal("770", media.Properties[ClassificationProvider.CodePropertyAlias]);
+        Assert.That(media.Properties[ClassificationProvider.CodePropertyAlias], Is.EqualTo("770"));
     }
 
-    [Fact]
+    [Test]
     public async Task Small_schemes_pick_the_final_code_in_one_decision_with_main_classes_shown()
     {
         var media = new FakeMediaOps();
@@ -538,16 +536,16 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal("910", result!.ClassificationCode);
-        Assert.Equal(2, chat.Calls);
+        Assert.That(result!.ClassificationCode, Is.EqualTo("910"));
+        Assert.That(chat.Calls, Is.EqualTo(2));
         var prompt = chat.ReceivedMessages.Last().Text;
-        Assert.Contains("910|Geography and Travels (History)", prompt);
-        Assert.Contains("790|Amusements (Fine Arts)", prompt);
-        Assert.Contains("385|Railroad Transportation (Sociology › Commerce and Communication)", prompt);
-        Assert.DoesNotContain("\n300|Sociology", prompt); // classes with sub-categories are not final codes
+        Assert.That(prompt, Does.Contain("910|Geography and Travels (History)"));
+        Assert.That(prompt, Does.Contain("790|Amusements (Fine Arts)"));
+        Assert.That(prompt, Does.Contain("385|Railroad Transportation (Sociology › Commerce and Communication)"));
+        Assert.That(prompt, Does.Not.Contain("\n300|Sociology")); // classes with sub-categories are not final codes
     }
 
-    [Fact]
+    [Test]
     public async Task Cached_tags_without_code_reruns_when_scheme_requested()
     {
         var media = new FakeMediaOps();
@@ -560,11 +558,11 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal(1, chat.Calls);
-        Assert.Equal("770", result!.ClassificationCode);
+        Assert.That(chat.Calls, Is.EqualTo(1));
+        Assert.That(result!.ClassificationCode, Is.EqualTo("770"));
     }
 
-    [Fact]
+    [Test]
     public async Task Stored_description_skips_vision_for_hierarchical_classification()
     {
         var media = new FakeMediaOps();
@@ -577,12 +575,12 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal("385", result!.ClassificationCode);
-        Assert.Equal(1, chat.Calls);
-        Assert.Equal("train at station", media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias]);
+        Assert.That(result!.ClassificationCode, Is.EqualTo("385"));
+        Assert.That(chat.Calls, Is.EqualTo(1));
+        Assert.That(media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias], Is.EqualTo("train at station"));
     }
 
-    [Fact]
+    [Test]
     public async Task Vision_persists_description_when_setup_enabled()
     {
         var media = new FakeMediaOps();
@@ -595,10 +593,10 @@ public class RecognitionServiceTests
 
         await service.AnalyzeAsync(Guid.NewGuid());
 
-        Assert.Equal("a red product photo", media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias]);
+        Assert.That(media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias], Is.EqualTo("a red product photo"));
     }
 
-    [Fact]
+    [Test]
     public async Task Legacy_cache_without_source_update_date_reruns_vision()
     {
         var media = new FakeMediaOps();
@@ -613,11 +611,11 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid());
 
-        Assert.Equal(1, chat.Calls);
-        Assert.Equal("a pizza with toppings", result!.Description);
+        Assert.That(chat.Calls, Is.EqualTo(1));
+        Assert.That(result!.Description, Is.EqualTo("a pizza with toppings"));
     }
 
-    [Fact]
+    [Test]
     public async Task Stale_cache_reruns_vision_after_media_file_update()
     {
         var media = new FakeMediaOps();
@@ -633,11 +631,11 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid());
 
-        Assert.Equal(1, chat.Calls);
-        Assert.Equal("a pizza with toppings", result!.Description);
+        Assert.That(chat.Calls, Is.EqualTo(1));
+        Assert.That(result!.Description, Is.EqualTo("a pizza with toppings"));
     }
 
-    [Fact]
+    [Test]
     public async Task Hierarchical_scheme_drills_down_and_persists_leaf_code()
     {
         var media = new FakeMediaOps();
@@ -652,13 +650,13 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal("385", result!.ClassificationCode);
-        Assert.Equal("385", media.Properties[ClassificationProvider.CodePropertyAlias]);
-        Assert.Equal(4, chat.Calls);
-        Assert.Equal("train", result.Tags[0].Name);
+        Assert.That(result!.ClassificationCode, Is.EqualTo("385"));
+        Assert.That(media.Properties[ClassificationProvider.CodePropertyAlias], Is.EqualTo("385"));
+        Assert.That(chat.Calls, Is.EqualTo(4));
+        Assert.That(result.Tags[0].Name, Is.EqualTo("train"));
     }
 
-    [Fact]
+    [Test]
     public async Task Step_by_step_analysis_saves_the_item_once()
     {
         // Each save raises "media saved", which starts a "Media Saved" automation once per save.
@@ -680,13 +678,13 @@ public class RecognitionServiceTests
 
         await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal(1, media.Saves);
-        Assert.Equal("385", media.Properties[ClassificationProvider.CodePropertyAlias]);
-        Assert.Equal("high-speed train at a railway station", media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias]);
-        Assert.Contains("385", media.Properties[UmbracoAiRecognitionService.TagsPropertyAlias]);
+        Assert.That(media.Saves, Is.EqualTo(1));
+        Assert.That(media.Properties[ClassificationProvider.CodePropertyAlias], Is.EqualTo("385"));
+        Assert.That(media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias], Is.EqualTo("high-speed train at a railway station"));
+        Assert.That(media.Properties[UmbracoAiRecognitionService.TagsPropertyAlias], Does.Contain("385"));
     }
 
-    [Fact]
+    [Test]
     public async Task Single_call_analysis_saves_the_item_once()
     {
         var media = new FakeMediaOps();
@@ -705,12 +703,12 @@ public class RecognitionServiceTests
 
         await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal(1, media.Saves);
-        Assert.Equal("a camera photo", media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias]);
-        Assert.Equal("770", media.Properties[ClassificationProvider.CodePropertyAlias]);
+        Assert.That(media.Saves, Is.EqualTo(1));
+        Assert.That(media.Properties[UmbracoAiRecognitionService.DescriptionPropertyAlias], Is.EqualTo("a camera photo"));
+        Assert.That(media.Properties[ClassificationProvider.CodePropertyAlias], Is.EqualTo("770"));
     }
 
-    [Fact]
+    [Test]
     public async Task Reanalysis_with_the_same_result_does_not_save()
     {
         var media = new FakeMediaOps();
@@ -721,11 +719,11 @@ public class RecognitionServiceTests
 
         await service.AnalyzeAsync(Guid.NewGuid(), force: true);
 
-        Assert.Equal(1, saves);
-        Assert.Equal(1, media.Saves);
+        Assert.That(saves, Is.EqualTo(1));
+        Assert.That(media.Saves, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task Resizes_to_the_image_size_setting()
     {
         var media = new FakeMediaOps { Name = "wide.png", FileBytes = CreatePng(2000, 1000) };
@@ -737,10 +735,10 @@ public class RecognitionServiceTests
 
         var sent = chat.ReceivedMessages.SelectMany(m => m.Contents).OfType<DataContent>().Single();
         using var image = Image.Load(sent.Data.ToArray());
-        Assert.Equal(512, image.Width);
+        Assert.That(image.Width, Is.EqualTo(512));
     }
 
-    [Fact]
+    [Test]
     public async Task Description_and_decisions_use_their_own_profile_and_reasoning_effort()
     {
         var media = new FakeMediaOps();
@@ -761,13 +759,13 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal("385", result!.ClassificationCode);
-        Assert.Equal([("vision-profile", ReasoningEffort.Low), ("decision-profile", ReasoningEffort.None)], chat.Requests);
+        Assert.That(result!.ClassificationCode, Is.EqualTo("385"));
+        Assert.That(chat.Requests, Is.EqualTo([("vision-profile", ReasoningEffort.Low), ("decision-profile", ReasoningEffort.None)]));
         // Reasoning only reaches the model through a client from CreateChatClientAsync (Umbraco.AI drops it otherwise).
-        Assert.Equal(2, chat.ClientCalls);
+        Assert.That(chat.ClientCalls, Is.EqualTo(2));
     }
 
-    [Fact]
+    [Test]
     public async Task Decisions_use_the_description_profile_when_they_have_none()
     {
         var media = new FakeMediaOps();
@@ -787,10 +785,10 @@ public class RecognitionServiceTests
 
         await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal([("vision-profile", (ReasoningEffort?)null), ("vision-profile", (ReasoningEffort?)null)], chat.Requests);
+        Assert.That(chat.Requests, Is.EqualTo([("vision-profile", (ReasoningEffort?)null), ("vision-profile", (ReasoningEffort?)null)]));
     }
 
-    [Fact]
+    [Test]
     public async Task Without_a_profile_Umbraco_AIs_default_chat_profile_is_used()
     {
         var media = new FakeMediaOps();
@@ -800,10 +798,10 @@ public class RecognitionServiceTests
 
         await service.AnalyzeAsync(Guid.NewGuid(), force: true);
 
-        Assert.Equal((null, (ReasoningEffort?)null), chat.Requests.Single());
+        Assert.That(chat.Requests.Single(), Is.EqualTo(((string?)null, (ReasoningEffort?)null)));
     }
 
-    [Fact]
+    [Test]
     public async Task Retries_without_reasoning_effort_when_the_model_rejects_it()
     {
         var media = new FakeMediaOps();
@@ -822,13 +820,13 @@ public class RecognitionServiceTests
         var first = await service.AnalyzeAsync(Guid.NewGuid(), force: true);
         var second = await service.AnalyzeAsync(Guid.NewGuid(), force: true);
 
-        Assert.NotNull(first);
-        Assert.NotNull(second);
+        Assert.That(first, Is.Not.Null);
+        Assert.That(second, Is.Not.Null);
         // Rejected once, retried without; the next analysis no longer asks for it.
-        Assert.Equal([ReasoningEffort.Low, null, null], chat.Requests.Select(r => r.Effort).ToArray());
+        Assert.That(chat.Requests.Select(r => r.Effort).ToArray(), Is.EqualTo(new ReasoningEffort?[] { ReasoningEffort.Low, null, null }));
     }
 
-    [Fact]
+    [Test]
     public async Task Jev_makes_the_decisions_when_selected()
     {
         var media = new FakeMediaOps();
@@ -840,16 +838,16 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal("385", result!.ClassificationCode);
-        Assert.Equal(1, chat.Calls); // only the image description went to Umbraco.AI
-        var choice = Assert.Single(jev.Choices);
-        Assert.Equal("a high-speed train at a station", choice.Description);
-        Assert.Null(choice.Parent);
-        Assert.Contains(choice.Candidates, c => c.Code == "385");
-        Assert.Equal("385 Railroad Transportation (Sociology › Commerce and Communication)", choice.Label(choice.Candidates.Single(c => c.Code == "385")));
+        Assert.That(result!.ClassificationCode, Is.EqualTo("385"));
+        Assert.That(chat.Calls, Is.EqualTo(1)); // only the image description went to Umbraco.AI
+        var choice = TestAssert.Single(jev.Choices);
+        Assert.That(choice.Description, Is.EqualTo("a high-speed train at a station"));
+        Assert.That(choice.Parent, Is.Null);
+        Assert.That(choice.Candidates.Any(c => c.Code == "385"), Is.True);
+        Assert.That(choice.Label(choice.Candidates.Single(c => c.Code == "385")), Is.EqualTo("385 Railroad Transportation (Sociology › Commerce and Communication)"));
     }
 
-    [Fact]
+    [Test]
     public async Task A_failed_Jev_decision_falls_back_to_Umbraco_AI()
     {
         var media = new FakeMediaOps();
@@ -862,8 +860,8 @@ public class RecognitionServiceTests
 
         var result = await service.AnalyzeAsync(Guid.NewGuid(), force: true, classificationSchemeAlias: "dewey-pd");
 
-        Assert.Equal("910", result!.ClassificationCode);
-        Assert.Equal(2, chat.Calls);
+        Assert.That(result!.ClassificationCode, Is.EqualTo("910"));
+        Assert.That(chat.Calls, Is.EqualTo(2));
     }
 
     // --- Refreshing stored classifications (Curate re-decides outdated AI codes, never re-sends images) ---
@@ -877,7 +875,7 @@ public class RecognitionServiceTests
         media.Properties[UmbracoAiRecognitionService.TagsPropertyAlias] = System.Text.Json.JsonSerializer.Serialize(cached);
     }
 
-    [Fact]
+    [Test]
     public async Task Refresh_re_decides_an_outdated_ai_code_from_the_saved_description()
     {
         var media = new FakeMediaOps();
@@ -888,15 +886,15 @@ public class RecognitionServiceTests
 
         var result = await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd");
 
-        Assert.Equal("910", result!.ClassificationCode);
-        Assert.Equal("dewey-pd:one-step-v1", result.ClassificationMethod);
-        Assert.Equal("910", media.Properties[ClassificationProvider.CodePropertyAlias]);
-        Assert.Equal(1, chat.Calls);
-        Assert.Empty(chat.ReceivedMessages.SelectMany(m => m.Contents).OfType<DataContent>()); // no image sent
-        Assert.Contains("dewey-pd:one-step-v1", media.Properties[UmbracoAiRecognitionService.TagsPropertyAlias]);
+        Assert.That(result!.ClassificationCode, Is.EqualTo("910"));
+        Assert.That(result.ClassificationMethod, Is.EqualTo("dewey-pd:one-step-v1"));
+        Assert.That(media.Properties[ClassificationProvider.CodePropertyAlias], Is.EqualTo("910"));
+        Assert.That(chat.Calls, Is.EqualTo(1));
+        Assert.That(chat.ReceivedMessages.SelectMany(m => m.Contents).OfType<DataContent>(), Is.Empty); // no image sent
+        Assert.That(media.Properties[UmbracoAiRecognitionService.TagsPropertyAlias], Does.Contain("dewey-pd:one-step-v1"));
     }
 
-    [Fact]
+    [Test]
     public async Task Refresh_leaves_codes_decided_the_current_way()
     {
         var media = new FakeMediaOps();
@@ -906,11 +904,11 @@ public class RecognitionServiceTests
 
         var result = await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd");
 
-        Assert.Equal("390", result!.ClassificationCode);
-        Assert.Equal(0, chat.Calls);
+        Assert.That(result!.ClassificationCode, Is.EqualTo("390"));
+        Assert.That(chat.Calls, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Refresh_never_changes_a_code_an_editor_entered()
     {
         var media = new FakeMediaOps();
@@ -921,11 +919,11 @@ public class RecognitionServiceTests
 
         await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd");
 
-        Assert.Equal("920", media.Properties[ClassificationProvider.CodePropertyAlias]);
-        Assert.Equal(0, chat.Calls);
+        Assert.That(media.Properties[ClassificationProvider.CodePropertyAlias], Is.EqualTo("920"));
+        Assert.That(chat.Calls, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Refresh_does_nothing_without_a_saved_description()
     {
         var media = new FakeMediaOps();
@@ -933,11 +931,11 @@ public class RecognitionServiceTests
         var chat = new FakeChatService();
         var service = Create(media, chat);
 
-        Assert.Null(await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd"));
-        Assert.Equal(0, chat.Calls);
+        Assert.That(await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd"), Is.Null);
+        Assert.That(chat.Calls, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Codes_from_before_the_cache_are_re_decided_once_when_the_cache_can_be_saved()
     {
         var media = new FakeMediaOps();
@@ -950,11 +948,11 @@ public class RecognitionServiceTests
         await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd");
         await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd");
 
-        Assert.Equal("790", media.Properties[ClassificationProvider.CodePropertyAlias]);
-        Assert.Equal(1, chat.Calls); // the second run finds it current
+        Assert.That(media.Properties[ClassificationProvider.CodePropertyAlias], Is.EqualTo("790"));
+        Assert.That(chat.Calls, Is.EqualTo(1)); // the second run finds it current
     }
 
-    [Fact]
+    [Test]
     public async Task Without_the_cache_property_refresh_never_calls_the_ai()
     {
         var media = new FakeMediaOps { ThrowOnSet = true };
@@ -965,11 +963,11 @@ public class RecognitionServiceTests
 
         await service.RefreshClassificationAsync(Guid.NewGuid(), "dewey-pd");
 
-        Assert.Equal(0, chat.Calls);
+        Assert.That(chat.Calls, Is.EqualTo(0));
     }
 
     // Regression: saving the cache (or a move) bumps the item's update date, which made every cache stale.
-    [Fact]
+    [Test]
     public async Task Cache_stays_fresh_when_the_item_is_saved_and_goes_stale_when_the_file_changes()
     {
         var media = new FakeMediaOps();
@@ -979,12 +977,12 @@ public class RecognitionServiceTests
         var service = Create(media, chat);
 
         var cached = await service.AnalyzeAsync(Guid.NewGuid(), classificationSchemeAlias: "dewey-pd");
-        Assert.Equal("910", cached!.ClassificationCode);
-        Assert.Equal(0, chat.Calls);
+        Assert.That(cached!.ClassificationCode, Is.EqualTo("910"));
+        Assert.That(chat.Calls, Is.EqualTo(0));
 
         media.Properties["umbracoFile"] = """{"src":"/media/b/replaced.jpg"}""";
         await service.AnalyzeAsync(Guid.NewGuid());
-        Assert.True(chat.Calls > 0); // a new file is analysed again
+        Assert.That(chat.Calls > 0, Is.True); // a new file is analysed again
     }
 }
 

@@ -22,12 +22,13 @@ const getRootItems = async () => {
     return { error: response.error as never };
   }
   const items = sortRulesetsByName(response.data).map((r) => ({ ...r, hasChildren: false }));
-  return { data: { items, total: items.length } };
+  // One unpaged page, so nothing comes before or after it (Umbraco 18's tree reads totalBefore/totalAfter).
+  return { data: { items, total: items.length, totalBefore: 0, totalAfter: 0 } };
 };
 
 // Rulesets are flat; the root's children are the rulesets, nothing has children.
 const getChildrenOf = async (args: { parent: { unique: string | null } }) =>
-  args.parent.unique === null ? getRootItems() : { data: { items: [] as ServerItem[], total: 0 } };
+  args.parent.unique === null ? getRootItems() : { data: { items: [] as ServerItem[], total: 0, totalBefore: 0, totalAfter: 0 } };
 
 // Rulesets sit directly under the root, so a ruleset's ancestry is just itself (the menu
 // structure adds the root); breadcrumbs and sidebar expansion rely on this.

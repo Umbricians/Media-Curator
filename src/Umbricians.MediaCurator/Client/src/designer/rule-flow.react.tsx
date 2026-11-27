@@ -9,7 +9,7 @@ import {
   useNodesInitialized,
   useNodesState,
   useReactFlow,
-  useStore,
+  useViewportStore,
   type Node,
   type OnNodeDrag,
   type XYPosition,
@@ -45,8 +45,8 @@ const FIT_PADDING = 24;
 function FitViewOnce() {
   const { getNodes, getNodesBounds, setViewport } = useReactFlow();
   const nodesInitialized = useNodesInitialized();
-  const width = useStore((state) => state.width);
-  const height = useStore((state) => state.height);
+  const width = useViewportStore((state) => state.width);
+  const height = useViewportStore((state) => state.height);
   const didFit = useRef(false);
 
   useEffect(() => {

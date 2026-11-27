@@ -7,7 +7,7 @@ namespace Umbricians.MediaCurator.Persistence;
 /// <summary>JSON (de)serialization of the rule tree stored in the ruleset row. The same
 /// shape is used by the management API and the uSync serializer (later milestone), so it
 /// stays camelCased with enums as strings.</summary>
-public static class RulesetSerializer
+internal static class RulesetSerializer
 {
     private static readonly JsonSerializerOptions _options = new()
     {

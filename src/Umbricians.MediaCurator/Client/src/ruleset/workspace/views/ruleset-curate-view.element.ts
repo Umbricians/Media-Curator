@@ -30,7 +30,7 @@ import type { McEmptyFoldersOptionElement } from "../../../media/empty-folders-o
  * A scope with more images than the server's threshold skips the dry run (too slow) and is curated in
  * the background, with its progress shown here until it finishes.
  */
-@customElement("mc-ruleset-curate-view")
+@customElement("umbricians-media-curator-ruleset-curate-view")
 export class McRulesetCurateViewElement extends UmbLitElement {
   @state() private _scopeFolderKey?: string;
   @state() private _plan?: CurationPlanModel;
@@ -233,10 +233,10 @@ export class McRulesetCurateViewElement extends UmbLitElement {
                 ? html`<uui-loader-bar progress=${Math.round((100 * run.processed) / run.total)}></uui-loader-bar>`
                 : html`<uui-loader-bar></uui-loader-bar>`}`
           : html`<p>${backgroundConfirmMessage(this._scopeName, count.imageCount, count.threshold)}</p>
-              <mc-empty-folders-option
+              <umbricians-media-curator-empty-folders-option
                 @change=${(event: Event) =>
                   (this.#permanentlyDeleteEmptyFolders = (event.target as McEmptyFoldersOptionElement).permanentlyDelete)}
-              ></mc-empty-folders-option>
+              ></umbricians-media-curator-empty-folders-option>
               <div class="actions">
                 <uui-button
                   data-mark="mc:background-execute"
@@ -299,10 +299,10 @@ export class McRulesetCurateViewElement extends UmbLitElement {
                 ? html`${plan.moveCount > 0
                       ? html`<p>${emptyFoldersLine(plan.emptyFolderCount)}</p>`
                       : html`<p data-mark="mc:plan-cleanup-only">${plural(plan.emptyFolderCount, "empty sub-folder", "empty sub-folders")} can be removed.</p>`}
-                    <mc-empty-folders-option
+                    <umbricians-media-curator-empty-folders-option
                       @change=${(event: Event) =>
                         (this.#permanentlyDeleteEmptyFolders = (event.target as McEmptyFoldersOptionElement).permanentlyDelete)}
-                    ></mc-empty-folders-option>
+                    ></umbricians-media-curator-empty-folders-option>
                     <div class="actions">
                       <uui-button
                         data-mark="mc:plan-execute"
@@ -382,6 +382,6 @@ export default McRulesetCurateViewElement;
 
 declare global {
   interface HTMLElementTagNameMap {
-    "mc-ruleset-curate-view": McRulesetCurateViewElement;
+    "umbricians-media-curator-ruleset-curate-view": McRulesetCurateViewElement;
   }
 }

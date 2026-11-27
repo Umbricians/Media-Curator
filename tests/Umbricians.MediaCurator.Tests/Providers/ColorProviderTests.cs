@@ -82,30 +82,30 @@ public class ColorProviderTests
 
     // Regression: a blue gradient over a black background (about half the pixels are near-black,
     // the blues are dark navies) was filed under Black.
-    [Fact]
+    [Test]
     public async Task Blue_gradient_on_black_photo_is_blue()
     {
-        var ctx = WithFile(TestContext.Create(), "tests/images/blue-gradient-on-black.jpg");
+        var ctx = WithFile(CurationContexts.Create(), "tests/images/blue-gradient-on-black.jpg");
 
         var result = await _sut.ResolveAsync(ctx);
 
-        Assert.Equal("Blue", result.ResolvedValue);
+        Assert.That(result.ResolvedValue, Is.EqualTo("Blue"));
     }
 
-    [Fact]
+    [Test]
     public async Task Colored_subject_beats_a_larger_dark_background()
     {
-        var ctx = WithImage(TestContext.Create(), DiagonalOver(new Rgb24(0, 0, 0), new Rgb24(0, 20, 90), new Rgb24(0, 120, 200)));
+        var ctx = WithImage(CurationContexts.Create(), DiagonalOver(new Rgb24(0, 0, 0), new Rgb24(0, 20, 90), new Rgb24(0, 120, 200)));
 
         var result = await _sut.ResolveAsync(ctx);
 
-        Assert.Equal("Blue", result.ResolvedValue);
+        Assert.That(result.ResolvedValue, Is.EqualTo("Blue"));
     }
 
-    [Fact]
+    [Test]
     public async Task Mostly_black_image_with_a_small_colored_detail_stays_black()
     {
-        var ctx = WithImage(TestContext.Create(), image =>
+        var ctx = WithImage(CurationContexts.Create(), image =>
         {
             for (var y = 0; y < image.Height; y++)
             {
@@ -118,112 +118,110 @@ public class ColorProviderTests
 
         var result = await _sut.ResolveAsync(ctx);
 
-        Assert.Equal("Black", result.ResolvedValue);
+        Assert.That(result.ResolvedValue, Is.EqualTo("Black"));
     }
 
-    [Theory]
-    [InlineData(0, 45, 106, "Blue")] // dark navy, previously Black
-    [InlineData(0, 90, 200, "Blue")] // mid blue
-    [InlineData(0, 128, 170, "Cyan")] // teal (hue ~195°), previously Gray
-    [InlineData(0, 70, 0, "Green")] // dark green
-    [InlineData(128, 128, 128, "Gray")]
-    [InlineData(240, 240, 245, "White")]
-    [InlineData(255, 182, 193, "Pink")]
-    [InlineData(139, 69, 19, "Brown")]
-    [InlineData(255, 165, 0, "Orange")]
-    [InlineData(128, 0, 128, "Purple")]
-    [InlineData(0, 230, 230, "Cyan")]
+    [TestCase(0, 45, 106, "Blue")] // dark navy, previously Black
+    [TestCase(0, 90, 200, "Blue")] // mid blue
+    [TestCase(0, 128, 170, "Cyan")] // teal (hue ~195°), previously Gray
+    [TestCase(0, 70, 0, "Green")] // dark green
+    [TestCase(128, 128, 128, "Gray")]
+    [TestCase(240, 240, 245, "White")]
+    [TestCase(255, 182, 193, "Pink")]
+    [TestCase(139, 69, 19, "Brown")]
+    [TestCase(255, 165, 0, "Orange")]
+    [TestCase(128, 0, 128, "Purple")]
+    [TestCase(0, 230, 230, "Cyan")]
     public async Task Classifies_colors_by_hue_not_brightness(byte r, byte g, byte b, string expected)
     {
-        var ctx = WithImage(TestContext.Create(), new Rgb24(r, g, b));
+        var ctx = WithImage(CurationContexts.Create(), new Rgb24(r, g, b));
 
         var result = await _sut.ResolveAsync(ctx);
 
-        Assert.Equal(expected, result.ResolvedValue);
+        Assert.That(result.ResolvedValue, Is.EqualTo(expected));
     }
 
-    [Fact]
+    [Test]
     public async Task Average_mode_uses_hue_classification_too()
     {
-        var ctx = WithImage(TestContext.Create(settings: TestContext.Settings(("mode", "average"))), new Rgb24(0, 45, 106));
+        var ctx = WithImage(CurationContexts.Create(settings: CurationContexts.Settings(("mode", "average"))), new Rgb24(0, 45, 106));
 
         var result = await _sut.ResolveAsync(ctx);
 
-        Assert.Equal("Blue", result.ResolvedValue);
+        Assert.That(result.ResolvedValue, Is.EqualTo("Blue"));
     }
 
-    [Fact]
+    [Test]
     public async Task Palette_without_neutral_entries_still_resolves_dark_pixels()
     {
         var ctx = WithImage(
-            TestContext.Create(settings: TestContext.Settings(("palette", "Brand Blue=#1B264F\nBrand Red=#C8102E"))),
+            CurationContexts.Create(settings: CurationContexts.Settings(("palette", "Brand Blue=#1B264F\nBrand Red=#C8102E"))),
             new Rgb24(5, 5, 5));
 
         var result = await _sut.ResolveAsync(ctx);
 
-        Assert.True(result.IsResolved);
+        Assert.That(result.IsResolved, Is.True);
     }
 
-    [Theory]
-    [InlineData(255, 0, 0, "Red")]
-    [InlineData(0, 0, 255, "Blue")]
-    [InlineData(250, 250, 250, "White")]
-    [InlineData(10, 10, 10, "Black")]
+    [TestCase(255, 0, 0, "Red")]
+    [TestCase(0, 0, 255, "Blue")]
+    [TestCase(250, 250, 250, "White")]
+    [TestCase(10, 10, 10, "Black")]
     public async Task Snaps_solid_color_image_to_nearest_palette_entry(byte r, byte g, byte b, string expected)
     {
-        var ctx = WithImage(TestContext.Create(), new Rgb24(r, g, b));
+        var ctx = WithImage(CurationContexts.Create(), new Rgb24(r, g, b));
 
         var result = await _sut.ResolveAsync(ctx);
 
-        Assert.True(result.IsResolved);
-        Assert.Equal(expected, result.ResolvedValue);
+        Assert.That(result.IsResolved, Is.True);
+        Assert.That(result.ResolvedValue, Is.EqualTo(expected));
     }
 
-    [Fact]
+    [Test]
     public async Task Custom_brand_palette_names_are_used()
     {
         var ctx = WithImage(
-            TestContext.Create(settings: TestContext.Settings(("palette", "Brand Blue=#1B264F\nBrand Sand=#E9DCC9"))),
+            CurationContexts.Create(settings: CurationContexts.Settings(("palette", "Brand Blue=#1B264F\nBrand Sand=#E9DCC9"))),
             new Rgb24(27, 38, 79));
 
         var result = await _sut.ResolveAsync(ctx);
 
-        Assert.Equal("Brand Blue", result.ResolvedValue);
+        Assert.That(result.ResolvedValue, Is.EqualTo("Brand Blue"));
     }
 
-    [Fact]
+    [Test]
     public async Task Average_mode_resolves()
     {
         var ctx = WithImage(
-            TestContext.Create(settings: TestContext.Settings(("mode", "average"))),
+            CurationContexts.Create(settings: CurationContexts.Settings(("mode", "average"))),
             new Rgb24(0, 128, 0));
 
         var result = await _sut.ResolveAsync(ctx);
 
-        Assert.Equal("Green", result.ResolvedValue);
+        Assert.That(result.ResolvedValue, Is.EqualTo("Green"));
     }
 
-    [Fact]
+    [Test]
     public async Task Unresolved_for_missing_or_invalid_file()
     {
-        var noFile = await _sut.ResolveAsync(TestContext.Create());
-        var nullStream = await _sut.ResolveAsync(TestContext.Create() with { OpenFile = () => null });
-        var garbage = await _sut.ResolveAsync(TestContext.Create() with
+        var noFile = await _sut.ResolveAsync(CurationContexts.Create());
+        var nullStream = await _sut.ResolveAsync(CurationContexts.Create() with { OpenFile = () => null });
+        var garbage = await _sut.ResolveAsync(CurationContexts.Create() with
         {
             OpenFile = () => new MemoryStream([1, 2, 3, 4]),
         });
 
-        Assert.False(noFile.IsResolved);
-        Assert.False(nullStream.IsResolved);
-        Assert.False(garbage.IsResolved);
+        Assert.That(noFile.IsResolved, Is.False);
+        Assert.That(nullStream.IsResolved, Is.False);
+        Assert.That(garbage.IsResolved, Is.False);
     }
 
-    [Fact]
+    [Test]
     public void Palette_parsing_skips_malformed_lines()
     {
         var palette = ColorProvider.ParsePalette("Red=#FF0000\nnope\nBad=#XYZ\n=#000000\nBlue=#0000FF");
 
-        Assert.Equal(2, palette.Count);
-        Assert.Equal(["Red", "Blue"], palette.Select(p => p.Name));
+        Assert.That(palette.Count, Is.EqualTo(2));
+        Assert.That(palette.Select(p => p.Name), Is.EqualTo(["Red", "Blue"]));
     }
 }

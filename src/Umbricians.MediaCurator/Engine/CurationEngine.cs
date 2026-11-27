@@ -21,6 +21,7 @@ public sealed record PlannedMove(
     string? Note,
     IReadOnlyList<FolderSegmentOrigin>? TargetOrigins = null)
 {
+    /// <summary>The target folders as one path, such as "2026/06".</summary>
     public string TargetPath => string.Join("/", TargetSegments);
 }
 
@@ -33,6 +34,7 @@ public sealed record CurationPlan(
     IReadOnlyList<PlannedMove> Moves,
     IReadOnlyList<string> SkippedItems)
 {
+    /// <summary>How many items the plan moves, leaving out those already in place.</summary>
     public int MoveCount => Moves.Count(m => !m.AlreadyInPlace);
 }
 
@@ -46,15 +48,18 @@ public sealed record MediaCurationPlan(
 /// <summary>Thrown when planning for a media key that does not exist.</summary>
 public sealed class MediaNotFoundException : Exception
 {
+    /// <summary>Creates the exception for a media key that doesn't exist.</summary>
     public MediaNotFoundException(Guid mediaKey)
         : base($"Media item '{mediaKey}' was not found.")
     {
         MediaKey = mediaKey;
     }
 
+    /// <summary>The key that wasn't found.</summary>
     public Guid MediaKey { get; }
 }
 
+/// <summary>Plans and runs the moves that put media items in the folders their rulesets choose.</summary>
 public interface ICurationEngine
 {
     /// <summary>Pure: computes what would move where. Shared by dry-run preview and execute.</summary>
@@ -229,7 +234,7 @@ public sealed record ExecutedPlan(CurationPlan Plan, Guid RunKey);
 /// not part of Moved/AlreadyInPlace/Failed.</summary>
 public sealed record CurationRunSummary(Guid RunKey, int Moved, int AlreadyInPlace, int Failed, int FoldersRemoved = 0);
 
-public sealed class CurationEngine : ICurationEngine
+internal sealed class CurationEngine : ICurationEngine
 {
     /// <summary>v1 image filter: items participate only when their media type is in this list (§13).</summary>
     public static readonly string[] ImageMediaTypes = ["Image"];

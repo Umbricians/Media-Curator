@@ -21,7 +21,7 @@ import {
   type SelectOption,
 } from "./setup-view.options.js";
 
-@customElement("mc-root-setup-view")
+@customElement("umbricians-media-curator-root-setup-view")
 export class McRootSetupViewElement extends UmbLitElement {
   @state() private _settings?: MediaCuratorSiteSettingsModel;
   @state() private _ai?: AiSettingsOptionsModel;
@@ -51,7 +51,7 @@ export class McRootSetupViewElement extends UmbLitElement {
         profiles: [],
         maxParallelAnalysesLimit: 16,
         preparedImagesFolder: "",
-        typeSafeApiKeyConfigurationKey: "MediaCurator:Secrets:TypeSafeApiKey",
+        typeSafeApiKeyConfigurationKey: "Umbricians:MediaCurator:Secrets:TypeSafeApiKey",
       };
     } catch {
       notify(this.#notifications, "danger", "Could not load Media Curator settings. Check the server log and reload.");
@@ -109,12 +109,12 @@ export class McRootSetupViewElement extends UmbLitElement {
   override render() {
     const settings = this._settings;
     const ai = this._ai;
-    if (!settings || !ai) return html`<mc-background-runs-banner></mc-background-runs-banner><uui-loader></uui-loader>`;
+    if (!settings || !ai) return html`<umbricians-media-curator-background-runs-banner></umbricians-media-curator-background-runs-banner><uui-loader></uui-loader>`;
     const jevSelected = settings.decisionEngine === "Jev";
     const jevAvailable = settings.jevApiKeyConfigured;
     const keyFromServer = settings.jevApiKeySource === "ServerConfiguration";
 
-    return html`<mc-background-runs-banner></mc-background-runs-banner>
+    return html`<umbricians-media-curator-background-runs-banner></umbricians-media-curator-background-runs-banner>
       <uui-box headline="Setup" data-mark="mc:settings">
         <p>
           Everything Media Curator needs is set up here. The classification scheme is set on each ruleset's
@@ -435,6 +435,6 @@ export default McRootSetupViewElement;
 
 declare global {
   interface HTMLElementTagNameMap {
-    "mc-root-setup-view": McRootSetupViewElement;
+    "umbricians-media-curator-root-setup-view": McRootSetupViewElement;
   }
 }

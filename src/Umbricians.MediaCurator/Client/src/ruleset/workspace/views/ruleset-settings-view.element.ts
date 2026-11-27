@@ -4,7 +4,7 @@ import { MC_EMPTY_GUID } from "../../entity.js";
 import { MC_RULESET_WORKSPACE_CONTEXT } from "../ruleset-workspace.context-token.js";
 
 /** Settings tab: everything about a ruleset except its rules (edited on Design) and name (header). */
-@customElement("mc-ruleset-settings-view")
+@customElement("umbricians-media-curator-ruleset-settings-view")
 export class McRulesetSettingsViewElement extends UmbLitElement {
   @state() private _scopeRootKey?: string;
   @state() private _enabled = true;
@@ -79,6 +79,6 @@ export default McRulesetSettingsViewElement;
 
 declare global {
   interface HTMLElementTagNameMap {
-    "mc-ruleset-settings-view": McRulesetSettingsViewElement;
+    "umbricians-media-curator-ruleset-settings-view": McRulesetSettingsViewElement;
   }
 }

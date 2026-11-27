@@ -1,21 +1,57 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
+  <!-- The Umbraco.Automate extension package. Its build and packaging follow the Media Curator project file, which
+       explains each setting; this file explains only what differs. Both packages are released together, with the same
+       version, from one tag. -->
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>$(UmbracoTargetFramework)</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
-    <PackageId>Umbricians.MediaCurator.Automate</PackageId>
-    <Title>Umbricians.MediaCurator for Umbraco.Automate</Title>
-    <Description>Umbraco.Automate triggers and actions for MediaCurator. Tracks the pre-release Umbraco.Automate API and is versioned independently of the core package (§9).</Description>
-    <!-- Pre-release while Umbraco.Automate itself is pre-release -->
-    <Version>0.1.0-beta</Version>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+    <NoWarn>$(NoWarn);NU5104</NoWarn>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Umbricians.MediaCurator.Automate</PackageId>
+    <Product>Umbricians.MediaCurator.Automate</Product>
+    <Title>Umbricians Media Curator Automate</Title>
+    <Description>Adds Media Curator triggers and actions to Umbraco.Automate workflows.</Description>
+    <Authors>Umbricians</Authors>
+    <Version>$(UmbracoMajor).0.0</Version>
+    <PackageTags>umbraco;umbraco-marketplace;umbraco-v$(UmbracoMajor);media;media-library;automate;workflows</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>Copyright (c) 2026 FYIN LLC (trading as Umbricians)</Copyright>
+    <PackageProjectUrl>https://github.com/Umbricians/Media-Curator</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Umbricians/Media-Curator</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!-- CI passes this package's own last release of the major as LastReleaseVersion. It has never been published, so
+         there is no baseline before that. -->
+    <PackageValidationBaselineVersion>$(LastReleaseVersion)</PackageValidationBaselineVersion>
+    <EnablePackageValidation Condition="'$(PackageValidationBaselineVersion)' != ''">true</EnablePackageValidation>
+    <ApiCompatPermitUnnecessarySuppressions>true</ApiCompatPermitUnnecessarySuppressions>
+    <CompatibilitySuppressionFilePath>CompatibilitySuppressions.$(UmbracoMajor).xml</CompatibilitySuppressionFilePath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Umbricians.MediaCurator.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Umbricians.MediaCurator\Umbricians.MediaCurator.csproj" />
     <!-- Override WorkflowCore 3.9.0's vulnerable transitive OpenTelemetry.Api dependency. -->
-    <PackageReference Include="OpenTelemetry.Api" Version="1.15.3" />
-    <PackageReference Include="Umbraco.Automate.Core" Version="17.4.0" />
+    <PackageReference Include="OpenTelemetry.Api" />
+    <!-- Overrides Umbraco/Microsoft.Data.Sqlite's vulnerable transitive SQLitePCLRaw 2.x native bundle. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" PrivateAssets="all" />
+    <PackageReference Include="Umbraco.Automate.Core" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,6 +60,31 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="wwwroot\" />
+    <!-- Rendered from assets/logo.svg; NuGet recommends 128x128. -->
+    <None Include="..\..\assets\logo-128.png" Pack="true" PackagePath="\icon.png" Visible="false" />
+    <!-- The package page's README. It has no repository-relative links or images, so unlike Media Curator's it isn't
+         generated. -->
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
+
+  <!--
+    A project reference packs as a dependency on this version of Media Curator or any later one, of any major. This
+    package was built and tested against this release of Media Curator, and Media Curator's package validation keeps
+    its public API, which this package uses, within a major. So the dependency gets the same kind of range as the
+    Umbraco ones (Directory.Build.props): this release or later, before the next major. build/check-package.mjs checks
+    the packed range.
+  -->
+  <Target Name="UseMediaCuratorRange" AfterTargets="_GetProjectReferenceVersions">
+    <ItemGroup>
+      <_ProjectReferencesWithVersions Update="@(_ProjectReferencesWithVersions)"
+                                      Condition="'%(Filename)' == 'Umbricians.MediaCurator'"
+                                      ProjectVersion="[%(ProjectVersion), $([MSBuild]::Add($(UmbracoMajor), 1)).0.0-a)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The bundle is built by npm and git-ignored, so never pack a package without it. -->
+  <Target Name="EnsureClientBundleBuilt" BeforeTargets="GenerateNuspec">
+    <Error Condition="!Exists('wwwroot\App_Plugins\UmbriciansMediaCuratorAutomate\umbricians-media-curator-automate.js')"
+           Text="The backoffice bundle is missing. Run 'npm ci' and 'npm run build' in src/Umbricians.MediaCurator.Automate/Client before packing." />
+  </Target>
 </Project>

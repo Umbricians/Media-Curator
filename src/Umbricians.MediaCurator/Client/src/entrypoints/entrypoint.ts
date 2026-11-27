@@ -6,7 +6,7 @@ import { UMB_AUTH_CONTEXT } from "@umbraco-cms/backoffice/auth";
 import { client } from "../api/client.gen.js";
 
 const STYLESHEET_ID = "Umbricians.MediaCurator.Styles";
-const STYLESHEET_HREF = "/App_Plugins/MediaCurator/media-curator.css";
+const STYLESHEET_HREF = "/App_Plugins/UmbriciansMediaCurator/umbricians-media-curator.css";
 
 function ensureStylesheet() {
   if (document.getElementById(STYLESHEET_ID)) return;

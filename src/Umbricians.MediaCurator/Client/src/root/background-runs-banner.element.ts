@@ -13,7 +13,7 @@ const IDLE_POLL_MS = 15000;
  * Media Curator settings views so editors can check on a long run from anywhere in the section.
  * Renders nothing while no run is going.
  */
-@customElement("mc-background-runs-banner")
+@customElement("umbricians-media-curator-background-runs-banner")
 export class McBackgroundRunsBannerElement extends UmbLitElement {
   @state() private _runs: BulkRunStatusModel[] = [];
 
@@ -82,6 +82,6 @@ export default McBackgroundRunsBannerElement;
 
 declare global {
   interface HTMLElementTagNameMap {
-    "mc-background-runs-banner": McBackgroundRunsBannerElement;
+    "umbricians-media-curator-background-runs-banner": McBackgroundRunsBannerElement;
   }
 }

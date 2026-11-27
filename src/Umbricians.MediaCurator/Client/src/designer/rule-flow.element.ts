@@ -19,9 +19,9 @@ import { addRule, removeAt, ruleAt, updateAt } from "./rule-tree.logic.js";
 
 /**
  * xyflow-based ruleset designer: React Flow renders inside a custom element that
- * bridges into the Umbraco Lit dashboard (same contract as mc-rule-tree).
+ * bridges into the Umbraco Lit dashboard (same contract as umbricians-media-curator-rule-tree).
  */
-@customElement("mc-rule-flow")
+@customElement("umbricians-media-curator-rule-flow")
 export class McRuleFlowElement extends UmbElementMixin(LitElement) {
   @property({ attribute: false }) rules: RuleNodeModel[] = [];
   @property({ attribute: false }) providers: ProviderModel[] = [];
@@ -178,6 +178,6 @@ export default McRuleFlowElement;
 
 declare global {
   interface HTMLElementTagNameMap {
-    "mc-rule-flow": McRuleFlowElement;
+    "umbricians-media-curator-rule-flow": McRuleFlowElement;
   }
 }

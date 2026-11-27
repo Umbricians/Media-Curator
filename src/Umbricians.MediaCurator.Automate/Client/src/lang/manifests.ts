@@ -1,8 +1,8 @@
 export const manifests: Array<UmbExtensionManifest> = [
   {
     type: "localization",
-    alias: "MediaCuratorAutomate.Localization.En",
-    name: "MediaCurator Automate English",
+    alias: "Umbricians.MediaCurator.Automate.Localization.En",
+    name: "Media Curator Automate English",
     weight: 100,
     meta: {
       culture: "en",

@@ -2,7 +2,7 @@ import { css, customElement, html } from "@umbraco-cms/backoffice/external/lit";
 import { UmbLitElement } from "@umbraco-cms/backoffice/lit-element";
 import { MC_ROOT_WORKSPACE_PATH } from "../constants.js";
 
-@customElement("mc-ruleset-workspace-editor")
+@customElement("umbricians-media-curator-ruleset-workspace-editor")
 export class McRulesetWorkspaceEditorElement extends UmbLitElement {
   override render() {
     return html`
@@ -27,6 +27,6 @@ export default McRulesetWorkspaceEditorElement;
 
 declare global {
   interface HTMLElementTagNameMap {
-    "mc-ruleset-workspace-editor": McRulesetWorkspaceEditorElement;
+    "umbricians-media-curator-ruleset-workspace-editor": McRulesetWorkspaceEditorElement;
   }
 }

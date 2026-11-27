@@ -1,12 +1,20 @@
-using SixLabors.ImageSharp;
+using Umbraco.Cms.Core.Media;
 using Umbricians.MediaCurator.Core;
 
 namespace Umbricians.MediaCurator.Providers;
 
 /// <summary>Sorts by aspect ratio: Landscape / Portrait / Square (§6). Bucket names are
 /// configurable so brand terms or localized labels can be used.</summary>
-public sealed class DimensionsProvider : ICurationProvider
+/// <remarks>The dimensions come from Umbraco's image dimension extractor, the same one that sets a media item's width
+/// and height on upload. It takes EXIF orientation into account, so a photo stored sideways but shown upright is sorted
+/// by how it is shown. A site without an imaging package has Umbraco's no-op extractor, which finds no dimensions, so
+/// images stay unresolved.</remarks>
+internal sealed class DimensionsProvider : ICurationProvider
 {
+    private readonly IImageDimensionExtractor _dimensionExtractor;
+
+    public DimensionsProvider(IImageDimensionExtractor dimensionExtractor) => _dimensionExtractor = dimensionExtractor;
+
     public const string ProviderAlias = "Umbricians.MediaCurator.Dimensions";
 
     public string Alias => ProviderAlias;
@@ -51,9 +59,13 @@ public sealed class DimensionsProvider : ICurationProvider
                 return Task.FromResult(CurationResult.Unresolved());
             }
 
-            var info = Image.Identify(stream);
-            width = info.Width;
-            height = info.Height;
+            if (_dimensionExtractor.GetDimensions(stream) is not { } size)
+            {
+                return Task.FromResult(CurationResult.Unresolved());
+            }
+
+            width = size.Width;
+            height = size.Height;
         }
         catch (Exception)
         {

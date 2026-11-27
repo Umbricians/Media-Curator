@@ -37,7 +37,7 @@ public class UndoAndTransferTests
             => Task.FromResult<IReadOnlyList<CurationRunItem>>(Records.Where(r => r.RunKey == runKey).Select(r => r.Item).ToList());
     }
 
-    [Fact]
+    [Test]
     public async Task Undo_restores_original_tree()
     {
         // Arrange a moved item via the run log shape the engine writes
@@ -58,16 +58,16 @@ public class UndoAndTransferTests
         var summary = await undo.UndoRunAsync(runKey);
 
         // Assert: item is back in its original folder
-        Assert.Equal(1, summary.Moved);
-        Assert.Equal(originalParent, media.GetItem(img)!.ParentKey);
+        Assert.That(summary.Moved, Is.EqualTo(1));
+        Assert.That(media.GetItem(img)!.ParentKey, Is.EqualTo(originalParent));
 
         // Undoing again is a no-op
         var second = await undo.UndoRunAsync(runKey);
-        Assert.Equal(0, second.Moved);
-        Assert.Equal(1, second.AlreadyInPlace);
+        Assert.That(second.Moved, Is.EqualTo(0));
+        Assert.That(second.AlreadyInPlace, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task Undo_restores_recycled_folders_shallowest_first_before_moving_items_back()
     {
         var media = new CurationEngineTests.FakeMedia();
@@ -91,14 +91,14 @@ public class UndoAndTransferTests
 
         var summary = await new CurationUndoService(log, media, NullLogger<CurationUndoService>.Instance).UndoRunAsync(runKey);
 
-        Assert.Equal([(a, scope), (b, a)], media.Restored);
-        Assert.Equal(b, media.GetItem(img)!.ParentKey);
-        Assert.Equal(1, summary.Moved);
-        Assert.Equal(0, summary.Failed);
-        Assert.Equal(0, summary.FoldersRemoved);
+        Assert.That(media.Restored, Is.EqualTo([(a, scope), (b, a)]));
+        Assert.That(media.GetItem(img)!.ParentKey, Is.EqualTo(b));
+        Assert.That(summary.Moved, Is.EqualTo(1));
+        Assert.That(summary.Failed, Is.EqualTo(0));
+        Assert.That(summary.FoldersRemoved, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Undo_recreates_permanently_deleted_folders_and_moves_items_into_them()
     {
         var media = new CurationEngineTests.FakeMedia();
@@ -120,17 +120,17 @@ public class UndoAndTransferTests
 
         var summary = await new CurationUndoService(log, media, NullLogger<CurationUndoService>.Instance).UndoRunAsync(runKey);
 
-        var newA = Assert.Single(media.GetChildren(scope), i => i.Name == "A").Key;
-        var newB = Assert.Single(media.GetChildren(newA)).Key;
-        Assert.NotEqual(a, newA);
-        Assert.NotEqual(b, newB);
-        Assert.Equal("B", media.GetItem(newB)!.Name);
-        Assert.Equal(newB, media.GetItem(img)!.ParentKey);
-        Assert.Equal(1, summary.Moved);
-        Assert.Empty(media.Restored);
+        var newA = TestAssert.Single(media.GetChildren(scope), i => i.Name == "A").Key;
+        var newB = TestAssert.Single(media.GetChildren(newA)).Key;
+        Assert.That(newA, Is.Not.EqualTo(a));
+        Assert.That(newB, Is.Not.EqualTo(b));
+        Assert.That(media.GetItem(newB)!.Name, Is.EqualTo("B"));
+        Assert.That(media.GetItem(img)!.ParentKey, Is.EqualTo(newB));
+        Assert.That(summary.Moved, Is.EqualTo(1));
+        Assert.That(media.Restored, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task Undo_counts_a_folder_that_cannot_be_restored_as_failed()
     {
         var media = new CurationEngineTests.FakeMedia();
@@ -141,8 +141,8 @@ public class UndoAndTransferTests
 
         var summary = await new CurationUndoService(log, media, NullLogger<CurationUndoService>.Instance).UndoRunAsync(runKey);
 
-        Assert.Equal(1, summary.Failed);
-        Assert.Equal(0, summary.Moved);
+        Assert.That(summary.Failed, Is.EqualTo(1));
+        Assert.That(summary.Moved, Is.EqualTo(0));
     }
 
     private sealed class InMemoryRulesets : IRulesetRepository
@@ -167,7 +167,7 @@ public class UndoAndTransferTests
         public Task DeleteAsync(Guid k, CancellationToken ct = default) => Task.CompletedTask;
     }
 
-    [Fact]
+    [Test]
     public async Task Ruleset_transfer_round_trips_between_environments()
     {
         var source = new InMemoryRulesets();
@@ -182,7 +182,7 @@ public class UndoAndTransferTests
                 new RuleNode
                 {
                     ProviderAlias = DateFolderProvider.ProviderAlias,
-                    Settings = TestContext.Settings(("format", "yyyy/MMMM")),
+                    Settings = CurationContexts.Settings(("format", "yyyy/MMMM")),
                     Fallback = UnresolvedBehavior.Unsorted,
                     Children = [new RuleNode { ProviderAlias = AlphabeticalProvider.ProviderAlias, Condition = "x" }],
                 },
@@ -194,16 +194,16 @@ public class UndoAndTransferTests
         var target = new InMemoryRulesets();
         var imported = await new RulesetTransferService(target, new Umbricians.MediaCurator.Core.CurationProviderCollection(() => [new DateFolderProvider(), new AlphabeticalProvider()])).ImportAsync(exported);
 
-        Assert.Equal(1, imported);
+        Assert.That(imported, Is.EqualTo(1));
         var ruleset = target.ByScope[scope];
-        Assert.Equal("Date rules", ruleset.Name);
-        Assert.Equal("da-DK", ruleset.CultureName);
-        Assert.Equal("yyyy/MMMM", ruleset.Rules[0].Settings["format"]!.GetValue<string>());
-        Assert.Equal(UnresolvedBehavior.Unsorted, ruleset.Rules[0].Fallback);
-        Assert.Equal("x", ruleset.Rules[0].Children[0].Condition);
+        Assert.That(ruleset.Name, Is.EqualTo("Date rules"));
+        Assert.That(ruleset.CultureName, Is.EqualTo("da-DK"));
+        Assert.That(ruleset.Rules[0].Settings["format"]!.GetValue<string>(), Is.EqualTo("yyyy/MMMM"));
+        Assert.That(ruleset.Rules[0].Fallback, Is.EqualTo(UnresolvedBehavior.Unsorted));
+        Assert.That(ruleset.Rules[0].Children[0].Condition, Is.EqualTo("x"));
 
         // Re-import updates rather than duplicates
-        Assert.Equal(1, await new RulesetTransferService(target, new Umbricians.MediaCurator.Core.CurationProviderCollection(() => [new DateFolderProvider(), new AlphabeticalProvider()])).ImportAsync(exported));
-        Assert.Single(target.ByScope);
+        Assert.That(await new RulesetTransferService(target, new Umbricians.MediaCurator.Core.CurationProviderCollection(() => [new DateFolderProvider(), new AlphabeticalProvider()])).ImportAsync(exported), Is.EqualTo(1));
+        Assert.That(target.ByScope, Has.Exactly(1).Items);
     }
 }

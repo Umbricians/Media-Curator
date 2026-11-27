@@ -1,3 +1,4 @@
+using System.Globalization;
 using Umbricians.MediaCurator.Core;
 
 namespace Umbricians.MediaCurator.Providers;
@@ -5,15 +6,22 @@ namespace Umbricians.MediaCurator.Providers;
 /// <summary>
 /// Sorts images into nested date folders (§5.1). The folder pattern uses standard date
 /// format tokens with '/' producing folder levels (e.g. "yyyy/MM/dd", "yyyy/MMMM").
-/// Month/day names are rendered in the ruleset's culture. EXIF DateTimeOriginal becomes an
-/// additional source in the EXIF milestone. Each level is ordered by what its pattern part
-/// means (months in calendar order, weekdays in week order) — see <see cref="GetFolderComparer"/>.
+/// Month/day names are rendered in the ruleset's culture. The date is the upload date, the last
+/// updated date, or the date the photo was taken (EXIF DateTimeOriginal, as the camera recorded it,
+/// falling back to the upload date). Each level is ordered by what its pattern part means (months in
+/// calendar order, weekdays in week order) — see <see cref="GetFolderComparer"/>.
 /// </summary>
-public sealed class DateFolderProvider : ICurationProvider, ICurationFolderOrder
+internal sealed class DateFolderProvider : ICurationProvider, ICurationFolderOrder
 {
     public const string ProviderAlias = "Umbricians.MediaCurator.Date";
 
     public const string DefaultFormat = "yyyy/MM";
+
+    /// <summary>The source that reads the date the photo was taken from its EXIF data.</summary>
+    public const string DateTakenSource = "dateTaken";
+
+    // How EXIF writes dates ("2024:05:17 14:03:22"), and the dashed form some software writes instead.
+    private static readonly string[] ExifDateFormats = ["yyyy:MM:dd HH:mm:ss", "yyyy-MM-dd HH:mm:ss", "yyyy:MM:dd"];
 
     public string Alias => ProviderAlias;
 
@@ -44,6 +52,7 @@ public sealed class DateFolderProvider : ICurationProvider, ICurationFolderOrder
                 [
                     new SettingFieldOption { Value = "createDate", Label = "Upload (create) date" },
                     new SettingFieldOption { Value = "updateDate", Label = "Last updated date" },
+                    new SettingFieldOption { Value = DateTakenSource, Label = "Date taken (from the photo, else the upload date)" },
                 ],
             },
         ],
@@ -57,6 +66,7 @@ public sealed class DateFolderProvider : ICurationProvider, ICurationFolderOrder
         var date = source switch
         {
             "updateDate" => context.UpdateDate,
+            DateTakenSource => DateTaken(context.Exif) ?? context.CreateDate,
             _ => context.CreateDate,
         };
 
@@ -102,6 +112,16 @@ public sealed class DateFolderProvider : ICurationProvider, ICurationFolderOrder
             ? DateFolderOrder.Create(parts[context.SegmentIndex], context.Culture)
             : null;
     }
+
+    /// <summary>The date the photo was taken, as the camera recorded it (no time zone is applied), or null
+    /// when the image has no EXIF capture date or it is blank, zeroed or not a date.</summary>
+    internal static DateTime? DateTaken(IReadOnlyDictionary<string, string>? exif)
+        => exif is not null
+            && exif.TryGetValue("DateTimeOriginal", out var value)
+            && DateTime.TryParseExact(value.Trim(), ExifDateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var taken)
+            && taken.Year > 1
+                ? taken
+                : null;
 
     private static string[] SplitFormat(string format)
         => format.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

@@ -4,77 +4,77 @@ namespace Umbricians.MediaCurator.Tests.Engine;
 
 public class BulkCurationQueueTests
 {
-    [Fact]
+    [Test]
     public void Enqueue_dequeue_round_trip()
     {
-        var queue = new BulkCurationQueue();
+        var queue = new BulkCurationQueue(TimeProvider.System);
         var scope = Guid.NewGuid();
 
-        Assert.True(queue.TryEnqueue(scope, recursive: true));
-        Assert.Equal(1, queue.QueueLength);
-        Assert.True(queue.TryDequeue(out var request));
-        Assert.Equal(scope, request!.ScopeFolderKey);
-        Assert.True(request.Recursive);
-        Assert.Equal(0, queue.QueueLength);
+        Assert.That(queue.TryEnqueue(scope, recursive: true), Is.True);
+        Assert.That(queue.QueueLength, Is.EqualTo(1));
+        Assert.That(queue.TryDequeue(out var request), Is.True);
+        Assert.That(request!.ScopeFolderKey, Is.EqualTo(scope));
+        Assert.That(request.Recursive, Is.True);
+        Assert.That(queue.QueueLength, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public void Same_scope_cannot_be_double_queued_while_pending_or_running()
     {
-        var queue = new BulkCurationQueue();
+        var queue = new BulkCurationQueue(TimeProvider.System);
         var scope = Guid.NewGuid();
 
-        Assert.True(queue.TryEnqueue(scope, true));
-        Assert.False(queue.TryEnqueue(scope, true)); // queued
+        Assert.That(queue.TryEnqueue(scope, true), Is.True);
+        Assert.That(queue.TryEnqueue(scope, true), Is.False); // queued
 
         queue.TryDequeue(out _);
         queue.Report(scope, new BulkRunStatus(scope, BulkRunState.Running, 0, 10, null, null));
-        Assert.False(queue.TryEnqueue(scope, true)); // running
+        Assert.That(queue.TryEnqueue(scope, true), Is.False); // running
 
         queue.Report(scope, new BulkRunStatus(scope, BulkRunState.Completed, 10, 10, null, Guid.NewGuid()));
-        Assert.True(queue.TryEnqueue(scope, true)); // done → requeue allowed
+        Assert.That(queue.TryEnqueue(scope, true), Is.True); // done → requeue allowed
     }
 
-    [Fact]
+    [Test]
     public void Statuses_reflect_reports()
     {
-        var queue = new BulkCurationQueue();
+        var queue = new BulkCurationQueue(TimeProvider.System);
         var scope = Guid.NewGuid();
         queue.TryEnqueue(scope, true);
 
         queue.Report(scope, new BulkRunStatus(scope, BulkRunState.Failed, 0, 0, "boom", null));
 
-        var status = Assert.Single(queue.GetStatuses());
-        Assert.Equal(BulkRunState.Failed, status.State);
-        Assert.Equal("boom", status.Error);
+        var status = TestAssert.Single(queue.GetStatuses());
+        Assert.That(status.State, Is.EqualTo(BulkRunState.Failed));
+        Assert.That(status.Error, Is.EqualTo("boom"));
     }
 
-    [Fact]
+    [Test]
     public void Media_runs_refuse_a_folder_above_or_below_one_already_queued()
     {
-        var queue = new BulkCurationQueue();
+        var queue = new BulkCurationQueue(TimeProvider.System);
         var demo = Guid.NewGuid();
 
-        Assert.Equal(BulkEnqueueResult.Queued, queue.TryEnqueueMedia(demo, "Demo", "-1,10", 500, EmptyFolderRemoval.RecycleBin));
-        Assert.Equal(BulkEnqueueResult.Overlapping, queue.TryEnqueueMedia(Guid.NewGuid(), "2026", "-1,10,12", 200, EmptyFolderRemoval.RecycleBin));
-        Assert.Equal(BulkEnqueueResult.Overlapping, queue.TryEnqueueMedia(Guid.NewGuid(), "Root", "-1", 900, EmptyFolderRemoval.RecycleBin));
-        Assert.Equal(BulkEnqueueResult.Queued, queue.TryEnqueueMedia(Guid.NewGuid(), "Other", "-1,105", 300, EmptyFolderRemoval.RecycleBin));
+        Assert.That(queue.TryEnqueueMedia(demo, "Demo", "-1,10", 500, EmptyFolderRemoval.RecycleBin), Is.EqualTo(BulkEnqueueResult.Queued));
+        Assert.That(queue.TryEnqueueMedia(Guid.NewGuid(), "2026", "-1,10,12", 200, EmptyFolderRemoval.RecycleBin), Is.EqualTo(BulkEnqueueResult.Overlapping));
+        Assert.That(queue.TryEnqueueMedia(Guid.NewGuid(), "Root", "-1", 900, EmptyFolderRemoval.RecycleBin), Is.EqualTo(BulkEnqueueResult.Overlapping));
+        Assert.That(queue.TryEnqueueMedia(Guid.NewGuid(), "Other", "-1,105", 300, EmptyFolderRemoval.RecycleBin), Is.EqualTo(BulkEnqueueResult.Queued));
 
-        Assert.True(queue.TryDequeue(out var request));
-        Assert.True(request!.MediaRun);
-        Assert.Equal(demo, request.ScopeFolderKey);
-        Assert.Equal(500, queue.GetStatus(demo)!.ImageCount);
+        Assert.That(queue.TryDequeue(out var request), Is.True);
+        Assert.That(request!.MediaRun, Is.True);
+        Assert.That(request.ScopeFolderKey, Is.EqualTo(demo));
+        Assert.That(queue.GetStatus(demo)!.ImageCount, Is.EqualTo(500));
     }
 
-    [Fact]
+    [Test]
     public void A_finished_media_run_no_longer_blocks_its_folder()
     {
-        var queue = new BulkCurationQueue();
+        var queue = new BulkCurationQueue(TimeProvider.System);
         var demo = Guid.NewGuid();
         queue.TryEnqueueMedia(demo, "Demo", "-1,10", 500, EmptyFolderRemoval.RecycleBin);
 
         queue.Report(demo, queue.GetStatus(demo)! with { State = BulkRunState.Completed });
 
-        Assert.Equal(BulkEnqueueResult.Queued, queue.TryEnqueueMedia(Guid.NewGuid(), "2026", "-1,10,12", 200, EmptyFolderRemoval.RecycleBin));
+        Assert.That(queue.TryEnqueueMedia(Guid.NewGuid(), "2026", "-1,10,12", 200, EmptyFolderRemoval.RecycleBin), Is.EqualTo(BulkEnqueueResult.Queued));
     }
 }

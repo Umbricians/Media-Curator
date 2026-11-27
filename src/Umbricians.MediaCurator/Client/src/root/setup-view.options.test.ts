@@ -8,7 +8,7 @@ const ai = {
   ],
   maxParallelAnalysesLimit: 16,
   preparedImagesFolder: "umbraco/Data/TEMP/MediaCurator/PreparedImages",
-  typeSafeApiKeyConfigurationKey: "MediaCurator:Secrets:TypeSafeApiKey",
+  typeSafeApiKeyConfigurationKey: "Umbricians:MediaCurator:Secrets:TypeSafeApiKey",
 };
 
 describe("profileOptions", () => {

@@ -2,7 +2,7 @@ namespace Umbricians.MediaCurator.Core;
 
 /// <summary>
 /// A pluggable unit that, given an image, returns the folder segment(s) it belongs under (§12).
-/// Register via <c>builder.MediaCurator().AddProvider&lt;MyProvider&gt;()</c>; registered providers
+/// Register via <c>builder.AddMediaCuratorProvider&lt;MyProvider&gt;()</c>; registered providers
 /// automatically appear in the ruleset editor and participate in property provisioning.
 /// </summary>
 public interface ICurationProvider

@@ -9,7 +9,7 @@ using Umbricians.MediaCurator.Settings;
 namespace Umbricians.MediaCurator.Recognition;
 
 /// <summary>Picks one classification code per drill-down level with TypeSafe's Jev model.</summary>
-public interface IJevClassificationDecider
+internal interface IJevClassificationDecider
 {
 
     /// <summary>The chosen code, or null when no TypeSafe API key is stored or the call failed, so the

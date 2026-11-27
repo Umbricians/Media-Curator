@@ -32,7 +32,7 @@ test.describe('MediaCurator "Curate images" media action', () => {
     const rootId = await createTestFolder(umbracoApi, rootFolderName, null);
     const subId = await createTestFolder(umbracoApi, subFolderName, rootId);
     await createTestImage(umbracoApi, imageName, subId);
-    const saveResponse = await umbracoApi.put(`${base()}/umbraco/mediacurator/api/v1/rulesets`, {
+    const saveResponse = await umbracoApi.put(`${base()}/umbraco/umbriciansmediacurator/api/v1/rulesets`, {
       scopeRootKey: rootId,
       name: rulesetName,
       enabled: true,
