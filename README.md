@@ -6,7 +6,7 @@
 [![Build](https://github.com/Umbricians/Media-Curator/actions/workflows/build.yml/badge.svg)](https://github.com/Umbricians/Media-Curator/actions/workflows/build.yml)
 
 Automatically sorts images in the Umbraco Media section into folders using date, EXIF, AI and classification rules.
-(Umbraco 17.7.0+)
+For Umbraco 17 and 18, with Umbraco 19 release candidates in pre-release packages.
 
 Attach a ruleset to any media folder and Media Curator works out where each image in it belongs. You see a preview
 before anything moves, every run can be undone, and all moves go through Umbraco's media service, so links to your
@@ -36,6 +36,14 @@ triggers and actions to workflows, such as curating each image as it is uploaded
 ```bash
 dotnet add package Umbricians.MediaCurator.Automate
 ```
+
+Each package version is for one Umbraco major: 17.x for Umbraco 17.8.2 or later, 18.x for Umbraco 18.3.2 or later.
+NuGet picks the right one for the site.
+
+## Permissions
+
+Media Curator adds no permissions of its own. Its screens are in the Settings section, and every part of it, including
+**Curate images** on media folders, needs access to Settings.
 
 ## Features
 
@@ -163,7 +171,7 @@ the Settings section. It exists for the backoffice and may change between versio
 ```
 src/Umbricians.MediaCurator           the package (Razor class library + Client/ TypeScript)
 src/Umbricians.MediaCurator.Automate  Umbraco.Automate triggers and actions, its own package
-demo/Umbricians.MediaCurator.Demo     Umbraco 17.7.0 site on SQLite that references the package
+demo/Umbricians.MediaCurator.Demo     Umbraco site on SQLite that references the package, for the major it is built for
 tests/Umbricians.MediaCurator.Tests   NUnit tests, run with `dotnet test`
 tests/Umbricians.MediaCurator.E2E     Playwright tests against the demo site
 ```

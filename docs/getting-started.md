@@ -5,7 +5,7 @@ site goes live.
 
 ## Requirements
 
-- Umbraco 17.7.0 or later.
+- Umbraco 17.8.2 or later, or 18.3.2 or later. Umbraco 19 release candidates have pre-release packages.
 - Access to the Settings section. Every Media Curator screen is there, and it adds no permissions of its own.
 - For AI providers only: [Umbraco.AI](https://www.nuget.org/packages/Umbraco.AI) with a configured profile. Date, EXIF,
   dimensions, format, filename and alphabetical rules need no AI.
