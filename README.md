@@ -45,6 +45,10 @@ NuGet picks the right one for the site.
 Media Curator adds no permissions of its own. Its screens are in the Settings section, and every part of it, including
 **Curate images** on media folders, needs access to Settings.
 
+Its API refuses changes that a browser says come from another site, or from another subdomain of yours, unless they
+come from the `Umbraco:CMS:Security:BackOfficeHost` you've configured. The backoffice itself and scripts or servers
+calling the API aren't affected.
+
 ## Features
 
 - **Scoped rulesets**: attach a ruleset to any media folder; the nearest one above an image applies.
