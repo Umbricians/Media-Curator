@@ -20,7 +20,7 @@ namespace Umbricians.MediaCurator.Core;
 /// they do not recognise (editors can add their own folders anywhere). Put unrecognised names
 /// last; <see cref="RankedFolderNameComparer"/> does this for you.</para>
 /// </remarks>
-public interface ICurationFolderOrder
+internal interface ICurationFolderOrder
 {
     /// <summary>The order for the folder names this provider produces at
     /// <see cref="FolderOrderContext.SegmentIndex"/> of its output (0 = the first segment it
@@ -29,7 +29,7 @@ public interface ICurationFolderOrder
 }
 
 /// <summary>What a provider gets when asked for a folder order (<see cref="ICurationFolderOrder"/>).</summary>
-public sealed class FolderOrderContext
+internal sealed class FolderOrderContext
 {
     /// <summary>The settings of the rule that produced the folder level.</summary>
     public JsonObject Settings { get; init; } = new();
@@ -51,7 +51,7 @@ public sealed class FolderOrderContext
 /// numeric value so "2" sorts before "10" ("Photo 2", "Photo 10"). Ties are broken
 /// case-sensitively and then ordinally, so the order is total and stable across runs.
 /// </summary>
-public sealed class NaturalFolderNameComparer : IComparer<string>
+internal sealed class NaturalFolderNameComparer : IComparer<string>
 {
     /// <summary>A natural comparer using the invariant culture.</summary>
     public static NaturalFolderNameComparer Invariant { get; } = new(CultureInfo.InvariantCulture);
@@ -141,7 +141,7 @@ public sealed class NaturalFolderNameComparer : IComparer<string>
 /// // Small, Medium, Large — anything else last.
 /// RankedFolderNameComparer.FromOrderedNames(["Small", "Medium", "Large"], context.Culture);
 /// </code></example>
-public sealed class RankedFolderNameComparer : IComparer<string>
+internal sealed class RankedFolderNameComparer : IComparer<string>
 {
     private readonly Func<string, long?> _rank;
     private readonly IComparer<string> _tieBreak;

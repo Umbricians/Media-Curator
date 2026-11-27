@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace Umbricians.MediaCurator.Settings;
 
 /// <summary>Site-wide Media Curator settings, edited in the backoffice setup and stored in the database.</summary>
-public interface IMediaCuratorSettingsService
+internal interface IMediaCuratorSettingsService
 {
     Task<MediaCuratorSiteSettings> GetAsync(CancellationToken cancellationToken = default);
 
@@ -18,7 +18,7 @@ public interface IMediaCuratorSettingsService
     Task SetTypeSafeApiKeyAsync(string? apiKey, CancellationToken cancellationToken = default);
 }
 
-public sealed class MediaCuratorSiteSettings
+internal sealed class MediaCuratorSiteSettings
 {
     /// <summary>When false, Media Curator makes no AI calls at all; rules that need no AI still work.</summary>
     public bool AiEnabled { get; set; } = true;
@@ -69,7 +69,7 @@ public sealed class MediaCuratorSiteSettings
 /// <summary>Reasoning effort requested from reasoning-capable models. <see cref="Default"/> leaves it to
 /// the Umbraco.AI profile (or the model). A reasoning effort set on the profile itself always wins.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<AiReasoningEffort>))]
-public enum AiReasoningEffort
+internal enum AiReasoningEffort
 {
     Default,
     None,
@@ -80,7 +80,7 @@ public enum AiReasoningEffort
 
 /// <summary>Engine used for AI decisions that are not deterministic.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<DecisionEngine>))]
-public enum DecisionEngine
+internal enum DecisionEngine
 {
     /// <summary>A chat model through Umbraco.AI (default).</summary>
     UmbracoAi,
@@ -92,7 +92,7 @@ public enum DecisionEngine
 
 /// <summary>Where a secret such as the TypeSafe API key comes from.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<ApiKeySource>))]
-public enum ApiKeySource
+internal enum ApiKeySource
 {
     None,
 
@@ -106,7 +106,7 @@ public enum ApiKeySource
 
 /// <summary>How a classification code is chosen when a ruleset classifies images.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<ClassificationMethod>))]
-public enum ClassificationMethod
+internal enum ClassificationMethod
 {
     /// <summary>Describe the image, then pick the final code in one decision with each code's classes
     /// shown (schemes with up to 255 final codes; larger ones go level by level). Default.</summary>

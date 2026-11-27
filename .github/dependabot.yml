@@ -1,0 +1,47 @@
+# Version updates open pull requests against the default branch, develop.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      umbraco:
+        patterns: ["Umbraco.*"]
+    ignore:
+      # The package's references in src/Directory.Packages.props stay at the lowest version of each Umbraco major it
+      # supports, which Directory.Build.props sets, as it does the demo's.
+      - dependency-name: "Umbraco.Cms.Api.Common"
+      - dependency-name: "Umbraco.Cms.Api.Management"
+      - dependency-name: "Umbraco.Cms.Web.Common"
+      - dependency-name: "Umbraco.AI"
+      - dependency-name: "Umbraco.Automate.Core"
+      # The tests' Umbraco imaging package (tests/Directory.Packages.props) follows the same version.
+      - dependency-name: "Umbraco.Cms.Imaging.ImageSharp"
+      # Supporting a new Umbraco major is a decision, made in Directory.Build.props and the workflows' plan jobs
+      # (docs/RELEASING.md), not an update.
+      - dependency-name: "Umbraco.*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: npm
+    directory: /src/Umbricians.MediaCurator.Automate/Client
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "@umbraco-cms/backoffice"
+
+  - package-ecosystem: npm
+    directory: /src/Umbricians.MediaCurator/Client
+    schedule:
+      interval: weekly
+    ignore:
+      # @umbraco-cms/backoffice stays at the lowest Umbraco version the package supports; CI swaps in each major's own.
+      - dependency-name: "@umbraco-cms/backoffice"
+      # The types follow the Node major CI runs (node-version in build.yml), so they only offer APIs it has.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]

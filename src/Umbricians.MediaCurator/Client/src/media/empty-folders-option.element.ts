@@ -3,7 +3,7 @@ import { UmbLitElement } from "@umbraco-cms/backoffice/lit-element";
 import { emptyFoldersDescription } from "./curate-media.summary.js";
 
 /** "Delete empty folders permanently" choice shown before a curation run (default: Recycle Bin). */
-@customElement("mc-empty-folders-option")
+@customElement("umbricians-media-curator-empty-folders-option")
 export class McEmptyFoldersOptionElement extends UmbLitElement {
   @state() private _permanent = false;
 
@@ -44,6 +44,6 @@ export class McEmptyFoldersOptionElement extends UmbLitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    "mc-empty-folders-option": McEmptyFoldersOptionElement;
+    "umbricians-media-curator-empty-folders-option": McEmptyFoldersOptionElement;
   }
 }

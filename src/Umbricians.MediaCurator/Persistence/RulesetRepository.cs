@@ -6,8 +6,13 @@ namespace Umbricians.MediaCurator.Persistence;
 internal sealed class RulesetRepository : IRulesetRepository
 {
     private readonly IScopeProvider _scopeProvider;
+    private readonly TimeProvider _time;
 
-    public RulesetRepository(IScopeProvider scopeProvider) => _scopeProvider = scopeProvider;
+    public RulesetRepository(IScopeProvider scopeProvider, TimeProvider time)
+    {
+        _scopeProvider = scopeProvider;
+        _time = time;
+    }
 
     public Task<Ruleset?> GetAsync(Guid key, CancellationToken cancellationToken = default)
     {
@@ -32,7 +37,7 @@ internal sealed class RulesetRepository : IRulesetRepository
 
     public Task SaveAsync(Ruleset ruleset, CancellationToken cancellationToken = default)
     {
-        ruleset.DateUpdated = DateTime.UtcNow;
+        ruleset.DateUpdated = _time.GetUtcNow().UtcDateTime;
         var dto = new RulesetDto
         {
             Key = ruleset.Key,

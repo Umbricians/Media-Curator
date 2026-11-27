@@ -1,79 +1,128 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>$(UmbracoTargetFramework)</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AddRazorSupportForMvc Condition="'$(SupportPagesAndViews)' == 'True'">true</AddRazorSupportForMvc>
-    <RootNamespace Condition="'$(name)' != '$(name{-VALUE-FORMS-}safe_namespace)'">Umbricians.MediaCurator</RootNamespace>
     <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
+    <!-- Public types are the package's API, so each needs XML docs, which ship in the package. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+    <!-- NU5104 warns about a stable package with a pre-release dependency, which the Umbraco range's upper bound
+         (N.0.0-a, Directory.Build.props) always looks like. build/package-version.mjs refuses a stable version while
+         the major's Umbraco version is a pre-release instead, and build/check-package.mjs fails a stable package
+         with any other pre-release dependency. -->
+    <NoWarn>$(NoWarn);NU5104</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
   <PropertyGroup>
     <PackageId>Umbricians.MediaCurator</PackageId>
     <Product>Umbricians.MediaCurator</Product>
-    <Title>Umbricians.MediaCurator</Title>
-    <Version>0.1.0</Version>
-    <Authors>Chris (Umbricians)</Authors>
-    <Description>Automatically categorizes and organizes images in the Umbraco Media section. Pluggable curation providers (date, EXIF, AI tags, color, classification by subject, format or web role and more), scoped and nested rulesets with a visual designer, consent-based media type provisioning, dry-run preview, activity log with undo.</Description>
-    <PackageTags>umbraco;umbraco-marketplace;media;ai</PackageTags>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Title>Umbricians Media Curator</Title>
+    <Description>Automatically sorts images in the Umbraco Media section into folders using date, EXIF, AI and classification rules.</Description>
+    <Authors>Umbricians</Authors>
+    <!-- The major is the Umbraco major this build is for (Directory.Build.props); CI sets the full version from the tag. -->
+    <Version>$(UmbracoMajor).0.0</Version>
+    <PackageTags>umbraco;umbraco-marketplace;umbraco-v$(UmbracoMajor);media;media-library;images;image-sorting;folders;ai;exif</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>Copyright (c) 2026 FYIN LLC (trading as Umbricians)</Copyright>
+    <PackageProjectUrl>https://github.com/Umbricians/Media-Curator</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Umbricians/Media-Curator</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!-- A breaking change to the public API since the last release of the same Umbraco major fails the pack. CI passes
+         that release as LastReleaseVersion, the major's last version on nuget.org (build/package-version.mjs in its
+         baseline mode). Before the major's first release there is none, and the pack checks against
+         UmbracoPackageValidationBaselineVersion in Directory.Build.props, or nothing for a new major. Differences a
+         version allows are suppressed in CompatibilitySuppressions.<major>.xml, which is emptied as each release of
+         that major merges back into develop (docs/RELEASING.md). Once a release is published its suppressions are no
+         longer needed, but main and develop keep them until the back-merge, so unneeded suppressions don't fail the
+         pack. -->
+    <PackageValidationBaselineVersion>$(LastReleaseVersion)</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion Condition="'$(LastReleaseVersion)' == ''">$(UmbracoPackageValidationBaselineVersion)</PackageValidationBaselineVersion>
+    <EnablePackageValidation Condition="'$(PackageValidationBaselineVersion)' != ''">true</EnablePackageValidation>
+    <ApiCompatPermitUnnecessarySuppressions>true</ApiCompatPermitUnnecessarySuppressions>
+    <CompatibilitySuppressionFilePath>CompatibilitySuppressions.$(UmbracoMajor).xml</CompatibilitySuppressionFilePath>
+    <!-- Runs before NuGet collects the package files, so the generated README below is included. -->
+    <BeforePack>$(BeforePack);GenerateNuGetReadme</BeforePack>
   </PropertyGroup>
 
+
   <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(SupportPagesAndViews)' == 'True'">
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
-
-
-  <!-- Per-project - with versions -->
-  <ItemGroup>
-    <PackageReference Include="MetadataExtractor" Version="2.9.3" />
-    <!-- Override Umbraco CMS' vulnerable transitive MessagePack dependency. -->
-    <PackageReference Include="MessagePack" Version="3.1.8" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
-    <PackageReference Include="Umbraco.AI" Version="17.4.0" />
-    <PackageReference Include="Umbraco.Cms.Api.Common" Version="17.7.0" />
-    <PackageReference Include="Umbraco.Cms.Api.Management" Version="17.7.0" />
-
-    <!--
-      Swashbuckle is available transitively from the Umbraco packages above, but we take a direct
-      dependency here because extension code directly uses types from Swashbuckle (SwaggerGenOptions)
-      and Microsoft.OpenApi (OpenApiInfo). Without a direct reference, this project's Swashbuckle
-      version is determined solely by NuGet's transitive resolution, which can resolve to a different
-      version than the host site project (e.g. a newer patch). When that happens, the different
-      Microsoft.OpenApi versions (a transitive dependency of Swashbuckle) can conflict at runtime,
-      causing custom Swagger documents registered by the extension to fail to appear.
-      Most other transitive dependencies don't have this problem because extension code doesn't
-      use their types directly - only Swashbuckle/OpenApi types are referenced in the composer.
-    -->
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
-    <PackageReference Include="Umbraco.Cms.Web.Common" Version="17.7.0" />
-    <PackageReference Include="Umbraco.Cms.Web.Website" Version="17.7.0" />
+    <InternalsVisibleTo Include="Umbricians.MediaCurator.Tests" />
+    <InternalsVisibleTo Include="Umbricians.MediaCurator.Demo" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Don't include the client folder as part of packaging nuget build -->
+    <PackageReference Include="MetadataExtractor" />
+    <!-- SixLabors.ImageSharp comes from Umbraco.AI (3.2.0 or later, the version Umbraco itself uses), so the package
+         never asks for an older one. A direct reference would also run ImageSharp's build-time licence check, which
+         Umbraco.AI's dependency excludes. -->
+    <!-- Overrides Umbraco/Microsoft.Data.Sqlite's vulnerable transitive SQLitePCLRaw 2.x native bundle. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" PrivateAssets="all" />
+    <PackageReference Include="Umbraco.AI" />
+    <PackageReference Include="Umbraco.Cms.Api.Common" />
+    <PackageReference Include="Umbraco.Cms.Api.Management" />
+    <PackageReference Include="Umbraco.Cms.Web.Common" />
+  </ItemGroup>
+
+  <!--
+    Umbraco 17 documents its API with Swashbuckle (OpenApi/MediaCuratorSwaggerGenOptions.cs). It comes transitively from
+    the Umbraco packages, but the package uses its types directly, so it takes a direct dependency: left to transitive
+    resolution, this project's Swashbuckle could differ from the site's, and the different Microsoft.OpenApi versions
+    then conflict at runtime and the package's Swagger document fails to appear. Umbraco 18 replaced Swashbuckle.
+  -->
+  <ItemGroup Condition="'$(UmbracoMajor)' == '17'">
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The client's sources stay out of the package; Vite's output in wwwroot/ ships as static web assets. -->
     <Content Remove="Client\**" />
 
-    <!-- However make the Umbraco-package.json included for dotnet pack or nuget package and visible to the solution -->
+    <!-- Shown in the solution for editing. Vite copies it into wwwroot/, which is how it reaches the package. -->
     <None Include="Client\public\umbraco-package.json" Pack="false" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="wwwroot\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <InternalsVisibleTo Include="Umbricians.MediaCurator.Tests" />
+    <!-- Rendered from assets/logo.svg; NuGet recommends 128x128. -->
+    <None Include="..\..\assets\logo-128.png" Pack="true" PackagePath="\icon.png" Visible="false" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Schemes\Resources\*.txt" />
   </ItemGroup>
+
+  <!--
+    The package README is generated from the repository README: nuget.org cannot resolve repository-relative image
+    paths, and the contributor sections do not belong on the package page. See build/nuget-readme.mjs.
+  -->
+  <Target Name="GenerateNuGetReadme">
+    <PropertyGroup>
+      <_NuGetReadme>$(IntermediateOutputPath)nuget\README.md</_NuGetReadme>
+      <!-- A release build links images to its tag, so the package page keeps showing that version's images. -->
+      <_NuGetReadmeRef>main</_NuGetReadmeRef>
+      <_NuGetReadmeRef Condition="'$(GITHUB_REF_TYPE)' == 'tag'">$(GITHUB_REF_NAME)</_NuGetReadmeRef>
+    </PropertyGroup>
+    <Exec Command="node &quot;$(MSBuildThisFileDirectory)..\..\build\nuget-readme.mjs&quot; &quot;$(MSBuildThisFileDirectory)..\..\README.md&quot; &quot;$(_NuGetReadme)&quot; &quot;$(RepositoryUrl)&quot; &quot;$(_NuGetReadmeRef)&quot;" />
+    <ItemGroup>
+      <None Include="$(_NuGetReadme)" Pack="true" PackagePath="\README.md" />
+    </ItemGroup>
+  </Target>
+
+  <!--
+    The bundle is built by npm and git-ignored, so never pack a package without it. Pack with a build: a pack with
+    no-build after the bundle appeared ships without the static web assets.
+  -->
+  <Target Name="EnsureClientBundleBuilt" BeforeTargets="GenerateNuspec">
+    <Error Condition="!Exists('wwwroot\App_Plugins\UmbriciansMediaCurator\umbricians-media-curator.js')"
+           Text="The backoffice bundle is missing. Run 'npm ci' and 'npm run build' in src/Umbricians.MediaCurator/Client before packing." />
+  </Target>
 
 </Project>

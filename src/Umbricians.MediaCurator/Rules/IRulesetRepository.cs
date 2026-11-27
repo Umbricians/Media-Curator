@@ -1,6 +1,6 @@
 namespace Umbricians.MediaCurator.Rules;
 
-public interface IRulesetRepository
+internal interface IRulesetRepository
 {
     Task<Ruleset?> GetAsync(Guid key, CancellationToken cancellationToken = default);
 

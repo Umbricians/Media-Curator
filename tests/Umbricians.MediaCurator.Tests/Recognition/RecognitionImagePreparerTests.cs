@@ -95,29 +95,29 @@ public class RecognitionImagePreparerTests
         return totalDelta / Math.Max(1, image.Height - 1);
     }
 
-    [Fact]
+    [Test]
     public void Prepare_downscales_when_longest_edge_exceeds_limit()
     {
         var original = CreatePng(2400, 1200);
 
         var (bytes, mediaType) = RecognitionImagePreparer.Prepare(original, "image/png", maxEdgePixels: 1024);
 
-        Assert.Equal("image/jpeg", mediaType);
-        Assert.True(bytes.Length < original.Length);
+        Assert.That(mediaType, Is.EqualTo("image/jpeg"));
+        Assert.That(bytes.Length < original.Length, Is.True);
         using var resized = Image.Load(bytes);
-        Assert.Equal(1024, Math.Max(resized.Width, resized.Height));
-        Assert.Equal(512, Math.Min(resized.Width, resized.Height));
+        Assert.That(Math.Max(resized.Width, resized.Height), Is.EqualTo(1024));
+        Assert.That(Math.Min(resized.Width, resized.Height), Is.EqualTo(512));
     }
 
-    [Fact]
+    [Test]
     public void Prepare_leaves_small_images_unchanged()
     {
         var original = CreatePng(800, 600);
 
         var (bytes, mediaType) = RecognitionImagePreparer.Prepare(original, "image/png", maxEdgePixels: 1024);
 
-        Assert.Same(original, bytes);
-        Assert.Equal("image/png", mediaType);
+        Assert.That(bytes, Is.SameAs(original));
+        Assert.That(mediaType, Is.EqualTo("image/png"));
     }
 
     private static byte[] CreateNonInterleavedJpeg(int width, int height)
@@ -165,31 +165,31 @@ public class RecognitionImagePreparerTests
     // Progressive and non-interleaved sources decode as non-interleaved; ImageSharp re-encodes
     // with the source's setting unless told otherwise, and many decoders (including the AI
     // provider's) render a one-scan-per-component baseline JPEG as green stripes.
-    [Fact]
+    [Test]
     public void Prepare_encodes_an_interleaved_baseline_jpeg_even_from_a_non_interleaved_source()
     {
         var original = CreateNonInterleavedJpeg(2400, 1200);
-        Assert.Equal([1, 1, 1], ScanComponentCounts(original));
+        Assert.That(ScanComponentCounts(original), Is.EqualTo([1, 1, 1]));
 
         var (bytes, mediaType) = RecognitionImagePreparer.Prepare(original, "image/jpeg", maxEdgePixels: 1024);
 
-        Assert.Equal("image/jpeg", mediaType);
-        Assert.True(IsBaseline(bytes));
-        Assert.Equal([3], ScanComponentCounts(bytes));
+        Assert.That(mediaType, Is.EqualTo("image/jpeg"));
+        Assert.That(IsBaseline(bytes), Is.True);
+        Assert.That(ScanComponentCounts(bytes), Is.EqualTo([3]));
     }
 
-    [Fact]
+    [Test]
     public void Prepare_with_zero_limit_sends_original_bytes()
     {
         var original = CreatePng(2400, 1200);
 
         var (bytes, mediaType) = RecognitionImagePreparer.Prepare(original, "image/png", maxEdgePixels: 0);
 
-        Assert.Same(original, bytes);
-        Assert.Equal("image/png", mediaType);
+        Assert.That(bytes, Is.SameAs(original));
+        Assert.That(mediaType, Is.EqualTo("image/png"));
     }
 
-    [Fact]
+    [Test]
     public void Prepare_writes_prepared_image_to_test_folder_when_configured()
     {
         var original = CreatePng(2400, 1200);
@@ -204,10 +204,10 @@ public class RecognitionImagePreparerTests
                 testOutputFolder: outputDir,
                 fileLabel: "pizza");
 
-            Assert.Equal("image/jpeg", mediaType);
+            Assert.That(mediaType, Is.EqualTo("image/jpeg"));
             var written = Directory.GetFiles(outputDir, "*_pizza_prepared_*.jpg");
-            Assert.Single(written);
-            Assert.Equal(bytes, File.ReadAllBytes(written[0]));
+            Assert.That(written, Has.Exactly(1).Items);
+            Assert.That(File.ReadAllBytes(written[0]), Is.EqualTo(bytes));
         }
         finally
         {
@@ -218,36 +218,36 @@ public class RecognitionImagePreparerTests
         }
     }
 
-    [Fact]
+    [Test]
     public void Prepare_flattens_transparency_before_jpeg_encoding()
     {
         var original = CreateTransparentPngWithHiddenGreenPixels(2400, 1200);
 
         var (bytes, mediaType) = RecognitionImagePreparer.Prepare(original, "image/png", maxEdgePixels: 1024);
 
-        Assert.Equal("image/jpeg", mediaType);
+        Assert.That(mediaType, Is.EqualTo("image/jpeg"));
         using var prepared = Image.Load<Rgb24>(bytes);
         var center = prepared[prepared.Width / 2, prepared.Height / 2];
-        Assert.True(center.R > 240);
-        Assert.True(center.G > 240);
-        Assert.True(center.B > 240);
+        Assert.That(center.R > 240, Is.True);
+        Assert.That(center.G > 240, Is.True);
+        Assert.That(center.B > 240, Is.True);
     }
 
-    [Fact]
+    [Test]
     public void Prepare_resizes_test_pizza_to_standard_jpeg()
     {
         var original = File.ReadAllBytes(ResolveWorkspaceFile(TestPizzaPath));
 
         var (bytes, mediaType) = RecognitionImagePreparer.Prepare(original, "image/jpeg", maxEdgePixels: 512);
 
-        Assert.Equal("image/jpeg", mediaType);
-        Assert.NotSame(original, bytes);
+        Assert.That(mediaType, Is.EqualTo("image/jpeg"));
+        Assert.That(bytes, Is.Not.SameAs(original));
         using var prepared = Image.Load<Rgb24>(bytes);
-        Assert.Equal(512, Math.Max(prepared.Width, prepared.Height));
-        Assert.True(Math.Abs((847 / 1024.0) - (prepared.Width / (double)prepared.Height)) < 0.01);
+        Assert.That(Math.Max(prepared.Width, prepared.Height), Is.EqualTo(512));
+        Assert.That(Math.Abs((847 / 1024.0) - (prepared.Width / (double)prepared.Height)) < 0.01, Is.True);
     }
 
-    [Fact]
+    [Test]
     public void Prepare_keeps_test_pizza_visually_plausible_after_resize()
     {
         var original = File.ReadAllBytes(ResolveWorkspaceFile(TestPizzaPath));
@@ -255,7 +255,7 @@ public class RecognitionImagePreparerTests
         var (bytes, _) = RecognitionImagePreparer.Prepare(original, "image/jpeg", maxEdgePixels: 512);
 
         using var prepared = Image.Load<Rgb24>(bytes);
-        Assert.InRange(AverageGreenDominance(prepared), -80, 40);
-        Assert.InRange(AverageAdjacentRowLuminanceDelta(prepared), 0, 8);
+        Assert.That(AverageGreenDominance(prepared), Is.InRange(-80, 40));
+        Assert.That(AverageAdjacentRowLuminanceDelta(prepared), Is.InRange(0, 8));
     }
 }

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://marketplace.umbraco.com/umbraco-marketplace-schema.json",
+  "Title": "Umbricians Media Curator",
+  "Description": "Automatically sorts images in the Umbraco Media section into folders using date, EXIF, AI and classification rules.",
+  "Category": "PIM & DAM",
+  "AlternateCategory": "Artificial Intelligence",
+  "Tags": ["media", "images", "folders", "sorting", "exif", "ai", "classification"],
+  "LicenseTypes": ["Free"],
+  "DocumentationUrl": "https://github.com/Umbricians/Media-Curator/blob/main/docs/getting-started.md",
+  "IssueTrackerUrl": "https://github.com/Umbricians/Media-Curator/issues",
+  "Screenshots": [
+    {
+      "ImageUrl": "https://raw.githubusercontent.com/Umbricians/Media-Curator/main/docs/images/people-detection-tree-badges.png",
+      "Caption": "The media tree, sorted by Media Curator, with badges on images that show people"
+    }
+  ],
+  "RelatedPackages": [
+    { "PackageId": "Umbricians.MediaCurator.Automate", "Description": "Media Curator triggers and actions for Umbraco.Automate workflows." }
+  ],
+  "AuthorDetails": {
+    "Name": "Umbricians",
+    "Url": "https://github.com/Umbricians",
+    "SyncContributorsFromRepository": true
+  }
+}

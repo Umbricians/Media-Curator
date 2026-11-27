@@ -11,7 +11,7 @@ namespace Umbricians.MediaCurator.People;
 
 /// <summary>Decides, from an image's AI description and tags (never the image itself), whether it shows
 /// people, and stores the answer for the media tree badges.</summary>
-public interface IPeopleDetectionService
+internal interface IPeopleDetectionService
 {
     /// <summary>
     /// The stored decision when it still describes the item's file (unless <paramref name="force"/>), otherwise
@@ -28,7 +28,7 @@ public interface IPeopleDetectionService
 }
 
 /// <summary>The media item's tree path and current file, or null when the item is gone.</summary>
-public interface IPeopleMediaInfo
+internal interface IPeopleMediaInfo
 {
     (string Path, string? SourceFile)? Get(Guid mediaKey);
 }

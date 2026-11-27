@@ -1,0 +1,26 @@
+{
+  "id": "Umbricians.MediaCurator.Demo",
+  "name": "Umbricians.MediaCurator.Demo",
+  "version": "0.0.0",
+  "allowTelemetry": false,
+  "extensions": [
+    {
+      "name": "Media Curator Demo Pizza Original Test Target Repository",
+      "alias": "Uai.Repository.TestFeatureEntity.media-curator-pizza-original",
+      "type": "repository",
+      "api": "/App_Plugins/UmbriciansMediaCuratorDemo/pizza-test-target.js",
+      "meta": {
+        "feature": "media-curator-pizza-original"
+      }
+    },
+    {
+      "name": "Media Curator Demo Pizza Prepared Test Target Repository",
+      "alias": "Uai.Repository.TestFeatureEntity.media-curator-pizza-prepared",
+      "type": "repository",
+      "api": "/App_Plugins/UmbriciansMediaCuratorDemo/pizza-test-target.js",
+      "meta": {
+        "feature": "media-curator-pizza-prepared"
+      }
+    }
+  ]
+}

@@ -24,11 +24,11 @@ interface MediaTypeModel {
 /** Deletes every MediaCurator ruleset whose name starts with the given prefix. The prefix must start with "MC ". */
 export async function deleteRulesetsByPrefix(umbracoApi: UmbracoApi, prefix: string): Promise<void> {
   if (!prefix.startsWith('MC ')) throw new Error(`Refusing to delete rulesets for non-test prefix "${prefix}"; test-owned names start with "MC ".`);
-  const response = await umbracoApi.get(`${base()}/umbraco/mediacurator/api/v1/rulesets`);
+  const response = await umbracoApi.get(`${base()}/umbraco/umbriciansmediacurator/api/v1/rulesets`);
   const rulesets = (await response.json()) as Array<{ key: string; name: string }>;
   for (const ruleset of rulesets ?? []) {
     if (ruleset.name?.startsWith(prefix)) {
-      await umbracoApi.delete(`${base()}/umbraco/mediacurator/api/v1/rulesets/${ruleset.key}`);
+      await umbracoApi.delete(`${base()}/umbraco/umbriciansmediacurator/api/v1/rulesets/${ruleset.key}`);
     }
   }
 }
@@ -81,7 +81,7 @@ export async function addRuleViaPanel(page: Page, rule: RuleInput): Promise<void
     await page.getByTestId('mc:canvas-add').click();
   }
 
-  const panel = page.locator('mc-rule-settings-modal').last();
+  const panel = page.locator('umbricians-media-curator-rule-settings-modal').last();
   await panel.getByTestId('mc:settings-provider').locator('select').selectOption(rule.providerAlias);
   for (const [alias, value] of Object.entries(rule.settings ?? {})) {
     // Type key by key like an editor: re-renders between keystrokes once reset these fields.
@@ -98,8 +98,8 @@ export async function addRuleViaPanel(page: Page, rule: RuleInput): Promise<void
 
 /* ---------- Navigation: Settings section > Media Curator ---------- */
 
-const ROOT_PATH = '/umbraco/section/settings/workspace/mc-root/edit/null';
-const RULESET_PATH = '/umbraco/section/settings/workspace/mc-ruleset';
+const ROOT_PATH = '/umbraco/section/settings/workspace/umbricians-media-curator-root/edit/null';
+const RULESET_PATH = '/umbraco/section/settings/workspace/umbricians-media-curator-ruleset';
 
 export type RootTab = 'setup' | 'reanalyze' | 'activity';
 const rootTabs: Record<RootTab, { label: string; mark: string }> = {
@@ -110,7 +110,7 @@ const rootTabs: Record<RootTab, { label: string; mark: string }> = {
 
 /**
  * Opens the Media Curator root workspace (Settings section) and switches to the given tab, waiting for its box.
- * The tab is clicked rather than deep-linked: `.../mc-root/edit/null/view/<tab>` loads but always shows Setup.
+ * The tab is clicked rather than deep-linked: `.../umbricians-media-curator-root/edit/null/view/<tab>` loads but always shows Setup.
  */
 export async function openMediaCuratorRoot(page: Page, tab: RootTab = 'setup'): Promise<void> {
   await page.goto(ROOT_PATH);
@@ -146,7 +146,7 @@ export async function openRulesetFromTree(page: Page, name: string, tab?: Rulese
   await expandMediaCuratorTree(page);
   const item = rulesetTreeItem(page, name);
   await item.locator('#label-button').first().click();
-  await page.waitForURL(/\/mc-ruleset\/edit\//, { timeout: 15000 });
+  await page.waitForURL(/\/umbricians-media-curator-ruleset\/edit\//, { timeout: 15000 });
   await expect(workspaceNameInput(page)).toHaveValue(name, { timeout: 15000 });
   if (tab) await openRulesetTab(page, tab);
 }
@@ -170,7 +170,7 @@ export async function openRulesetTab(page: Page, tab: RulesetTab): Promise<void>
     .getByRole('tab', { name: rulesetTabLabels[tab], exact: true })
     .click();
   if (tab === 'design') {
-    await page.waitForURL(/\/view\/design|\/(edit\/[^/]+|create\/parent\/mc-root\/null)$/);
+    await page.waitForURL(/\/view\/design|\/(edit\/[^/]+|create\/parent\/umbricians-media-curator-root\/null)$/);
   } else {
     await page.waitForURL(new RegExp(`/view/${tab}$`));
   }
@@ -196,13 +196,13 @@ export async function startNewRuleset(
   page: Page,
   options: { name: string; scopeFolderName: string },
 ): Promise<void> {
-  await page.goto(`${RULESET_PATH}/create/parent/mc-root/null`);
-  await expect(page.locator('mc-rule-flow')).toBeVisible({ timeout: 15000 });
+  await page.goto(`${RULESET_PATH}/create/parent/umbricians-media-curator-root/null`);
+  await expect(page.locator('umbricians-media-curator-rule-flow')).toBeVisible({ timeout: 15000 });
   await workspaceNameInput(page).fill(options.name);
   await openRulesetTab(page, 'settings');
   await pickMediaFolder(page, page.getByTestId('mc:scope'), options.scopeFolderName);
   await openRulesetTab(page, 'design');
-  await expect(page.locator('mc-rule-flow')).toBeVisible();
+  await expect(page.locator('umbricians-media-curator-rule-flow')).toBeVisible();
 }
 
 /** The ruleset workspace's footer Save button. */
@@ -213,14 +213,14 @@ export function rulesetSaveButton(page: Page): Locator {
 /** Clicks the footer Save and waits until the workspace is on edit/<key>; returns the ruleset key. */
 export async function saveRuleset(page: Page): Promise<string> {
   await rulesetSaveButton(page).click();
-  await page.waitForURL(/\/mc-ruleset\/edit\/[0-9a-f-]{36}/, { timeout: 15000 });
-  return /\/mc-ruleset\/edit\/([0-9a-f-]{36})/.exec(page.url())![1];
+  await page.waitForURL(/\/umbricians-media-curator-ruleset\/edit\/[0-9a-f-]{36}/, { timeout: 15000 });
+  return /\/umbricians-media-curator-ruleset\/edit\/([0-9a-f-]{36})/.exec(page.url())![1];
 }
 
 /** Opens a ruleset by key directly via its edit route. */
 export async function openRuleset(page: Page, key: string, tab?: RulesetTab): Promise<void> {
   await page.goto(`${RULESET_PATH}/edit/${key}`);
-  await expect(page.locator('mc-rule-flow')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('umbricians-media-curator-rule-flow')).toBeVisible({ timeout: 15000 });
   if (tab) await openRulesetTab(page, tab);
 }
 

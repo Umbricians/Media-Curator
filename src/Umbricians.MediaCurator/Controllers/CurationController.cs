@@ -1,16 +1,21 @@
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Umbraco.Cms.Core.Models;
 using Umbraco.Cms.Core.Services;
+using Umbraco.Cms.Web.Common.Authorization;
+using Umbraco.Cms.Web.Common.Routing;
 using Umbricians.MediaCurator.Controllers.ViewModels;
 using Umbricians.MediaCurator.Engine;
 
 namespace Umbricians.MediaCurator.Controllers;
 
 [ApiVersion("1.0")]
-[ApiExplorerSettings(GroupName = "MediaCurator")]
-public class CurationController : MediaCuratorApiControllerBase
+[ApiExplorerSettings(GroupName = "Media Curator")]
+[BackOfficeRoute("umbriciansmediacurator/api/v{version:apiVersion}")]
+[Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]
+internal class CurationController : MediaCuratorControllerBase
 {
     private readonly ICurationEngine _engine;
     private readonly ICurationRunLog _runLog;

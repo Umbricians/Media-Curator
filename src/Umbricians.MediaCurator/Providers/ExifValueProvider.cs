@@ -8,7 +8,7 @@ namespace Umbricians.MediaCurator.Providers;
 /// an optional property requirement for persisting extracted values so they are read once
 /// and reusable; without it values are re-read from the file each run (degraded, §7).
 /// </summary>
-public sealed class ExifValueProvider : ICurationProvider
+internal sealed class ExifValueProvider : ICurationProvider
 {
     public const string ProviderAlias = "Umbricians.MediaCurator.Exif";
 

@@ -1,7 +1,7 @@
 namespace Umbricians.MediaCurator.Engine;
 
 /// <summary>A media item as the engine sees it.</summary>
-public sealed record MediaItemInfo(
+internal sealed record MediaItemInfo(
     Guid Key,
     string Name,
     string ContentTypeAlias,
@@ -14,7 +14,7 @@ public sealed record MediaItemInfo(
 /// Thin facade over Umbraco's media service so the curation engine is unit-testable.
 /// All moves go through IMediaService, preserving keys/UDIs and content references (§13).
 /// </summary>
-public interface IMediaOperations
+internal interface IMediaOperations
 {
     /// <summary>Items under the scope folder (folders excluded), optionally recursive.</summary>
     IReadOnlyList<MediaItemInfo> GetItems(Guid scopeFolderKey, bool recursive);

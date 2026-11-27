@@ -10,7 +10,7 @@ using Umbricians.MediaCurator.Settings;
 namespace Umbricians.MediaCurator.People;
 
 /// <summary>Decides with TypeSafe's Jev model whether an image description shows people.</summary>
-public interface IJevPeopleDecider
+internal interface IJevPeopleDecider
 {
     /// <summary>The probability (0–1) that the described image shows a real person, or null when no TypeSafe
     /// API key is stored or the call failed, so the caller can fall back to Umbraco.AI.</summary>

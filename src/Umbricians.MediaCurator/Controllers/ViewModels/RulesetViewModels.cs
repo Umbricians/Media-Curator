@@ -4,7 +4,7 @@ using Umbricians.MediaCurator.Rules;
 
 namespace Umbricians.MediaCurator.Controllers.ViewModels;
 
-public class RuleNodeModel
+internal class RuleNodeModel
 {
     public required string ProviderAlias { get; set; }
 
@@ -37,7 +37,7 @@ public class RuleNodeModel
     };
 }
 
-public class RulesetModel
+internal class RulesetModel
 {
     public Guid Key { get; set; }
     public required Guid ScopeRootKey { get; set; }

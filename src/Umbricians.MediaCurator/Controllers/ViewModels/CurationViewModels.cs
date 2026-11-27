@@ -2,7 +2,7 @@ using Umbricians.MediaCurator.Engine;
 
 namespace Umbricians.MediaCurator.Controllers.ViewModels;
 
-public class CurationRequestModel
+internal class CurationRequestModel
 {
     public required Guid ScopeFolderKey { get; init; }
     public bool Recursive { get; init; } = true;
@@ -12,7 +12,7 @@ public class CurationRequestModel
     public bool PermanentlyDeleteEmptyFolders { get; init; }
 }
 
-public class PlannedMoveModel
+internal class PlannedMoveModel
 {
     public required Guid MediaKey { get; init; }
     public required string MediaName { get; init; }
@@ -28,7 +28,7 @@ public class PlannedMoveModel
     };
 }
 
-public class CurationPlanModel
+internal class CurationPlanModel
 {
     public required Guid ScopeFolderKey { get; init; }
     public required string RulesetName { get; init; }
@@ -49,7 +49,7 @@ public class CurationPlanModel
     };
 }
 
-public class MediaCurationPlanModel
+internal class MediaCurationPlanModel
 {
     public required Guid MediaKey { get; init; }
     public required int MoveCount { get; init; }
@@ -70,7 +70,7 @@ public class MediaCurationPlanModel
     };
 }
 
-public class MediaCurationSummaryModel
+internal class MediaCurationSummaryModel
 {
     public required int Moved { get; init; }
     public required int AlreadyInPlace { get; init; }
@@ -92,14 +92,14 @@ public class MediaCurationSummaryModel
 }
 
 /// <summary>How many images "Curate images" would cover, and whether it runs in the background.</summary>
-public class MediaCurationCountModel
+internal class MediaCurationCountModel
 {
     public required int ImageCount { get; init; }
     public required int Threshold { get; init; }
     public required bool RunsInBackground { get; init; }
 }
 
-public class CurationRunSummaryModel
+internal class CurationRunSummaryModel
 {
     public required Guid RunKey { get; init; }
     public required int Moved { get; init; }
@@ -122,7 +122,7 @@ public class CurationRunSummaryModel
     };
 }
 
-public class BulkRunStatusModel
+internal class BulkRunStatusModel
 {
     public required Guid ScopeFolderKey { get; init; }
     public required string State { get; init; }
@@ -158,7 +158,7 @@ public class BulkRunStatusModel
     };
 }
 
-public class BulkQueueStatusModel
+internal class BulkQueueStatusModel
 {
     public required int QueueLength { get; init; }
     public List<BulkRunStatusModel> Statuses { get; init; } = [];
@@ -170,7 +170,7 @@ public class BulkQueueStatusModel
     };
 }
 
-public class CurationRunModel
+internal class CurationRunModel
 {
     public required Guid Key { get; init; }
     public required Guid ScopeFolderKey { get; init; }
@@ -194,7 +194,7 @@ public class CurationRunModel
     };
 }
 
-public class CurationRunItemModel
+internal class CurationRunItemModel
 {
     public required Guid MediaKey { get; init; }
     public required string MediaName { get; init; }

@@ -6,7 +6,7 @@ import { notify, type McNotifications } from "./mc-notify.js";
 import { rootViewStyles } from "./root-view.styles.js";
 import "./background-runs-banner.element.js";
 
-@customElement("mc-root-activity-view")
+@customElement("umbricians-media-curator-root-activity-view")
 export class McRootActivityViewElement extends UmbLitElement {
   @state() private _runs: CurationRunModel[] = [];
   @state() private _rulesets: RulesetModel[] = [];
@@ -108,14 +108,14 @@ export class McRootActivityViewElement extends UmbLitElement {
   }
 
   override render() {
-    if (this._loading) return html`<mc-background-runs-banner></mc-background-runs-banner><uui-loader></uui-loader>`;
+    if (this._loading) return html`<umbricians-media-curator-background-runs-banner></umbricians-media-curator-background-runs-banner><uui-loader></uui-loader>`;
     if (this._runs.length === 0) {
-      return html`<mc-background-runs-banner></mc-background-runs-banner>${this.#renderBackground()}
+      return html`<umbricians-media-curator-background-runs-banner></umbricians-media-curator-background-runs-banner>${this.#renderBackground()}
         <uui-box headline="Activity log" data-mark="mc:activity-log">
           <p data-mark="mc:activity-empty">No curation runs yet.</p>
         </uui-box>`;
     }
-    return html`<mc-background-runs-banner></mc-background-runs-banner>
+    return html`<umbricians-media-curator-background-runs-banner></umbricians-media-curator-background-runs-banner>
       ${this.#renderBackground()}
       <uui-box headline="Activity log" data-mark="mc:activity-log">
         <uui-table>
@@ -164,6 +164,6 @@ export default McRootActivityViewElement;
 
 declare global {
   interface HTMLElementTagNameMap {
-    "mc-root-activity-view": McRootActivityViewElement;
+    "umbricians-media-curator-root-activity-view": McRootActivityViewElement;
   }
 }

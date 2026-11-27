@@ -1,0 +1,24 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- From the lowest version of the Umbraco major to the next major (UmbracoVersionRange in Directory.Build.props);
+         sites on newer versions of the major resolve their own. .github/dependabot.yml ignores each of these, so a new
+         one goes in its list too. -->
+    <PackageVersion Include="Umbraco.Cms.Api.Common" Version="$(UmbracoVersionRange)" />
+    <PackageVersion Include="Umbraco.Cms.Api.Management" Version="$(UmbracoVersionRange)" />
+    <PackageVersion Include="Umbraco.Cms.Web.Common" Version="$(UmbracoVersionRange)" />
+    <PackageVersion Include="Umbraco.AI" Version="$(UmbracoAiVersionRange)" />
+    <PackageVersion Include="Umbraco.Automate.Core" Version="$(UmbracoAutomateVersionRange)" />
+
+    <PackageVersion Include="MetadataExtractor" Version="2.9.3" />
+    <!-- Umbraco 17 only: Umbraco 18 replaced Swashbuckle with Microsoft.AspNetCore.OpenApi. -->
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+
+    <!-- Security overrides for vulnerable transitive dependencies. -->
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.15.3" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+  </ItemGroup>
+</Project>

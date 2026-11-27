@@ -1,0 +1,18 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+    <PackageVersion Include="NUnit" Version="5.0.0" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="6.3.1" />
+    <PackageVersion Include="NUnit.Analyzers" Version="4.15.0" />
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.1" />
+    <!-- Umbraco's image dimension extractor, which the Dimensions provider uses on a site. -->
+    <PackageVersion Include="Umbraco.Cms.Imaging.ImageSharp" Version="$(UmbracoVersion)" />
+
+    <!-- Overrides Umbraco/Microsoft.Data.Sqlite's vulnerable transitive SQLitePCLRaw 2.x native bundle. -->
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+  </ItemGroup>
+</Project>

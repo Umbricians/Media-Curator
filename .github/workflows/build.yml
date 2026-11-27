@@ -1,0 +1,287 @@
+# Builds the NuGet packages for each supported Umbraco major (17, 18, 19) from the same source, on every push to main and
+# develop and on every pull request: Media Curator and its Umbraco.Automate extension, with the same version. A version tag publishes to NuGet: v17.2.0 on main, or a pre-release such as
+# v19.0.0-rc.1 on a release branch. The tag's major picks which Umbraco major that run builds and publishes, so one
+# release is one tag per major on the same commit. Publishing uses NuGet Trusted Publishing: GitHub's OIDC token is
+# exchanged for a short-lived API key, so no NuGet API key is stored in the repository.
+#
+# The NuGet trusted publishing policy must name this file (build.yml) and the "production" environment, and that
+# environment must only allow v* tags to deploy. Actions are pinned to commit SHAs; Dependabot keeps them current.
+# The "build" job is the required status check: it fails unless every major's build passed.
+name: Build
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ["v*.*.*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  PROJECT: src/Umbricians.MediaCurator/Umbricians.MediaCurator.csproj
+  CLIENT_DIR: src/Umbricians.MediaCurator/Client
+  AUTOMATE_PROJECT: src/Umbricians.MediaCurator.Automate/Umbricians.MediaCurator.Automate.csproj
+  AUTOMATE_CLIENT_DIR: src/Umbricians.MediaCurator.Automate/Client
+  DEMO_DIR: demo/Umbricians.MediaCurator.Demo
+  BUNDLE_PATH: /App_Plugins/UmbriciansMediaCurator/umbricians-media-curator.js
+  AUTOMATE_BUNDLE_PATH: /App_Plugins/UmbriciansMediaCuratorAutomate/umbricians-media-curator-automate.js
+  API_NAME: umbricians-media-curator
+  API_TITLE: Umbricians Media Curator
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # Chooses which Umbraco majors to build: only the tag's major on a tag push, all of them otherwise. To support a new
+  # major, add an entry here (see docs/RELEASING.md).
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      # sdk is the .NET SDK that builds the major (Umbraco 19 targets .NET 11).
+      - name: Plan the builds
+        id: plan
+        run: |
+          matrix=$(node -e '
+            const all = [
+              { major: 17, sdk: "10.0.x" },
+              { major: 18, sdk: "10.0.x" },
+              { major: 19, sdk: "11.0.x" },
+            ];
+            const { GITHUB_REF_TYPE, GITHUB_REF_NAME = "" } = process.env;
+            const tagMajor = GITHUB_REF_TYPE === "tag" ? GITHUB_REF_NAME.match(/^v(\d+)\./)?.[1] : undefined;
+            const include = GITHUB_REF_TYPE === "tag" ? all.filter((entry) => String(entry.major) === tagMajor) : all;
+            if (include.length === 0) {
+              console.error(`::error::Tag ${GITHUB_REF_NAME} is not for a supported Umbraco major.`);
+              process.exit(1);
+            }
+            console.log(JSON.stringify({ include }));
+          ')
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "Matrix: $matrix"
+
+  # One build per Umbraco major. UMBRACO_MAJOR goes into every dotnet and script command, so no step can build the wrong
+  # major. The job id isn't "build", so the check names ("build (Umbraco 18)") never collide with the aggregate below.
+  package:
+    name: build (Umbraco ${{ matrix.major }})
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+    env:
+      UMBRACO_MAJOR: ${{ matrix.major }}
+    steps:
+      # Full history, so the version step can find the last release tag and tag builds can check they're on main.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: |
+            ${{ env.CLIENT_DIR }}/package-lock.json
+            ${{ env.AUTOMATE_CLIENT_DIR }}/package-lock.json
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: ${{ matrix.sdk }}
+
+      # The lowest Umbraco version of this major, from Directory.Build.props: the client is built against its backoffice.
+      # The package ids are what nuget.org lists the published versions under.
+      - name: Find the Umbraco version
+        run: |
+          version=$(dotnet msbuild "$PROJECT" -getProperty:UmbracoVersion -p:UmbracoMajor="$UMBRACO_MAJOR")
+          echo "UMBRACO_VERSION=$version" >> "$GITHUB_ENV"
+          echo "PACKAGE_ID=$(dotnet msbuild "$PROJECT" -getProperty:PackageId -p:UmbracoMajor="$UMBRACO_MAJOR")" >> "$GITHUB_ENV"
+          echo "AUTOMATE_PACKAGE_ID=$(dotnet msbuild "$AUTOMATE_PROJECT" -getProperty:PackageId -p:UmbracoMajor="$UMBRACO_MAJOR")" >> "$GITHUB_ENV"
+          echo "Umbraco $version"
+
+      # Gitflow tags releases on main and pre-releases (v17.3.0-beta.1) on a release branch, so a tag anywhere else is
+      # a mistake that must not publish.
+      - name: Check the tag is on main or a release branch
+        if: github.ref_type == 'tag'
+        run: |
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            if [[ -z "$(git branch --remotes --contains HEAD --list 'origin/release/*')" ]]; then
+              echo "::error::$GITHUB_REF_NAME is not on a release branch. Tag a commit on release/x.y.z."
+              exit 1
+            fi
+          elif ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::$GITHUB_REF_NAME is not on main. Tag the merge commit of the release or hotfix PR."
+            exit 1
+          fi
+
+      # The build scripts decide the published version and the README nuget.org shows, so their tests run before
+      # either is used.
+      - name: Test build scripts
+        run: node --test "build/*.test.mjs"
+
+      # A tag must be the next release of its major, and each pack checks the public API against that package's last
+      # version of the major on nuget.org (its baseline). Both packages take Media Curator's version: one tag
+      # releases both, and the Automate package, which started later, has gaps in its versions.
+      - name: Work out version
+        id: version
+        run: |
+          version=$(node build/package-version.mjs "$PACKAGE_ID" "$UMBRACO_MAJOR" "$UMBRACO_VERSION")
+          baseline=$(node build/package-version.mjs "$PACKAGE_ID" "$UMBRACO_MAJOR" "$UMBRACO_VERSION" --baseline)
+          automate_baseline=$(node build/package-version.mjs "$AUTOMATE_PACKAGE_ID" "$UMBRACO_MAJOR" "$UMBRACO_VERSION" --baseline)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "baseline=$baseline" >> "$GITHUB_OUTPUT"
+          echo "automate_baseline=$automate_baseline" >> "$GITHUB_OUTPUT"
+          echo "Version: $version, checked against ${baseline:-the baseline in Directory.Build.props, if any}"
+          echo "Automate checked against ${automate_baseline:-nothing, before its first release of the major}"
+
+      - name: Stamp version into umbraco-package.json
+        run: |
+          node build/stamp-version.mjs "$CLIENT_DIR/public/umbraco-package.json" "${{ steps.version.outputs.version }}"
+          node build/stamp-version.mjs "$AUTOMATE_CLIENT_DIR/public/umbraco-package.json" "${{ steps.version.outputs.version }}"
+
+      # package.json pins the lowest backoffice of the oldest major; each build swaps in its own major's.
+      - name: Build client
+        working-directory: ${{ env.CLIENT_DIR }}
+        run: |
+          npm ci
+          npm install --no-save "@umbraco-cms/backoffice@$UMBRACO_VERSION"
+          npm test
+          npm run build
+
+      # The Umbraco.Automate extension's backoffice, which the demo site serves too.
+      - name: Build Automate client
+        working-directory: ${{ env.AUTOMATE_CLIENT_DIR }}
+        run: |
+          npm ci
+          npm install --no-save "@umbraco-cms/backoffice@$UMBRACO_VERSION"
+          npm run build
+
+      # Builds the demo site too, so changes that break integration fail here.
+      - name: Build solution
+        run: dotnet build Umbricians.MediaCurator.slnx -c Release -p:UmbracoMajor="$UMBRACO_MAJOR" -p:Version=${{ steps.version.outputs.version }}
+
+      - name: Test
+        run: dotnet test Umbricians.MediaCurator.slnx -c Release --no-build -p:UmbracoMajor="$UMBRACO_MAJOR"
+
+      - name: Smoke-test the demo
+        run: node build/smoke-test.mjs "$DEMO_DIR" "$BUNDLE_PATH" "$API_NAME" "$UMBRACO_MAJOR" "$API_TITLE" "$AUTOMATE_BUNDLE_PATH"
+
+      # Packs with a build, so each package always carries the static web assets of the bundle built above.
+      - name: Pack
+        run: |
+          dotnet pack "$PROJECT" -c Release -p:UmbracoMajor="$UMBRACO_MAJOR" -p:Version=${{ steps.version.outputs.version }} -p:LastReleaseVersion=${{ steps.version.outputs.baseline }} -o artifacts
+          dotnet pack "$AUTOMATE_PROJECT" -c Release -p:UmbracoMajor="$UMBRACO_MAJOR" -p:Version=${{ steps.version.outputs.version }} -p:LastReleaseVersion=${{ steps.version.outputs.automate_baseline }} -o artifacts
+
+      # A published version can't be withdrawn, so check what was packed: its version, that its Umbraco dependencies
+      # stop before the next major (the Automate package's dependency on Media Curator too), and that it carries its
+      # README, icon and backoffice bundle.
+      - name: Check the packages
+        run: |
+          node build/check-package.mjs "artifacts/$PACKAGE_ID.${{ steps.version.outputs.version }}.nupkg" "${{ steps.version.outputs.version }}" "$UMBRACO_VERSION" "$BUNDLE_PATH"
+          node build/check-package.mjs "artifacts/$AUTOMATE_PACKAGE_ID.${{ steps.version.outputs.version }}.nupkg" "${{ steps.version.outputs.version }}" "$UMBRACO_VERSION" "$AUTOMATE_BUNDLE_PATH" "$PACKAGE_ID"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nuget-package-${{ matrix.major }}
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+          if-no-files-found: error
+
+  # The required status check. Passes only when every major's build passed, whatever the matrix held.
+  build:
+    if: always()
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check every Umbraco major built
+        env:
+          RESULT: ${{ needs.package.result }}
+        run: |
+          echo "Builds: $RESULT"
+          [[ "$RESULT" == "success" ]]
+
+  publish:
+    # Only a pushed version tag publishes; branches, pull requests and manual runs stop after the build.
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    # Must match the environment in the NuGet trusted publishing policy. The environment needs required reviewers
+    # and a deployment rule allowing only v* tags (see docs/RELEASING.md).
+    environment: production
+    permissions:
+      contents: read
+      id-token: write # lets the job request the OIDC token that NuGet trusts
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: nuget-package-*
+          merge-multiple: true
+          path: artifacts
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 10.0.x
+
+      # Exchanges the OIDC token for a NuGet API key that lasts one hour.
+      - name: NuGet login
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      # Pushes both packages, and the .snupkg beside each .nupkg.
+      - name: Push to NuGet
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: >
+          dotnet nuget push "artifacts/*.nupkg"
+          --api-key "$NUGET_API_KEY"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+  release:
+    # Runs only once the package is on NuGet, so every GitHub release has a matching package.
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: build
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: nuget-package-*
+          merge-multiple: true
+          path: artifacts
+
+      # build/release-options.mjs picks the options: a pre-release for a suffixed tag, notes from the last release of
+      # the same Umbraco major, and Latest only for the newest major. Re-running leaves an existing release alone.
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists"
+            exit 0
+          fi
+          # Each command is an assignment of its own, so a failed `gh release list` or script stops the step: the
+          # default shell runs bash with -e but not pipefail, so a failure inside a pipeline wouldn't.
+          releases=$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-pre-releases --limit 100 --json tagName)
+          chosen=$(node build/release-options.mjs "$TAG" <<< "$releases")
+          mapfile -t options <<< "$chosen"
+          echo "Options: ${options[*]}"
+          gh release create "$TAG" artifacts/* --repo "$GITHUB_REPOSITORY" --title "$TAG" --generate-notes --verify-tag "${options[@]}"

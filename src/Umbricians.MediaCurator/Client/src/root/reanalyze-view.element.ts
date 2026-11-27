@@ -6,7 +6,7 @@ import { notify, type McNotifications } from "./mc-notify.js";
 import { rootViewStyles } from "./root-view.styles.js";
 import "./background-runs-banner.element.js";
 
-@customElement("mc-root-reanalyze-view")
+@customElement("umbricians-media-curator-root-reanalyze-view")
 export class McRootReanalyzeViewElement extends UmbLitElement {
   @state() private _mediaKeys: string[] = [];
   @state() private _results: ReanalyzeImageResultModel[] = [];
@@ -61,7 +61,7 @@ export class McRootReanalyzeViewElement extends UmbLitElement {
   }
 
   override render() {
-    return html`<mc-background-runs-banner></mc-background-runs-banner>
+    return html`<umbricians-media-curator-background-runs-banner></umbricians-media-curator-background-runs-banner>
       <uui-box headline="Re-analyze image" data-mark="mc:reanalyze">
         <p>
           Force a fresh AI vision pass on selected images. Cached descriptions and tags are ignored
@@ -124,6 +124,6 @@ export default McRootReanalyzeViewElement;
 
 declare global {
   interface HTMLElementTagNameMap {
-    "mc-root-reanalyze-view": McRootReanalyzeViewElement;
+    "umbricians-media-curator-root-reanalyze-view": McRootReanalyzeViewElement;
   }
 }

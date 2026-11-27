@@ -6,7 +6,7 @@ namespace Umbricians.MediaCurator.Engine;
 
 /// <summary>Folders or items pinned/excluded so MediaCurator never touches them (§11.2).
 /// Excluding a folder excludes its whole subtree.</summary>
-public interface IExclusionRepository
+internal interface IExclusionRepository
 {
     Task<IReadOnlySet<Guid>> GetAllAsync(CancellationToken cancellationToken = default);
 
@@ -31,8 +31,13 @@ internal sealed class ExclusionDto
 internal sealed class ExclusionRepository : IExclusionRepository
 {
     private readonly IScopeProvider _scopeProvider;
+    private readonly TimeProvider _time;
 
-    public ExclusionRepository(IScopeProvider scopeProvider) => _scopeProvider = scopeProvider;
+    public ExclusionRepository(IScopeProvider scopeProvider, TimeProvider time)
+    {
+        _scopeProvider = scopeProvider;
+        _time = time;
+    }
 
     public Task<IReadOnlySet<Guid>> GetAllAsync(CancellationToken cancellationToken = default)
     {
@@ -47,7 +52,7 @@ internal sealed class ExclusionRepository : IExclusionRepository
         scope.Database.Delete<ExclusionDto>(mediaKey);
         if (excluded)
         {
-            scope.Database.Insert(new ExclusionDto { MediaKey = mediaKey, DateCreated = DateTime.UtcNow });
+            scope.Database.Insert(new ExclusionDto { MediaKey = mediaKey, DateCreated = _time.GetUtcNow().UtcDateTime });
         }
 
         scope.Complete();

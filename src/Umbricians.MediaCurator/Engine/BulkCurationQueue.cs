@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 namespace Umbricians.MediaCurator.Engine;
 
-public sealed record BulkCurationRequest(Guid ScopeFolderKey, bool Recursive, DateTime Queued)
+internal sealed record BulkCurationRequest(Guid ScopeFolderKey, bool Recursive, DateTime Queued)
 {
     /// <summary>A "Curate images" run of the clicked folder (<see cref="ICurationEngine.CurateMediaAsync"/>,
     /// every governing ruleset) rather than a scope run of one ruleset.</summary>
@@ -12,7 +12,7 @@ public sealed record BulkCurationRequest(Guid ScopeFolderKey, bool Recursive, Da
     public EmptyFolderRemoval EmptyFolders { get; init; } = EmptyFolderRemoval.RecycleBin;
 }
 
-public enum BulkRunState
+internal enum BulkRunState
 {
     Queued,
     Running,
@@ -20,7 +20,7 @@ public enum BulkRunState
     Failed,
 }
 
-public sealed record BulkRunStatus(
+internal sealed record BulkRunStatus(
     Guid ScopeFolderKey,
     BulkRunState State,
     int Processed,
@@ -51,11 +51,11 @@ public sealed record BulkRunStatus(
     /// <summary>Folders whose children changed, for the backoffice to reload when the run finishes.</summary>
     public IReadOnlyList<Guid> ChangedFolderKeys { get; init; } = [];
 
-    public DateTime Updated { get; init; } = DateTime.UtcNow;
+    public DateTime Updated { get; init; }
 }
 
 /// <summary>Whether <see cref="IBulkCurationQueue.TryEnqueueMedia"/> queued the run.</summary>
-public enum BulkEnqueueResult
+internal enum BulkEnqueueResult
 {
     Queued,
 
@@ -67,7 +67,7 @@ public enum BulkEnqueueResult
 /// In-memory queue for background bulk runs (§11.2 health view shows queue length).
 /// Processing happens on a single elected worker (main-dom / scheduling-server aware, §13).
 /// </summary>
-public interface IBulkCurationQueue
+internal interface IBulkCurationQueue
 {
     /// <summary>Enqueues a scope for background curation. Returns false when the scope is
     /// already queued or running (no double-processing).</summary>
@@ -94,10 +94,15 @@ public interface IBulkCurationQueue
     int QueueLength { get; }
 }
 
-public sealed class BulkCurationQueue : IBulkCurationQueue
+internal sealed class BulkCurationQueue : IBulkCurationQueue
 {
     private readonly ConcurrentQueue<BulkCurationRequest> _queue = new();
     private readonly ConcurrentDictionary<Guid, BulkRunStatus> _statuses = new();
+    private readonly TimeProvider _time;
+
+    public BulkCurationQueue(TimeProvider time) => _time = time;
+
+    private DateTime UtcNow => _time.GetUtcNow().UtcDateTime;
 
     public int QueueLength => _queue.Count;
 
@@ -109,8 +114,8 @@ public sealed class BulkCurationQueue : IBulkCurationQueue
             return false;
         }
 
-        _statuses[scopeFolderKey] = new BulkRunStatus(scopeFolderKey, BulkRunState.Queued, 0, 0, null, null);
-        _queue.Enqueue(new BulkCurationRequest(scopeFolderKey, recursive, DateTime.UtcNow));
+        _statuses[scopeFolderKey] = new BulkRunStatus(scopeFolderKey, BulkRunState.Queued, 0, 0, null, null) { Updated = UtcNow };
+        _queue.Enqueue(new BulkCurationRequest(scopeFolderKey, recursive, UtcNow));
         return true;
     }
 
@@ -133,11 +138,12 @@ public sealed class BulkCurationQueue : IBulkCurationQueue
             // Total stays 0 until planning knows how many images actually move.
             _statuses[mediaKey] = new BulkRunStatus(mediaKey, BulkRunState.Queued, 0, 0, null, null)
             {
+                Updated = UtcNow,
                 Name = name,
                 Path = path,
                 ImageCount = imageCount,
             };
-            _queue.Enqueue(new BulkCurationRequest(mediaKey, Recursive: true, DateTime.UtcNow)
+            _queue.Enqueue(new BulkCurationRequest(mediaKey, Recursive: true, UtcNow)
             {
                 MediaRun = mediaRun,
                 EmptyFolders = emptyFolders,

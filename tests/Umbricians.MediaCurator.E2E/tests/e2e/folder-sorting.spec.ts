@@ -35,7 +35,7 @@ test.describe('MediaCurator folder sorting', () => {
     await createTestFile(umbracoApi, fileName, rootId);
     await createTestImage(umbracoApi, imageName, rootId);
 
-    const saved = await umbracoApi.put(`${base()}/umbraco/mediacurator/api/v1/rulesets`, {
+    const saved = await umbracoApi.put(`${base()}/umbraco/umbriciansmediacurator/api/v1/rulesets`, {
       scopeRootKey: rootId,
       name: rulesetName,
       enabled: true,
@@ -43,7 +43,7 @@ test.describe('MediaCurator folder sorting', () => {
     });
     expect((saved as { status(): number }).status()).toBe(200);
 
-    const run = await umbracoApi.post(`${base()}/umbraco/mediacurator/api/v1/curation/execute`, {
+    const run = await umbracoApi.post(`${base()}/umbraco/umbriciansmediacurator/api/v1/curation/execute`, {
       scopeFolderKey: rootId,
       recursive: true,
       permanentlyDeleteEmptyFolders: false,

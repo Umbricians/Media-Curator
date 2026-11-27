@@ -1,5 +1,6 @@
 namespace Umbricians.MediaCurator.Recognition;
 
+/// <summary>A tag the AI gave an image, with how sure it is, from 0 to 1.</summary>
 public sealed record AiTag(string Name, double Confidence);
 
 /// <param name="ClassificationMethod">How the AI chose <paramref name="ClassificationCode"/>, e.g.
@@ -14,6 +15,7 @@ public sealed record RecognitionResult(
     string? ClassificationMethod = null,
     string? SourceFile = null)
 {
+    /// <summary>A result with no tags and no description.</summary>
     public static readonly RecognitionResult Empty = new([], null);
 }
 
@@ -52,21 +54,26 @@ public interface IRecognitionService
 /// <summary>Mutable analysis state passed through enrichers before the result is cached.</summary>
 public sealed class RecognitionContext
 {
+    /// <summary>The key of the media item being analysed.</summary>
     public required Guid MediaKey { get; init; }
 
+    /// <summary>The tags so far; enrichers may add, change or remove them.</summary>
     public List<AiTag> Tags { get; } = [];
 
+    /// <summary>The description so far, or null for none.</summary>
     public string? Description { get; set; }
 
+    /// <summary>The classification code so far, or null for none.</summary>
     public string? ClassificationCode { get; set; }
 }
 
 /// <summary>
 /// Extension point (§8): registered enrichers run after the AI analysis and can add or
 /// adjust tags/description before the result is persisted (e.g. OCR, brand detection).
-/// Register via <c>builder.MediaCurator().AddRecognitionEnricher&lt;T&gt;()</c>.
+/// Register via <c>builder.AddMediaCuratorRecognitionEnricher&lt;T&gt;()</c>.
 /// </summary>
 public interface IRecognitionEnricher
 {
+    /// <summary>Adds to or adjusts the analysis in <paramref name="context"/> before it is saved.</summary>
     Task EnrichAsync(RecognitionContext context, CancellationToken cancellationToken = default);
 }

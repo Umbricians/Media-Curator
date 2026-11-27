@@ -10,7 +10,7 @@ namespace Umbricians.MediaCurator.Providers;
 /// nested folders; naming is code-only, name-only, or "code – name". Folders are ordered by
 /// classification code (see <see cref="GetFolderComparer"/>).
 /// </summary>
-public sealed class ClassificationProvider : ICurationProvider, ICurationFolderOrder
+internal sealed class ClassificationProvider : ICurationProvider, ICurationFolderOrder
 {
     public const string ProviderAlias = "Umbricians.MediaCurator.Classification";
 

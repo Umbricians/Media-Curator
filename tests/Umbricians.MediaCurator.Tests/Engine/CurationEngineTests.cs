@@ -292,7 +292,7 @@ public class CurationEngineTests
             ScopeRootKey = scope,
             Name = "Date rules",
             CultureName = "en-US",
-            Rules = [new RuleNode { ProviderAlias = DateFolderProvider.ProviderAlias, Settings = TestContext.Settings(("format", "yyyy/MM")) }],
+            Rules = [new RuleNode { ProviderAlias = DateFolderProvider.ProviderAlias, Settings = CurationContexts.Settings(("format", "yyyy/MM")) }],
         };
         rulesets.ByScope[scope] = ruleset;
 
@@ -316,7 +316,7 @@ public class CurationEngineTests
         return (engine, media, rulesets, log, scope, exclusions);
     }
 
-    [Fact]
+    [Test]
     public async Task Plan_targets_date_folders_and_execute_moves_items()
     {
         var (engine, media, _, log, scope, _) = Setup();
@@ -324,22 +324,22 @@ public class CurationEngineTests
 
         var plan = await engine.PlanAsync(scope, recursive: true);
 
-        var move = Assert.Single(plan.Moves);
-        Assert.Equal("2026/06", move.TargetPath);
-        Assert.False(move.AlreadyInPlace);
+        var move = TestAssert.Single(plan.Moves);
+        Assert.That(move.TargetPath, Is.EqualTo("2026/06"));
+        Assert.That(move.AlreadyInPlace, Is.False);
 
         var summary = await engine.ExecuteAsync(plan, "manual");
 
-        Assert.Equal(1, summary.Moved);
-        Assert.Single(media.Moves);
-        Assert.Single(log.Items);
-        Assert.Equal(1, log.Completed);
+        Assert.That(summary.Moved, Is.EqualTo(1));
+        Assert.That(media.Moves, Has.Exactly(1).Items);
+        Assert.That(log.Items, Has.Exactly(1).Items);
+        Assert.That(log.Completed, Is.EqualTo(1));
         // The item now sits in Products/2026/06
         var item = media.GetItem(img)!;
-        Assert.Equal("06", media.GetItem(item.ParentKey)!.Name);
+        Assert.That(media.GetItem(item.ParentKey)!.Name, Is.EqualTo("06"));
     }
 
-    [Fact]
+    [Test]
     public async Task Planning_a_flat_folder_never_lists_a_folder_per_image()
     {
         // Listing the target folder for each image made planning quadratic: about a million media
@@ -355,11 +355,11 @@ public class CurationEngineTests
 
         var plan = await engine.PlanForMediaAsync(scope);
 
-        Assert.Equal(200, plan.Plans.Single().Moves.Count(m => m.AlreadyInPlace));
-        Assert.Equal(0, media.FolderListings);
+        Assert.That(plan.Plans.Single().Moves.Count(m => m.AlreadyInPlace), Is.EqualTo(200));
+        Assert.That(media.FolderListings, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Curating_media_reports_progress_up_to_every_planned_move()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -371,13 +371,13 @@ public class CurationEngineTests
         var reports = new List<CurationProgress>();
         var summary = await ((ICurationEngine)engine).CurateMediaAsync(scope, "background", EmptyFolderRemoval.None, new InlineProgress<CurationProgress>(reports.Add));
 
-        Assert.Equal(3, summary.Moved);
-        Assert.Equal(new CurationProgress(0, 3), reports[0]);
-        Assert.Equal(new CurationProgress(3, 3), reports[^1]);
-        Assert.Single(summary.RunKeys);
+        Assert.That(summary.Moved, Is.EqualTo(3));
+        Assert.That(reports[0], Is.EqualTo(new CurationProgress(0, 3)));
+        Assert.That(reports[^1], Is.EqualTo(new CurationProgress(3, 3)));
+        Assert.That(summary.RunKeys, Has.Exactly(1).Items);
     }
 
-    [Fact]
+    [Test]
     public void Images_are_counted_below_a_folder_and_one_for_an_image()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -386,11 +386,11 @@ public class CurationEngineTests
         media.AddImage("b.jpg", sub);
         media.AddImage("doc.pdf", sub, contentType: "File");
 
-        Assert.Equal(2, engine.CountImages(scope));
-        Assert.Equal(1, engine.CountImages(image));
+        Assert.That(engine.CountImages(scope), Is.EqualTo(2));
+        Assert.That(engine.CountImages(image), Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task Rerunning_over_curated_media_is_a_noop()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -401,16 +401,16 @@ public class CurationEngineTests
 
         var second = await engine.PlanAsync(scope, recursive: true);
 
-        var move = Assert.Single(second.Moves);
-        Assert.True(move.AlreadyInPlace);
-        Assert.Equal(0, second.MoveCount);
+        var move = TestAssert.Single(second.Moves);
+        Assert.That(move.AlreadyInPlace, Is.True);
+        Assert.That(second.MoveCount, Is.EqualTo(0));
 
         var summary = await engine.ExecuteAsync(second, "manual");
-        Assert.Equal(0, summary.Moved);
-        Assert.Equal(1, summary.AlreadyInPlace);
+        Assert.That(summary.Moved, Is.EqualTo(0));
+        Assert.That(summary.AlreadyInPlace, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task Non_image_media_is_skipped_not_failed()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -418,11 +418,11 @@ public class CurationEngineTests
 
         var plan = await engine.PlanAsync(scope, recursive: true);
 
-        Assert.Empty(plan.Moves);
-        Assert.Contains(plan.SkippedItems, s => s.Contains("document.pdf") && s.Contains("ignored"));
+        Assert.That(plan.Moves, Is.Empty);
+        Assert.That(plan.SkippedItems.Any(s => s.Contains("document.pdf") && s.Contains("ignored")), Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task Items_governed_by_a_deeper_ruleset_are_left_alone()
     {
         var (engine, media, rulesets, _, scope, _) = Setup();
@@ -437,11 +437,11 @@ public class CurationEngineTests
 
         var plan = await engine.PlanAsync(scope, recursive: true);
 
-        Assert.Empty(plan.Moves);
-        Assert.Contains(plan.SkippedItems, s => s.Contains("deep.jpg") && s.Contains("deeper"));
+        Assert.That(plan.Moves, Is.Empty);
+        Assert.That(plan.SkippedItems.Any(s => s.Contains("deep.jpg") && s.Contains("deeper")), Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task Plan_throws_without_an_enabled_ruleset()
     {
         var (engine, media, rulesets, _, scope, _) = Setup();
@@ -450,7 +450,7 @@ public class CurationEngineTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => engine.PlanAsync(scope, true));
     }
 
-    [Fact]
+    [Test]
     public async Task Excluded_items_and_subtrees_are_never_touched()
     {
         var (engine, media, _, _, scope, exclusions) = Setup();
@@ -463,12 +463,12 @@ public class CurationEngineTests
 
         var plan = await engine.PlanAsync(scope, recursive: true);
 
-        Assert.Single(plan.Moves); // only normal.jpg
-        Assert.Equal(2, plan.SkippedItems.Count(s => s.Contains("excluded")));
-        Assert.DoesNotContain(plan.Moves, m => m.MediaKey == pinned || m.MediaKey == inExcludedFolder);
+        Assert.That(plan.Moves, Has.Exactly(1).Items); // only normal.jpg
+        Assert.That(plan.SkippedItems.Count(s => s.Contains("excluded")), Is.EqualTo(2));
+        Assert.That(plan.Moves.Any(m => m.MediaKey == pinned || m.MediaKey == inExcludedFolder), Is.False);
     }
 
-    [Fact]
+    [Test]
     public async Task Media_plan_for_a_folder_inside_a_scope_is_relative_to_the_scope_root()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -480,17 +480,17 @@ public class CurationEngineTests
         var fromRoot = await engine.PlanAsync(scope, recursive: true);
         var plan = await engine.PlanForMediaAsync(clicked);
 
-        var scoped = Assert.Single(plan.Plans);
-        Assert.Equal(scope, scoped.ScopeFolderKey);
-        var move = Assert.Single(scoped.Moves);
-        Assert.Equal("in.jpg", move.MediaName);
-        Assert.Equal(fromRoot.Moves.Single(m => m.MediaName == "in.jpg").TargetSegments, move.TargetSegments);
-        Assert.Equal("2026/10", move.TargetPath);
-        Assert.True(move.AlreadyInPlace);
-        Assert.Empty(plan.Skipped);
+        var scoped = TestAssert.Single(plan.Plans);
+        Assert.That(scoped.ScopeFolderKey, Is.EqualTo(scope));
+        var move = TestAssert.Single(scoped.Moves);
+        Assert.That(move.MediaName, Is.EqualTo("in.jpg"));
+        Assert.That(move.TargetSegments, Is.EqualTo(fromRoot.Moves.Single(m => m.MediaName == "in.jpg").TargetSegments));
+        Assert.That(move.TargetPath, Is.EqualTo("2026/10"));
+        Assert.That(move.AlreadyInPlace, Is.True);
+        Assert.That(plan.Skipped, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task Media_plan_for_a_folder_above_two_scopes_has_a_plan_per_ruleset()
     {
         var (engine, media, rulesets, _, scope, _) = Setup();
@@ -500,7 +500,7 @@ public class CurationEngineTests
             ScopeRootKey = other,
             Name = "Year rules",
             CultureName = "en-US",
-            Rules = [new RuleNode { ProviderAlias = DateFolderProvider.ProviderAlias, Settings = TestContext.Settings(("format", "yyyy")) }],
+            Rules = [new RuleNode { ProviderAlias = DateFolderProvider.ProviderAlias, Settings = CurationContexts.Settings(("format", "yyyy")) }],
         };
         var parent = media.AddFolder("Library", Guid.Empty);
         media.Items[scope] = media.Items[scope] with { ParentKey = parent };
@@ -511,15 +511,15 @@ public class CurationEngineTests
 
         var plan = await engine.PlanForMediaAsync(parent);
 
-        Assert.Equal(2, plan.Plans.Count);
+        Assert.That(plan.Plans.Count, Is.EqualTo(2));
         var products = plan.Plans.Single(p => p.ScopeFolderKey == scope);
         var blog = plan.Plans.Single(p => p.ScopeFolderKey == other);
-        Assert.Equal("2026/06", Assert.Single(products.Moves).TargetPath);
-        Assert.Equal("2025", Assert.Single(blog.Moves).TargetPath);
-        Assert.Empty(plan.Skipped);
+        Assert.That(TestAssert.Single(products.Moves).TargetPath, Is.EqualTo("2026/06"));
+        Assert.That(TestAssert.Single(blog.Moves).TargetPath, Is.EqualTo("2025"));
+        Assert.That(plan.Skipped, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task Media_plan_skips_images_no_ruleset_governs()
     {
         var (engine, media, _, _, _, _) = Setup();
@@ -528,11 +528,11 @@ public class CurationEngineTests
 
         var plan = await engine.PlanForMediaAsync(loose);
 
-        Assert.Empty(plan.Plans);
-        Assert.Contains("orphan.jpg: no ruleset applies", plan.Skipped);
+        Assert.That(plan.Plans, Is.Empty);
+        Assert.That(plan.Skipped, Does.Contain("orphan.jpg: no ruleset applies"));
     }
 
-    [Fact]
+    [Test]
     public async Task Media_plan_for_a_single_image_plans_only_that_image()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -541,11 +541,11 @@ public class CurationEngineTests
 
         var plan = await engine.PlanForMediaAsync(img);
 
-        var move = Assert.Single(Assert.Single(plan.Plans).Moves);
-        Assert.Equal(img, move.MediaKey);
+        var move = TestAssert.Single(TestAssert.Single(plan.Plans).Moves);
+        Assert.That(move.MediaKey, Is.EqualTo(img));
     }
 
-    [Fact]
+    [Test]
     public async Task Media_plan_skips_excluded_items_and_folders()
     {
         var (engine, media, _, _, scope, exclusions) = Setup();
@@ -558,11 +558,11 @@ public class CurationEngineTests
 
         var plan = await engine.PlanForMediaAsync(scope);
 
-        Assert.Equal("normal.jpg", Assert.Single(Assert.Single(plan.Plans).Moves).MediaName);
-        Assert.Equal(2, plan.Skipped.Count(s => s.Contains("excluded")));
+        Assert.That(TestAssert.Single(TestAssert.Single(plan.Plans).Moves).MediaName, Is.EqualTo("normal.jpg"));
+        Assert.That(plan.Skipped.Count(s => s.Contains("excluded")), Is.EqualTo(2));
     }
 
-    [Fact]
+    [Test]
     public async Task Media_plan_ignores_disabled_rulesets()
     {
         var (engine, media, rulesets, _, scope, _) = Setup();
@@ -571,11 +571,11 @@ public class CurationEngineTests
 
         var plan = await engine.PlanForMediaAsync(scope);
 
-        Assert.Empty(plan.Plans);
-        Assert.Contains(plan.Skipped, s => s.Contains("no ruleset applies"));
+        Assert.That(plan.Plans, Is.Empty);
+        Assert.That(plan.Skipped.Any(s => s.Contains("no ruleset applies")), Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task Media_plan_throws_not_found_for_an_unknown_key()
     {
         var (engine, _, _, _, _, _) = Setup();
@@ -583,14 +583,13 @@ public class CurationEngineTests
         await Assert.ThrowsAsync<MediaNotFoundException>(() => engine.PlanForMediaAsync(Guid.NewGuid()));
     }
 
-    [Theory]
-    [InlineData("juni 2026", "juni 2026")]
-    [InlineData("a/b", "ab")]
-    [InlineData("  x  ", "x")]
-    [InlineData("???", "_")]
+    [TestCase("juni 2026", "juni 2026")]
+    [TestCase("a/b", "ab")]
+    [TestCase("  x  ", "x")]
+    [TestCase("???", "_")]
     public void Folder_names_are_sanitized_preserving_localized_text(string input, string expected)
     {
-        Assert.Equal(expected, CurationEngine.SanitizeFolderName(input));
+        Assert.That(CurationEngine.SanitizeFolderName(input), Is.EqualTo(expected));
     }
 
     // ----- Empty sub-folder cleanup -----
@@ -601,7 +600,7 @@ public class CurationEngineTests
     private static async Task<CurationRunSummary> RunAsync(CurationEngine engine, Guid scope, EmptyFolderRemoval removal)
         => await engine.ExecuteAsync(await engine.PlanAsync(scope, recursive: true), "manual", removal);
 
-    [Fact]
+    [Test]
     public async Task Cleanup_removes_nested_empty_folders_deepest_first_but_never_the_processed_folder()
     {
         var (engine, media, _, log, scope, _) = Setup();
@@ -611,21 +610,26 @@ public class CurationEngineTests
 
         var summary = await RunAsync(engine, scope, EmptyFolderRemoval.RecycleBin);
 
-        Assert.Equal([c, b, a], media.Recycled);
-        Assert.Empty(media.Deleted);
-        Assert.Equal(3, summary.FoldersRemoved);
-        Assert.Equal(0, summary.Moved);
-        Assert.Equal(0, summary.Failed);
-        Assert.Contains(scope, media.Items.Keys);
-        Assert.Empty(media.GetChildren(scope));
+        Assert.That(media.Recycled, Is.EqualTo([c, b, a]));
+        Assert.That(media.Deleted, Is.Empty);
+        Assert.That(summary.FoldersRemoved, Is.EqualTo(3));
+        Assert.That(summary.Moved, Is.EqualTo(0));
+        Assert.That(summary.Failed, Is.EqualTo(0));
+        Assert.That(media.Items.Keys, Does.Contain(scope));
+        Assert.That(media.GetChildren(scope), Is.Empty);
         var records = FolderRecords(log).ToList();
-        Assert.Equal([c, b, a], records.Select(r => r.MediaKey));
-        Assert.All(records, r => { Assert.True(r.Success); Assert.Null(r.ToParentKey); Assert.Equal(CurationEngine.EmptyFolderRecycledMarker, r.TargetPath); });
-        Assert.Equal([b, a, scope], records.Select(r => r.FromParentKey));
-        Assert.Equal("C", records[0].MediaName);
+        Assert.That(records.Select(r => r.MediaKey), Is.EqualTo([c, b, a]));
+        foreach (var r in records)
+        {
+            Assert.That(r.Success, Is.True);
+            Assert.That(r.ToParentKey, Is.Null);
+            Assert.That(r.TargetPath, Is.EqualTo(CurationEngine.EmptyFolderRecycledMarker));
+        }
+        Assert.That(records.Select(r => r.FromParentKey), Is.EqualTo([b, a, scope]));
+        Assert.That(records[0].MediaName, Is.EqualTo("C"));
     }
 
-    [Fact]
+    [Test]
     public async Task Counting_empty_folders_matches_what_cleanup_removes_without_removing_anything()
     {
         var (engine, media, _, log, scope, _) = Setup();
@@ -637,16 +641,16 @@ public class CurationEngineTests
 
         var count = await engine.CountEmptyFoldersAsync(scope);
 
-        Assert.Equal(3, count);
-        Assert.Empty(media.Recycled);
-        Assert.Empty(FolderRecords(log));
+        Assert.That(count, Is.EqualTo(3));
+        Assert.That(media.Recycled, Is.Empty);
+        Assert.That(FolderRecords(log), Is.Empty);
         var summary = await RunAsync(engine, scope, EmptyFolderRemoval.RecycleBin);
-        Assert.Equal(count, summary.FoldersRemoved);
+        Assert.That(summary.FoldersRemoved, Is.EqualTo(count));
     }
 
     // A folder an earlier run emptied has no images, so no ruleset shows up in its plan; it still
     // needs a plan (and so a run to record removals in) for its empty sub-folders to be cleaned up.
-    [Fact]
+    [Test]
     public async Task Media_plan_for_a_folder_with_only_empty_subfolders_has_an_empty_plan_for_its_ruleset()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -655,13 +659,13 @@ public class CurationEngineTests
 
         var plan = await engine.PlanForMediaAsync(clicked);
 
-        var only = Assert.Single(plan.Plans);
-        Assert.Equal(scope, only.ScopeFolderKey);
-        Assert.Empty(only.Moves);
-        Assert.Equal(1, await engine.CountEmptyFoldersAsync(clicked));
+        var only = TestAssert.Single(plan.Plans);
+        Assert.That(only.ScopeFolderKey, Is.EqualTo(scope));
+        Assert.That(only.Moves, Is.Empty);
+        Assert.That(await engine.CountEmptyFoldersAsync(clicked), Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task Cleanup_removes_folders_the_run_emptied()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -670,12 +674,12 @@ public class CurationEngineTests
 
         var summary = await RunAsync(engine, scope, EmptyFolderRemoval.RecycleBin);
 
-        Assert.Equal(1, summary.Moved);
-        Assert.Equal(1, summary.FoldersRemoved);
-        Assert.Equal([old], media.Recycled);
+        Assert.That(summary.Moved, Is.EqualTo(1));
+        Assert.That(summary.FoldersRemoved, Is.EqualTo(1));
+        Assert.That(media.Recycled, Is.EqualTo([old]));
     }
 
-    [Fact]
+    [Test]
     public async Task Cleanup_keeps_folders_holding_any_media_including_non_images()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -686,11 +690,11 @@ public class CurationEngineTests
 
         var summary = await RunAsync(engine, scope, EmptyFolderRemoval.RecycleBin);
 
-        Assert.Equal([empty], media.Recycled);
-        Assert.Equal(1, summary.FoldersRemoved);
+        Assert.That(media.Recycled, Is.EqualTo([empty]));
+        Assert.That(summary.FoldersRemoved, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task Cleanup_leaves_excluded_folder_subtrees_alone()
     {
         var (engine, media, _, _, scope, exclusions) = Setup();
@@ -701,11 +705,11 @@ public class CurationEngineTests
 
         var summary = await RunAsync(engine, scope, EmptyFolderRemoval.RecycleBin);
 
-        Assert.Equal([plain], media.Recycled);
-        Assert.Equal(1, summary.FoldersRemoved);
+        Assert.That(media.Recycled, Is.EqualTo([plain]));
+        Assert.That(summary.FoldersRemoved, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task Cleanup_does_nothing_when_the_processed_folder_is_under_an_excluded_folder()
     {
         var (engine, media, _, _, scope, exclusions) = Setup();
@@ -715,11 +719,11 @@ public class CurationEngineTests
 
         var summary = await RunAsync(engine, scope, EmptyFolderRemoval.RecycleBin);
 
-        Assert.Empty(media.Recycled);
-        Assert.Equal(0, summary.FoldersRemoved);
+        Assert.That(media.Recycled, Is.Empty);
+        Assert.That(summary.FoldersRemoved, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Cleanup_keeps_empty_ruleset_scope_roots_and_the_folders_leading_to_them()
     {
         var (engine, media, rulesets, _, scope, _) = Setup();
@@ -730,11 +734,11 @@ public class CurationEngineTests
 
         var summary = await RunAsync(engine, scope, EmptyFolderRemoval.RecycleBin);
 
-        Assert.Equal([other], media.Recycled);
-        Assert.Equal(1, summary.FoldersRemoved);
+        Assert.That(media.Recycled, Is.EqualTo([other]));
+        Assert.That(summary.FoldersRemoved, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public async Task Cleanup_can_delete_permanently()
     {
         var (engine, media, _, log, scope, _) = Setup();
@@ -743,13 +747,16 @@ public class CurationEngineTests
 
         var summary = await RunAsync(engine, scope, EmptyFolderRemoval.Delete);
 
-        Assert.Equal([b, a], media.Deleted);
-        Assert.Empty(media.Recycled);
-        Assert.Equal(2, summary.FoldersRemoved);
-        Assert.All(FolderRecords(log), r => Assert.Equal(CurationEngine.EmptyFolderDeletedMarker, r.TargetPath));
+        Assert.That(media.Deleted, Is.EqualTo([b, a]));
+        Assert.That(media.Recycled, Is.Empty);
+        Assert.That(summary.FoldersRemoved, Is.EqualTo(2));
+        foreach (var r in FolderRecords(log))
+        {
+            Assert.That(r.TargetPath, Is.EqualTo(CurationEngine.EmptyFolderDeletedMarker));
+        }
     }
 
-    [Fact]
+    [Test]
     public async Task Cleanup_records_failures_and_carries_on()
     {
         var (engine, media, _, log, scope, _) = Setup();
@@ -761,15 +768,15 @@ public class CurationEngineTests
         var summary = await RunAsync(engine, scope, EmptyFolderRemoval.RecycleBin);
 
         // Inner could not go, so Stuck (which would take it along) stays too; Fine is still removed.
-        Assert.Equal([fine], media.Recycled);
-        Assert.Equal(1, summary.FoldersRemoved);
-        Assert.Equal(0, summary.Failed);
-        var failure = Assert.Single(FolderRecords(log), r => !r.Success);
-        Assert.Equal(inner, failure.MediaKey);
-        Assert.Equal("cannot remove", failure.Note);
+        Assert.That(media.Recycled, Is.EqualTo([fine]));
+        Assert.That(summary.FoldersRemoved, Is.EqualTo(1));
+        Assert.That(summary.Failed, Is.EqualTo(0));
+        var failure = TestAssert.Single(FolderRecords(log), r => !r.Success);
+        Assert.That(failure.MediaKey, Is.EqualTo(inner));
+        Assert.That(failure.Note, Is.EqualTo("cannot remove"));
     }
 
-    [Fact]
+    [Test]
     public async Task Execute_without_cleanup_and_plan_never_remove_folders()
     {
         var (engine, media, _, log, scope, _) = Setup();
@@ -779,14 +786,14 @@ public class CurationEngineTests
         var summary = await engine.ExecuteAsync(plan, "manual");
         var explicitNone = await engine.ExecuteAsync(plan, "manual", EmptyFolderRemoval.None);
 
-        Assert.Empty(media.Recycled);
-        Assert.Empty(media.Deleted);
-        Assert.Empty(FolderRecords(log));
-        Assert.Equal(0, summary.FoldersRemoved);
-        Assert.Equal(0, explicitNone.FoldersRemoved);
+        Assert.That(media.Recycled, Is.Empty);
+        Assert.That(media.Deleted, Is.Empty);
+        Assert.That(FolderRecords(log), Is.Empty);
+        Assert.That(summary.FoldersRemoved, Is.EqualTo(0));
+        Assert.That(explicitNone.FoldersRemoved, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Media_cleanup_is_rooted_at_the_clicked_folder_and_logged_in_the_run_containing_it()
     {
         var (engine, media, rulesets, log, scope, _) = Setup();
@@ -803,15 +810,15 @@ public class CurationEngineTests
         var removed = await engine.RemoveEmptyFoldersForMediaAsync(
             clicked, [Executed(scope, outerRun), Executed(nestedScope, nestedRun)], EmptyFolderRemoval.RecycleBin);
 
-        Assert.Equal(2, removed);
-        Assert.Equal([inside, deeper], media.Recycled);
-        Assert.DoesNotContain(outside, media.Recycled);
-        Assert.DoesNotContain(clicked, media.Recycled);
-        Assert.Equal(nestedRun, log.Items.Single(i => i.MediaKey == deeper).RunKey);
-        Assert.Equal(outerRun, log.Items.Single(i => i.MediaKey == inside).RunKey);
+        Assert.That(removed, Is.EqualTo(2));
+        Assert.That(media.Recycled, Is.EqualTo([inside, deeper]));
+        Assert.That(media.Recycled, Does.Not.Contain(outside));
+        Assert.That(media.Recycled, Does.Not.Contain(clicked));
+        Assert.That(log.Items.Single(i => i.MediaKey == deeper).RunKey, Is.EqualTo(nestedRun));
+        Assert.That(log.Items.Single(i => i.MediaKey == inside).RunKey, Is.EqualTo(outerRun));
     }
 
-    [Fact]
+    [Test]
     public async Task Media_cleanup_falls_back_to_the_last_run_and_skips_images_and_no_runs()
     {
         var (engine, media, _, log, scope, _) = Setup();
@@ -822,17 +829,17 @@ public class CurationEngineTests
         var last = Guid.NewGuid();
         ExecutedPlan Executed(Guid scopeKey, Guid run) => new(new CurationPlan(scopeKey, Guid.NewGuid(), "r", [], []), run);
 
-        Assert.Equal(0, await engine.RemoveEmptyFoldersForMediaAsync(img, [Executed(scope, last)], EmptyFolderRemoval.RecycleBin));
-        Assert.Equal(0, await engine.RemoveEmptyFoldersForMediaAsync(clicked, [], EmptyFolderRemoval.RecycleBin));
-        Assert.Equal(0, await engine.RemoveEmptyFoldersForMediaAsync(clicked, [Executed(scope, last)], EmptyFolderRemoval.None));
-        Assert.Empty(media.Recycled);
+        Assert.That(await engine.RemoveEmptyFoldersForMediaAsync(img, [Executed(scope, last)], EmptyFolderRemoval.RecycleBin), Is.EqualTo(0));
+        Assert.That(await engine.RemoveEmptyFoldersForMediaAsync(clicked, [], EmptyFolderRemoval.RecycleBin), Is.EqualTo(0));
+        Assert.That(await engine.RemoveEmptyFoldersForMediaAsync(clicked, [Executed(scope, last)], EmptyFolderRemoval.None), Is.EqualTo(0));
+        Assert.That(media.Recycled, Is.Empty);
 
         var removed = await engine.RemoveEmptyFoldersForMediaAsync(
             clicked, [Executed(Guid.NewGuid(), unrelated), Executed(Guid.NewGuid(), last)], EmptyFolderRemoval.RecycleBin);
 
-        Assert.Equal(1, removed);
-        Assert.Equal([empty], media.Recycled);
-        Assert.Equal(last, log.Items.Single(i => i.MediaKey == empty).RunKey);
+        Assert.That(removed, Is.EqualTo(1));
+        Assert.That(media.Recycled, Is.EqualTo([empty]));
+        Assert.That(log.Items.Single(i => i.MediaKey == empty).RunKey, Is.EqualTo(last));
     }
 
     // ----- Sorting after a run -----
@@ -841,12 +848,12 @@ public class CurationEngineTests
         => rulesets.ByScope[scope].Rules = [.. rules];
 
     private static RuleNode DateRule(string format, params RuleNode[] children)
-        => new() { ProviderAlias = DateFolderProvider.ProviderAlias, Settings = TestContext.Settings(("format", format)), Children = [.. children] };
+        => new() { ProviderAlias = DateFolderProvider.ProviderAlias, Settings = CurationContexts.Settings(("format", format)), Children = [.. children] };
 
     private static Guid Folder(FakeMedia media, Guid parent, params string[] path)
         => path.Aggregate(parent, (current, name) => media.GetChildren(current).Single(c => c.IsFolder && c.Name == name).Key);
 
-    [Fact]
+    [Test]
     public async Task Execute_sorts_folders_first_then_other_media_naturally()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -864,11 +871,11 @@ public class CurationEngineTests
         await RunAsync(engine, scope, EmptyFolderRemoval.RecycleBin);
 
         // The year level is the Date rule's: years in order, an editor's folder that is not a year last.
-        Assert.Equal(["2025", "2026", "Archive", "A.pdf", "b.pdf", "doc 2.pdf", "doc 10.pdf"], media.ChildNames(scope));
-        Assert.Equal(["alpha.jpg", "Photo 2.jpg", "photo 10.jpg"], media.ChildNames(Folder(media, scope, "2026", "06")));
+        Assert.That(media.ChildNames(scope), Is.EqualTo(["2025", "2026", "Archive", "A.pdf", "b.pdf", "doc 2.pdf", "doc 10.pdf"]));
+        Assert.That(media.ChildNames(Folder(media, scope, "2026", "06")), Is.EqualTo(["alpha.jpg", "Photo 2.jpg", "photo 10.jpg"]));
     }
 
-    [Fact]
+    [Test]
     public async Task Execute_orders_month_name_folders_in_calendar_order()
     {
         var (engine, media, rulesets, _, scope, _) = Setup();
@@ -881,10 +888,10 @@ public class CurationEngineTests
         await RunAsync(engine, scope, EmptyFolderRemoval.None);
 
         // Alphabetically: Aug, Dec, Feb, Jan, Oct.
-        Assert.Equal(["Jan", "Feb", "Aug", "Oct", "Dec"], media.ChildNames(Folder(media, scope, "2026")));
+        Assert.That(media.ChildNames(Folder(media, scope, "2026")), Is.EqualTo(["Jan", "Feb", "Aug", "Oct", "Dec"]));
     }
 
-    [Fact]
+    [Test]
     public async Task Execute_orders_each_level_of_a_nested_ruleset_by_its_own_provider()
     {
         var (engine, media, rulesets, _, scope, _) = Setup();
@@ -898,12 +905,12 @@ public class CurationEngineTests
 
         await RunAsync(engine, scope, EmptyFolderRemoval.None);
 
-        Assert.Equal(["2024", "2025", "2026"], media.ChildNames(scope));
+        Assert.That(media.ChildNames(scope), Is.EqualTo(["2024", "2025", "2026"]));
         // Palette order (Red … Blue … Gray), the Unsorted fallback last; alphabetically Blue, Gray, Red, Unsorted.
-        Assert.Equal(["Red", "Blue", "Gray", "Unsorted"], media.ChildNames(Folder(media, scope, "2026")));
+        Assert.That(media.ChildNames(Folder(media, scope, "2026")), Is.EqualTo(["Red", "Blue", "Gray", "Unsorted"]));
     }
 
-    [Fact]
+    [Test]
     public async Task Levels_claimed_by_two_different_rules_and_editor_folders_are_ordered_naturally()
     {
         var (engine, media, rulesets, _, scope, _) = Setup();
@@ -927,11 +934,11 @@ public class CurationEngineTests
 
         await RunAsync(engine, scope, EmptyFolderRemoval.None);
 
-        Assert.Equal(["Blue", "Feb", "Jan", "Old", "Red"], media.ChildNames(scope));
-        Assert.Equal(["Alpha", "shoot 2", "Shoot 10"], media.ChildNames(old));
+        Assert.That(media.ChildNames(scope), Is.EqualTo(["Blue", "Feb", "Jan", "Old", "Red"]));
+        Assert.That(media.ChildNames(old), Is.EqualTo(["Alpha", "shoot 2", "Shoot 10"]));
     }
 
-    [Fact]
+    [Test]
     public async Task Folders_already_in_order_are_not_sorted_again()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -940,15 +947,15 @@ public class CurationEngineTests
         media.AddImage("c.jpg", scope, new DateTime(2025, 6, 1));
 
         await RunAsync(engine, scope, EmptyFolderRemoval.None);
-        Assert.NotEmpty(media.Sorted);
+        Assert.That(media.Sorted, Is.Not.Empty);
         media.Sorted.Clear();
 
         await RunAsync(engine, scope, EmptyFolderRemoval.None);
 
-        Assert.Empty(media.Sorted);
+        Assert.That(media.Sorted, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task Plans_and_moves_only_execution_never_sort()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -958,15 +965,15 @@ public class CurationEngineTests
 
         var plan = await engine.PlanAsync(scope, recursive: true);
         await engine.PlanForMediaAsync(scope);
-        Assert.Empty(media.Sorted);
+        Assert.That(media.Sorted, Is.Empty);
 
         await engine.ExecuteAsync(plan, "manual");
 
-        Assert.Empty(media.Sorted);
-        Assert.Equal(["Zeta", "Alpha", "2026"], media.ChildNames(scope));
+        Assert.That(media.Sorted, Is.Empty);
+        Assert.That(media.ChildNames(scope), Is.EqualTo(["Zeta", "Alpha", "2026"]));
     }
 
-    [Fact]
+    [Test]
     public async Task A_sort_failure_is_logged_and_the_run_still_succeeds()
     {
         var logger = new ListLogger<CurationEngine>();
@@ -977,15 +984,18 @@ public class CurationEngineTests
 
         var summary = await RunAsync(engine, scope, EmptyFolderRemoval.None);
 
-        Assert.Equal(1, summary.Moved);
-        Assert.Equal(0, summary.Failed);
-        Assert.Equal(1, log.Completed);
-        Assert.Contains(logger.Entries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning && e.Message.Contains("sort"));
+        Assert.That(summary.Moved, Is.EqualTo(1));
+        Assert.That(summary.Failed, Is.EqualTo(0));
+        Assert.That(log.Completed, Is.EqualTo(1));
+        Assert.That(logger.Entries.Any(e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning && e.Message.Contains("sort")), Is.True);
         // Sorting is not part of the run log.
-        Assert.All(log.Items, i => Assert.Equal(media.Items[i.MediaKey].Name, i.MediaName));
+        foreach (var i in log.Items)
+        {
+            Assert.That(i.MediaName, Is.EqualTo(media.Items[i.MediaKey].Name));
+        }
     }
 
-    [Fact]
+    [Test]
     public async Task Media_action_sorts_the_clicked_folder_tree_and_new_paths_once()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -1005,19 +1015,19 @@ public class CurationEngineTests
             executed.Add(new ExecutedPlan(plan, (await engine.ExecuteAsync(plan, "manual")).RunKey));
         }
 
-        Assert.Empty(media.Sorted);
+        Assert.That(media.Sorted, Is.Empty);
         var sorted = await engine.SortFoldersForMediaAsync(inbox, executed);
 
-        Assert.Equal(["A", "b"], media.ChildNames(inbox));
-        Assert.Equal(["01", "06"], media.ChildNames(Folder(media, scope, "2026")));
-        Assert.Equal(["2026", "Inbox", "Zeta"], media.ChildNames(scope));
+        Assert.That(media.ChildNames(inbox), Is.EqualTo(["A", "b"]));
+        Assert.That(media.ChildNames(Folder(media, scope, "2026")), Is.EqualTo(["01", "06"]));
+        Assert.That(media.ChildNames(scope), Is.EqualTo(["2026", "Inbox", "Zeta"]));
         // Not below the clicked folder nor on a new path: left alone.
-        Assert.Equal(["b", "a"], media.ChildNames(untouched));
-        Assert.Equal(media.Sorted.Count, media.Sorted.Distinct().Count());
-        Assert.Equal(media.Sorted.Count, sorted);
+        Assert.That(media.ChildNames(untouched), Is.EqualTo(["b", "a"]));
+        Assert.That(media.Sorted.Distinct().Count(), Is.EqualTo(media.Sorted.Count));
+        Assert.That(sorted, Is.EqualTo(media.Sorted.Count));
     }
 
-    [Fact]
+    [Test]
     public async Task Media_action_for_a_single_image_sorts_the_folders_along_its_new_path()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -1029,15 +1039,15 @@ public class CurationEngineTests
         media.AddImage("keep.pdf", media.AddFolder("a", other), contentType: "File");
         var img = media.AddImage("photo.jpg", scope, new DateTime(2026, 6, 1));
 
-        var plan = Assert.Single((await engine.PlanForMediaAsync(img)).Plans);
+        var plan = TestAssert.Single((await engine.PlanForMediaAsync(img)).Plans);
         var run = await engine.ExecuteAsync(plan, "manual");
         await engine.SortFoldersForMediaAsync(img, [new ExecutedPlan(plan, run.RunKey)]);
 
-        Assert.Equal(["01", "06"], media.ChildNames(year));
-        Assert.Equal(["b", "a"], media.ChildNames(other));
+        Assert.That(media.ChildNames(year), Is.EqualTo(["01", "06"]));
+        Assert.That(media.ChildNames(other), Is.EqualTo(["b", "a"]));
     }
 
-    [Fact]
+    [Test]
     public async Task Media_action_sorting_does_nothing_when_every_run_was_vetoed()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -1045,11 +1055,11 @@ public class CurationEngineTests
         media.AddFolder("Alpha", scope);
         var plan = new CurationPlan(scope, Guid.NewGuid(), "r", [], []);
 
-        Assert.Equal(0, await engine.SortFoldersForMediaAsync(scope, [new ExecutedPlan(plan, Guid.Empty)]));
-        Assert.Empty(media.Sorted);
+        Assert.That(await engine.SortFoldersForMediaAsync(scope, [new ExecutedPlan(plan, Guid.Empty)]), Is.EqualTo(0));
+        Assert.That(media.Sorted, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task Categorize_sorts_only_the_folders_along_the_target_path()
     {
         var (engine, media, _, _, scope, _) = Setup();
@@ -1062,17 +1072,17 @@ public class CurationEngineTests
         var img = media.AddImage("photo.jpg", scope, new DateTime(2026, 6, 1));
         media.AddImage("z.jpg", Folder(media, scope, "2026", "06"), new DateTime(2026, 6, 1));
 
-        var plan = Assert.Single((await engine.PlanForMediaAsync(img)).Plans);
+        var plan = TestAssert.Single((await engine.PlanForMediaAsync(img)).Plans);
         await engine.ExecuteAsync(plan, "automate", new CurationExecutionOptions { Sorting = FolderSorting.TargetPaths });
 
-        Assert.Equal(["2026", "Other"], media.ChildNames(scope));
-        Assert.Equal(["01", "06"], media.ChildNames(year));
-        Assert.Equal(["keep.pdf", "photo.jpg", "z.jpg"], media.ChildNames(Folder(media, year, "06")));
-        Assert.Equal(["b", "a"], media.ChildNames(other));
-        Assert.Equal(3, media.Sorted.Count);
+        Assert.That(media.ChildNames(scope), Is.EqualTo(["2026", "Other"]));
+        Assert.That(media.ChildNames(year), Is.EqualTo(["01", "06"]));
+        Assert.That(media.ChildNames(Folder(media, year, "06")), Is.EqualTo(["keep.pdf", "photo.jpg", "z.jpg"]));
+        Assert.That(media.ChildNames(other), Is.EqualTo(["b", "a"]));
+        Assert.That(media.Sorted.Count, Is.EqualTo(3));
     }
 
-    [Fact]
+    [Test]
     public async Task Excluded_folders_keep_their_contents_order()
     {
         var (engine, media, _, _, scope, exclusions) = Setup();
@@ -1083,7 +1093,7 @@ public class CurationEngineTests
 
         await RunAsync(engine, scope, EmptyFolderRemoval.None);
 
-        Assert.Equal(["b", "a"], media.ChildNames(pinned));
+        Assert.That(media.ChildNames(pinned), Is.EqualTo(["b", "a"]));
     }
 
     /// <summary>Tags each image after its name ("cat-1.jpg" → "cat"), slowly, and records how many
@@ -1158,7 +1168,7 @@ public class CurationEngineTests
         return (engine, media, scope, recognition, parallel);
     }
 
-    [Fact]
+    [Test]
     public async Task Planning_analyses_images_in_parallel_once_each()
     {
         var (engine, media, scope, recognition, parallel) = SetupAiTags(parallelism: 4);
@@ -1168,15 +1178,18 @@ public class CurationEngineTests
 
         var plan = await engine.PlanAsync(scope, recursive: true);
 
-        Assert.Equal(8, plan.Moves.Count);
-        Assert.Equal(4, plan.Moves.Count(m => m.TargetPath == "cat"));
-        Assert.Equal(4, plan.Moves.Count(m => m.TargetPath == "dog"));
-        Assert.All(images, key => Assert.Equal(1, recognition.Calls[key]));
-        Assert.Equal(1, parallel.Runs);
-        Assert.InRange(recognition.MaxConcurrent, 2, 4);
+        Assert.That(plan.Moves.Count, Is.EqualTo(8));
+        Assert.That(plan.Moves.Count(m => m.TargetPath == "cat"), Is.EqualTo(4));
+        Assert.That(plan.Moves.Count(m => m.TargetPath == "dog"), Is.EqualTo(4));
+        foreach (var key in images)
+        {
+            Assert.That(recognition.Calls[key], Is.EqualTo(1));
+        }
+        Assert.That(parallel.Runs, Is.EqualTo(1));
+        Assert.That(recognition.MaxConcurrent, Is.InRange(2, 4));
     }
 
-    [Fact]
+    [Test]
     public async Task Media_action_plans_analyse_in_parallel_too()
     {
         var (engine, media, scope, recognition, _) = SetupAiTags(parallelism: 3);
@@ -1188,11 +1201,11 @@ public class CurationEngineTests
 
         var plan = await engine.PlanForMediaAsync(sub);
 
-        Assert.Equal(6, plan.Plans.Single().Moves.Count(m => m.TargetPath == "bird"));
-        Assert.InRange(recognition.MaxConcurrent, 2, 3);
+        Assert.That(plan.Plans.Single().Moves.Count(m => m.TargetPath == "bird"), Is.EqualTo(6));
+        Assert.That(recognition.MaxConcurrent, Is.InRange(2, 3));
     }
 
-    [Fact]
+    [Test]
     public async Task One_at_a_time_setting_analyses_sequentially()
     {
         var (engine, media, scope, recognition, parallel) = SetupAiTags(parallelism: 1);
@@ -1203,17 +1216,17 @@ public class CurationEngineTests
 
         var plan = await engine.PlanAsync(scope, recursive: true);
 
-        Assert.Equal(4, plan.Moves.Count);
-        Assert.Equal(1, recognition.MaxConcurrent);
-        Assert.Equal(0, parallel.Runs);
+        Assert.That(plan.Moves.Count, Is.EqualTo(4));
+        Assert.That(recognition.MaxConcurrent, Is.EqualTo(1));
+        Assert.That(parallel.Runs, Is.EqualTo(0));
     }
 
-    [Fact]
+    [Test]
     public async Task Rulesets_that_never_use_recognition_skip_the_parallel_pass()
     {
         var (engine, media, scope, recognition, parallel) = SetupAiTags(
             parallelism: 4,
-            new RuleNode { ProviderAlias = DateFolderProvider.ProviderAlias, Settings = TestContext.Settings(("format", "yyyy")) });
+            new RuleNode { ProviderAlias = DateFolderProvider.ProviderAlias, Settings = CurationContexts.Settings(("format", "yyyy")) });
         foreach (var i in Enumerable.Range(1, 4))
         {
             media.AddImage($"cat-{i}.jpg", scope, new DateTime(2025, 1, i));
@@ -1221,9 +1234,12 @@ public class CurationEngineTests
 
         var plan = await engine.PlanAsync(scope, recursive: true);
 
-        Assert.All(plan.Moves, m => Assert.Equal("2025", m.TargetPath));
-        Assert.Empty(recognition.Calls);
-        Assert.Equal(0, parallel.Runs);
+        foreach (var m in plan.Moves)
+        {
+            Assert.That(m.TargetPath, Is.EqualTo("2025"));
+        }
+        Assert.That(recognition.Calls, Is.Empty);
+        Assert.That(parallel.Runs, Is.EqualTo(0));
     }
 }
 

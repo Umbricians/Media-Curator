@@ -1,6 +1,79 @@
 <Project>
-  <ItemGroup>
-    <!-- Overrides Umbraco/Microsoft.Data.Sqlite's vulnerable transitive SQLitePCLRaw 2.x native bundle. -->
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" PrivateAssets="all" />
-  </ItemGroup>
+  <!--
+    The Umbraco major everything builds for. Each major is its own package (18.x.y for Umbraco 18), built from
+    this one source with -p:UmbracoMajor=18 (CI's matrix builds each). It chooses the lowest Umbraco version the package
+    supports, the .NET version, the build folders and the UMBRACO_* symbols the code uses where majors differ.
+    Adding or dropping a major also changes the plan jobs in .github/workflows/build.yml and umbraco-minors.yml (see
+    docs/RELEASING.md).
+  -->
+  <PropertyGroup>
+    <UmbracoMajor Condition="'$(UmbracoMajor)' == ''">17</UmbracoMajor>
+  </PropertyGroup>
+
+  <!-- The lowest version of each major, which sites on newer versions resolve past: the major's latest release, or its
+       latest release candidate until the major is out. Umbraco, Umbraco.AI and Umbraco.Automate ship their fixes,
+       security ones included, as minor and patch releases, so the package requires the latest of each rather than
+       allowing sites to stay on versions with known problems. Raise them here when a new one comes out. The
+       "Umbraco minors" workflow passes a newer one with -p:UmbracoVersion=, and .github/dependabot.yml ignores the
+       package's Umbraco references, so they change here only.
+
+       The pack checks the public API against the major's last version on nuget.org, which CI passes as LastReleaseVersion
+       (the csproj). Before a major's first release there is none, so a major whose package was already published
+       under other version numbers sets the release to check against as UmbracoPackageValidationBaselineVersion in its
+       block; a new major has none. -->
+  <PropertyGroup Condition="'$(UmbracoMajor)' == '17'">
+    <UmbracoVersion Condition="'$(UmbracoVersion)' == ''">17.8.2</UmbracoVersion>
+    <UmbracoTargetFramework>net10.0</UmbracoTargetFramework>
+    <UmbracoAiVersion>17.8.2</UmbracoAiVersion>
+    <UmbracoAutomateVersion>17.6.0</UmbracoAutomateVersion>
+    <UmbracoAiOpenAIVersion>17.3.3</UmbracoAiOpenAIVersion>
+    <UmbracoAiAnthropicVersion>17.1.5</UmbracoAiAnthropicVersion>
+    <UmbracoAiMicrosoftFoundryVersion>17.0.7</UmbracoAiMicrosoftFoundryVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(UmbracoMajor)' == '18'">
+    <UmbracoVersion Condition="'$(UmbracoVersion)' == ''">18.3.2</UmbracoVersion>
+    <UmbracoTargetFramework>net10.0</UmbracoTargetFramework>
+    <UmbracoAiVersion>18.8.2</UmbracoAiVersion>
+    <UmbracoAutomateVersion>18.6.0</UmbracoAutomateVersion>
+    <UmbracoAiOpenAIVersion>18.3.3</UmbracoAiOpenAIVersion>
+    <UmbracoAiAnthropicVersion>18.1.5</UmbracoAiAnthropicVersion>
+    <UmbracoAiMicrosoftFoundryVersion>18.0.7</UmbracoAiMicrosoftFoundryVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(UmbracoMajor)' == '19'">
+    <UmbracoVersion Condition="'$(UmbracoVersion)' == ''">19.0.0-rc2</UmbracoVersion>
+    <UmbracoTargetFramework>net11.0</UmbracoTargetFramework>
+    <UmbracoAiVersion>19.0.0-rc.1</UmbracoAiVersion>
+    <UmbracoAutomateVersion>19.0.0-rc1</UmbracoAutomateVersion>
+    <UmbracoAiOpenAIVersion>19.0.0-rc.1</UmbracoAiOpenAIVersion>
+    <UmbracoAiAnthropicVersion>19.0.0-rc.1</UmbracoAiAnthropicVersion>
+    <UmbracoAiMicrosoftFoundryVersion>19.0.0-rc.1</UmbracoAiMicrosoftFoundryVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- The package never installs on the next Umbraco major or its release candidates, which its code may not
+         support: N.0.0-a sorts below every N.0.0 pre-release (NuGet compares release labels ignoring case), and
+         nuget.org refuses a label that doesn't start with a letter, such as N.0.0-0. build/check-package.mjs checks
+         the packed range. -->
+    <UmbracoVersionRange>[$(UmbracoVersion), $([MSBuild]::Add($(UmbracoMajor), 1)).0.0-a)</UmbracoVersionRange>
+    <!-- Umbraco.AI and Umbraco.Automate release their own versions for each Umbraco major, so they get the same kind of
+         range from their own lowest version above. The demo's AI providers use theirs exactly: the newest
+         release whose Umbraco.AI.Core range starts at or below UmbracoAiVersion. A newer one lifts Umbraco.AI.Core past
+         the Umbraco.AI.Persistence that Umbraco.AI pins exactly, and the demo fails at startup with TypeLoadExceptions. -->
+    <UmbracoAiVersionRange>[$(UmbracoAiVersion), $([MSBuild]::Add($(UmbracoMajor), 1)).0.0-a)</UmbracoAiVersionRange>
+    <UmbracoAutomateVersionRange>[$(UmbracoAutomateVersion), $([MSBuild]::Add($(UmbracoMajor), 1)).0.0-a)</UmbracoAutomateVersionRange>
+    <DefineConstants>$(DefineConstants);UMBRACO_$(UmbracoMajor)</DefineConstants>
+    <DefineConstants Condition="$(UmbracoMajor) &gt;= 18">$(DefineConstants);UMBRACO_18_OR_GREATER</DefineConstants>
+    <DefineConstants Condition="$(UmbracoMajor) &gt;= 19">$(DefineConstants);UMBRACO_19_OR_GREATER</DefineConstants>
+    <!-- 17 and 18 both build net10.0, so each major has its own build folders: switching majors never reuses the other's
+         outputs. -->
+    <BaseOutputPath>bin\umbraco$(UmbracoMajor)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>obj\umbraco$(UmbracoMajor)\</BaseIntermediateOutputPath>
+    <!-- The default excludes cover only the folders above, so a plain bin or obj (from another tool) would be compiled as
+         source. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <Target Name="CheckUmbracoMajor" BeforeTargets="Restore;Build" Condition="'$(UmbracoTargetFramework)' == ''">
+    <Error Text="UmbracoMajor '$(UmbracoMajor)' isn't supported. Use 17, 18 or 19." />
+  </Target>
 </Project>

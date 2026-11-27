@@ -17,14 +17,14 @@ file static class MediaCuratedTriggerFilters
     }
 }
 
-public class MediaCuratedTriggerSettings
+internal sealed class MediaCuratedTriggerSettings
 {
     /// <summary>Optional: only fire for runs on this scope folder. Empty = all scopes.</summary>
     [Field(SupportsBindings = true)]
     public string? ScopeFolderKey { get; set; }
 }
 
-public class MediaCuratedTriggerOutput
+internal sealed class MediaCuratedTriggerOutput
 {
     public Guid ScopeFolderKey { get; set; }
     public Guid RulesetKey { get; set; }
@@ -37,8 +37,8 @@ public class MediaCuratedTriggerOutput
 
 /// <summary>Fires after a curation run completes, with the run summary available for
 /// binding into downstream steps (§9.1).</summary>
-[Trigger("mediaCurator.curated", "Media curated")]
-public class MediaCuratedTrigger
+[Trigger("umbriciansMediaCurator.curated", "Media curated")]
+internal sealed class MediaCuratedTrigger
     : NotificationTriggerBase<MediaCuratedTriggerSettings, MediaCuratedTriggerOutput, MediaCuratedNotification>
 {
     public MediaCuratedTrigger(TriggerInfrastructure infrastructure)
@@ -50,8 +50,8 @@ public class MediaCuratedTrigger
     {
         yield return new TriggerEvent<MediaCuratedTriggerOutput>
         {
-            TriggerAlias = "mediaCurator.curated",
-            InitiatorType = "mediaCurator",
+            TriggerAlias = "umbriciansMediaCurator.curated",
+            InitiatorType = "umbriciansMediaCurator",
             InitiatorId = notification.Summary.RunKey.ToString("N"),
             Output = new MediaCuratedTriggerOutput
             {
@@ -72,8 +72,8 @@ public class MediaCuratedTrigger
 }
 
 /// <summary>Fires when a curation run had failing items (§9.1).</summary>
-[Trigger("mediaCurator.curationFailed", "Media curation failed")]
-public class MediaCurationFailedTrigger
+[Trigger("umbriciansMediaCurator.curationFailed", "Media curation failed")]
+internal sealed class MediaCurationFailedTrigger
     : NotificationTriggerBase<MediaCuratedTriggerSettings, MediaCuratedTriggerOutput, MediaCurationFailedNotification>
 {
     public MediaCurationFailedTrigger(TriggerInfrastructure infrastructure)
@@ -85,8 +85,8 @@ public class MediaCurationFailedTrigger
     {
         yield return new TriggerEvent<MediaCuratedTriggerOutput>
         {
-            TriggerAlias = "mediaCurator.curationFailed",
-            InitiatorType = "mediaCurator",
+            TriggerAlias = "umbriciansMediaCurator.curationFailed",
+            InitiatorType = "umbriciansMediaCurator",
             InitiatorId = notification.Summary.RunKey.ToString("N"),
             Output = new MediaCuratedTriggerOutput
             {

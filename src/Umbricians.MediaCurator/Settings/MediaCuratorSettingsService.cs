@@ -2,8 +2,9 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Umbricians.MediaCurator.Configuration;
 using Umbricians.MediaCurator.Persistence;
 
 namespace Umbricians.MediaCurator.Settings;
@@ -12,9 +13,6 @@ internal sealed class MediaCuratorSettingsService : IMediaCuratorSettingsService
 {
     // Recognition reads settings once per image; a short cache keeps that off the database.
     private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(30);
-
-    /// <summary>The configuration section older versions read; imported into the database once.</summary>
-    internal const string LegacySectionName = "MediaCurator";
 
     private static readonly JsonSerializerOptions _json = new()
     {
@@ -25,31 +23,30 @@ internal sealed class MediaCuratorSettingsService : IMediaCuratorSettingsService
 
     private readonly IMediaCuratorSettingsRepository _repository;
     private readonly IDataProtector _protector;
-    private readonly IConfiguration? _configuration;
+    private readonly IOptionsMonitor<MediaCuratorOptions>? _options;
     private readonly ILogger<MediaCuratorSettingsService>? _logger;
     private readonly TimeProvider _time;
-    private readonly SemaphoreSlim _importLock = new(1, 1);
     private (MediaCuratorSiteSettings Settings, string? ApiKey, DateTimeOffset Expires)? _cached;
 
     public MediaCuratorSettingsService(
         IMediaCuratorSettingsRepository repository,
         IDataProtectionProvider dataProtection,
-        IConfiguration configuration,
+        IOptionsMonitor<MediaCuratorOptions> options,
         ILogger<MediaCuratorSettingsService> logger)
-        : this(repository, dataProtection, configuration, logger, TimeProvider.System)
+        : this(repository, dataProtection, options, logger, TimeProvider.System)
     {
     }
 
     internal MediaCuratorSettingsService(
         IMediaCuratorSettingsRepository repository,
         IDataProtectionProvider dataProtection,
-        IConfiguration? configuration,
+        IOptionsMonitor<MediaCuratorOptions>? options,
         ILogger<MediaCuratorSettingsService>? logger,
         TimeProvider time)
     {
         _repository = repository;
         _protector = dataProtection.CreateProtector("Umbricians.MediaCurator.TypeSafeApiKey");
-        _configuration = configuration;
+        _options = options;
         _logger = logger;
         _time = time;
     }
@@ -69,7 +66,7 @@ internal sealed class MediaCuratorSettingsService : IMediaCuratorSettingsService
 
     /// <summary>Read on every call, so a key rotated in configuration (or Key Vault, with reload) applies at once.</summary>
     private string? ServerApiKey()
-        => _configuration?[MediaCuratorDefaults.TypeSafeApiKeyConfigurationKey] is { } key && !string.IsNullOrWhiteSpace(key)
+        => _options?.CurrentValue.Secrets.TypeSafeApiKey is { } key && !string.IsNullOrWhiteSpace(key)
             ? key.Trim()
             : null;
 
@@ -121,119 +118,11 @@ internal sealed class MediaCuratorSettingsService : IMediaCuratorSettingsService
 
         var stored = await _repository.GetAsync(cancellationToken);
         var ai = Deserialize(stored?.AiSettings);
-        if (ai?.LegacyImported != true && HasLegacyAppSettings())
-        {
-            (stored, ai) = await ImportLegacyAppSettingsAsync(cancellationToken);
-        }
-
         var apiKey = Unprotect(ai?.TypeSafeApiKey);
         var settings = Resolve(stored, ai, apiKey is not null);
         _cached = (settings, apiKey, _time.GetUtcNow() + CacheDuration);
         return (settings, apiKey);
     }
-
-    /// <summary>
-    /// Older versions read a "MediaCurator" app settings section. Its values are copied into the database
-    /// once, filling only settings not saved yet, so upgrading keeps a site's profile, Jev key and AI
-    /// switch. After that the section is ignored and can be deleted.
-    /// </summary>
-    private async Task<(SiteSettingsDto? Stored, StoredAiSettings Ai)> ImportLegacyAppSettingsAsync(CancellationToken cancellationToken)
-    {
-        await _importLock.WaitAsync(cancellationToken);
-        try
-        {
-            var stored = await _repository.GetAsync(cancellationToken);
-            var ai = Deserialize(stored?.AiSettings) ?? new StoredAiSettings();
-            if (ai.LegacyImported)
-            {
-                return (stored, ai);
-            }
-
-            var section = _configuration!.GetSection(LegacySectionName);
-            var imported = new List<string>();
-            string? Read(string key)
-            {
-                var value = section[key];
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    imported.Add(key);
-                    return value.Trim();
-                }
-
-                return null;
-            }
-
-            if (Read("MetadataOnly") is { } metadataOnly && bool.TryParse(metadataOnly, out var off) && ai.AiEnabled is null)
-            {
-                ai.AiEnabled = !off;
-            }
-
-            if (Read("RecognitionProfileAlias") is { } profile)
-            {
-                ai.DescriptionProfileAlias ??= profile;
-            }
-
-            if (Read("DecisionProfileAlias") is { } decisionProfile)
-            {
-                ai.DecisionProfileAlias ??= decisionProfile;
-            }
-
-            if (Read("MaxRecognitionEdgePixels") is { } size && int.TryParse(size, out var pixels))
-            {
-                ai.RecognitionImageSize ??= Math.Max(0, pixels);
-            }
-
-            if (Read("MaxParallelAnalyses") is { } parallel && int.TryParse(parallel, out var count))
-            {
-                ai.MaxParallelAnalyses ??= ClampParallel(count);
-            }
-
-            if (Read("DecisionEngine") is { } engine && Enum.TryParse<DecisionEngine>(engine, true, out var decisionEngine))
-            {
-                ai.DecisionEngine ??= decisionEngine;
-            }
-
-            if (Read("ClassificationMode") is { } mode && mode.Equals("SingleShot", StringComparison.OrdinalIgnoreCase))
-            {
-                ai.ClassificationMethod ??= ClassificationMethod.SingleCall;
-            }
-
-            if (Read("RecognitionPreparedImageTestFolder") is not null)
-            {
-                ai.SavePreparedImages ??= true;
-            }
-
-            if (Read("TypeSafe:ApiKey") is { } apiKey && ai.TypeSafeApiKey is null)
-            {
-                ai.TypeSafeApiKey = _protector.Protect(apiKey);
-            }
-
-            if (Read("TypeSafe:Model") is { } model)
-            {
-                ai.JevModel ??= model;
-            }
-
-            // Not settings any more: the classification scheme comes from each ruleset's rule.
-            Read("ClassificationSchemeAlias");
-
-            ai.LegacyImported = true;
-            await WriteAsync(stored?.PersistImageDescription ?? ReadBool(section["PersistImageDescription"]) ?? true, ai, cancellationToken);
-            _logger?.LogWarning(
-                "MediaCurator: imported app settings ({Keys}) into the backoffice setup. Media Curator no longer reads the \"{Section}\" section; remove it from appsettings.",
-                string.Join(", ", imported),
-                LegacySectionName);
-            return (await _repository.GetAsync(cancellationToken), ai);
-        }
-        finally
-        {
-            _importLock.Release();
-        }
-    }
-
-    /// <summary>Old settings in the "MediaCurator" section; its "Secrets" sub-section is current configuration.</summary>
-    private bool HasLegacyAppSettings()
-        => _configuration?.GetSection(LegacySectionName).GetChildren()
-            .Any(c => !c.Key.Equals("Secrets", StringComparison.OrdinalIgnoreCase)) == true;
 
     /// <summary>Saved values win; anything never saved uses the built-in default.</summary>
     internal static MediaCuratorSiteSettings Resolve(SiteSettingsDto? stored, StoredAiSettings? ai, bool apiKeyConfigured) => new()
@@ -292,8 +181,6 @@ internal sealed class MediaCuratorSettingsService : IMediaCuratorSettingsService
         }
     }
 
-    private static bool? ReadBool(string? value) => bool.TryParse(value, out var b) ? b : null;
-
     private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static MediaCuratorSiteSettings Copy(MediaCuratorSiteSettings s) => new()
@@ -346,7 +233,4 @@ internal sealed class StoredAiSettings
     public bool? SavePreparedImages { get; set; }
 
     public bool? DetectPeople { get; set; }
-
-    /// <summary>True once the old "MediaCurator" app settings section has been imported.</summary>
-    public bool LegacyImported { get; set; }
 }

@@ -6,7 +6,7 @@ namespace Umbricians.MediaCurator.Tests.Persistence;
 
 public class RulesetSerializerTests
 {
-    [Fact]
+    [Test]
     public void Round_trips_a_nested_conditional_rule_tree()
     {
         var rules = new List<RuleNode>
@@ -14,7 +14,7 @@ public class RulesetSerializerTests
             new()
             {
                 ProviderAlias = "Umbricians.MediaCurator.Date",
-                Settings = TestContext.Settings(("format", "yyyy/MM")),
+                Settings = CurationContexts.Settings(("format", "yyyy/MM")),
                 Fallback = UnresolvedBehavior.Unsorted,
                 Children =
                 [
@@ -31,24 +31,24 @@ public class RulesetSerializerTests
         var json = RulesetSerializer.Serialize(rules);
         var back = RulesetSerializer.Deserialize(json);
 
-        var root = Assert.Single(back);
-        Assert.Equal("Umbricians.MediaCurator.Date", root.ProviderAlias);
-        Assert.Equal("yyyy/MM", root.Settings["format"]!.GetValue<string>());
-        Assert.Equal(UnresolvedBehavior.Unsorted, root.Fallback);
-        var child = Assert.Single(root.Children);
-        Assert.Equal("2026/06", child.Condition);
-        Assert.Equal(UnresolvedBehavior.Stop, child.Fallback);
+        var root = TestAssert.Single(back);
+        Assert.That(root.ProviderAlias, Is.EqualTo("Umbricians.MediaCurator.Date"));
+        Assert.That(root.Settings["format"]!.GetValue<string>(), Is.EqualTo("yyyy/MM"));
+        Assert.That(root.Fallback, Is.EqualTo(UnresolvedBehavior.Unsorted));
+        var child = TestAssert.Single(root.Children);
+        Assert.That(child.Condition, Is.EqualTo("2026/06"));
+        Assert.That(child.Fallback, Is.EqualTo(UnresolvedBehavior.Stop));
     }
 
-    [Fact]
+    [Test]
     public void Serializes_enums_as_camel_case_strings()
     {
         var json = RulesetSerializer.Serialize([new RuleNode { ProviderAlias = "x", Fallback = UnresolvedBehavior.Unsorted }]);
 
-        Assert.Contains("\"unsorted\"", json);
+        Assert.That(json, Does.Contain("\"unsorted\""));
     }
 
-    [Fact]
+    [Test]
     public void Upgrades_legacy_unprefixed_provider_aliases_throughout_the_tree()
     {
         const string json = """
@@ -56,19 +56,18 @@ public class RulesetSerializerTests
               "children":[{"providerAlias":"MediaCurator.Color","children":[]}]}]
             """;
 
-        var root = Assert.Single(RulesetSerializer.Deserialize(json));
+        var root = TestAssert.Single(RulesetSerializer.Deserialize(json));
 
-        Assert.Equal("Umbricians.MediaCurator.Date", root.ProviderAlias);
-        Assert.Equal("yyyy", root.Settings["format"]!.GetValue<string>());
-        Assert.Equal("Umbricians.MediaCurator.Color", Assert.Single(root.Children).ProviderAlias);
+        Assert.That(root.ProviderAlias, Is.EqualTo("Umbricians.MediaCurator.Date"));
+        Assert.That(root.Settings["format"]!.GetValue<string>(), Is.EqualTo("yyyy"));
+        Assert.That(TestAssert.Single(root.Children).ProviderAlias, Is.EqualTo("Umbricians.MediaCurator.Color"));
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("  ")]
+    [TestCase(null)]
+    [TestCase("")]
+    [TestCase("  ")]
     public void Empty_or_null_json_deserializes_to_empty_list(string? json)
     {
-        Assert.Empty(RulesetSerializer.Deserialize(json));
+        Assert.That(RulesetSerializer.Deserialize(json), Is.Empty);
     }
 }

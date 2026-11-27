@@ -247,7 +247,7 @@ public interface ICurationProvider
 }
 ```
 
-- **Registration** via standard Umbraco composers / DI (`builder.MediaCurator().AddProvider<MyProvider>()`); discovered providers automatically appear as nodes in the visual designer and participate in the provisioning flow.
+- **Registration** via standard Umbraco composers / DI (`builder.AddMediaCuratorProvider<MyProvider>()`); discovered providers automatically appear as nodes in the visual designer and participate in the provisioning flow.
 - **Per-provider configuration UI**: each provider declares its settings as a schema so the designer renders configuration without custom UI work; providers with richer needs can ship their own UI component via the standard backoffice extension manifest.
 - **CurationContext** gives providers the media item, its file stream accessor, parsed EXIF, AI tags (if available), the resolved scope and culture, the provisioned property values, and the results of parent rules in the chain — enabling conditional/nested behaviour.
 - **Classification schemes** are pluggable (`IClassificationScheme`) so additional open taxonomies can be added without touching the provider.
@@ -270,7 +270,7 @@ public interface ICurationProvider
 - **Multi-environment**: rulesets stored as configuration-friendly data (uSync-compatible serialization) so rules travel between environments; provisioned schema flows through uSync/Deploy as ordinary media type changes; activity log stays environment-local.
 - **Load-balanced setups**: background processing elects a single worker (main-dom / scheduling-server awareness).
 - **Classification data licensing**: embed only public-domain or license-free scheme data (public-domain Dewey levels, LCC outline); vet the license of every additional open taxonomy before inclusion; keep scheme data in replaceable resource files.
-- **Pre-release dependency risk**: `Umbricians.MediaCurator.Automate` tracks Umbraco.Automate's pre-release API and is versioned/released independently of the core so Automate API churn never blocks core releases.
+- **Automate dependency**: `Umbricians.MediaCurator.Automate` is a separate package, so the core never depends on Umbraco.Automate. Automate is released now, so both packages are released together with the same version (docs/RELEASING.md).
 - **Licensing/distribution**: open source (MIT), NuGet with `umbraco-marketplace` tag, dependency on `Umbraco.Cms.*` 17+ and the Umbraco.AI abstractions.
 
 ## 14. Phasing

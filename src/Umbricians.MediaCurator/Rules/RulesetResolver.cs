@@ -1,11 +1,12 @@
 namespace Umbricians.MediaCurator.Rules;
 
 /// <summary>Provides the ancestor folder keys of a media item, nearest (parent) first.</summary>
-public interface IMediaAncestry
+internal interface IMediaAncestry
 {
     IReadOnlyList<Guid> GetAncestorOrSelfFolderKeys(Guid mediaKey);
 }
 
+/// <summary>Finds the ruleset that governs a media item.</summary>
 public interface IRulesetResolver
 {
     /// <summary>Returns the ruleset governing the given media item: walk up the tree, the
@@ -13,7 +14,7 @@ public interface IRulesetResolver
     Task<Ruleset?> ResolveForItemAsync(Guid mediaKey, CancellationToken cancellationToken = default);
 }
 
-public sealed class RulesetResolver : IRulesetResolver
+internal sealed class RulesetResolver : IRulesetResolver
 {
     private readonly IRulesetRepository _repository;
     private readonly IMediaAncestry _ancestry;

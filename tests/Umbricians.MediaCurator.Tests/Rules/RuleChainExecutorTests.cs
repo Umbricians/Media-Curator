@@ -8,7 +8,7 @@ public class RuleChainExecutorTests
     private static RuleChainExecutor Executor(params ICurationProvider[] providers)
         => new(new CurationProviderCollection(() => providers));
 
-    [Fact]
+    [Test]
     public async Task Chains_rules_into_a_path()
     {
         var executor = Executor(FakeProvider.Fixed("p.date", "2026"), FakeProvider.Fixed("p.color", "Red"));
@@ -21,14 +21,14 @@ public class RuleChainExecutorTests
             },
         };
 
-        var result = await executor.ExecuteAsync(rules, TestContext.Create());
+        var result = await executor.ExecuteAsync(rules, CurationContexts.Create());
 
-        Assert.True(result.HasTarget);
-        Assert.Equal(["2026", "Red"], result.Segments.Select(s => s.Name));
-        Assert.Equal(["p.date", "p.color"], result.Outcomes.Select(o => o.ProviderAlias));
+        Assert.That(result.HasTarget, Is.True);
+        Assert.That(result.Segments.Select(s => s.Name), Is.EqualTo(["2026", "Red"]));
+        Assert.That(result.Outcomes.Select(o => o.ProviderAlias), Is.EqualTo(["p.date", "p.color"]));
     }
 
-    [Fact]
+    [Test]
     public async Task Conditional_child_runs_only_when_parent_value_matches()
     {
         var executor = Executor(FakeProvider.Fixed("p.tag", "product-shot"), FakeProvider.Fixed("p.color", "Red"));
@@ -45,13 +45,13 @@ public class RuleChainExecutorTests
             },
         };
 
-        var result = await executor.ExecuteAsync(rules, TestContext.Create());
+        var result = await executor.ExecuteAsync(rules, CurationContexts.Create());
 
         // The screenshot branch is skipped; the product-shot branch matches case-insensitively.
-        Assert.Equal(["product-shot", "Red"], result.Segments.Select(s => s.Name));
+        Assert.That(result.Segments.Select(s => s.Name), Is.EqualTo(["product-shot", "Red"]));
     }
 
-    [Fact]
+    [Test]
     public async Task No_matching_conditional_child_ends_the_chain_cleanly()
     {
         var executor = Executor(FakeProvider.Fixed("p.tag", "logo"), FakeProvider.Fixed("p.color", "Red"));
@@ -64,13 +64,13 @@ public class RuleChainExecutorTests
             },
         };
 
-        var result = await executor.ExecuteAsync(rules, TestContext.Create());
+        var result = await executor.ExecuteAsync(rules, CurationContexts.Create());
 
-        Assert.Equal(["logo"], result.Segments.Select(s => s.Name));
-        Assert.False(result.Stopped);
+        Assert.That(result.Segments.Select(s => s.Name), Is.EqualTo(["logo"]));
+        Assert.That(result.Stopped, Is.False);
     }
 
-    [Fact]
+    [Test]
     public async Task Skip_fallback_contributes_nothing_and_continues()
     {
         var executor = Executor(FakeProvider.Unresolvable("p.exif"), FakeProvider.Fixed("p.alpha", "A"));
@@ -84,12 +84,12 @@ public class RuleChainExecutorTests
             },
         };
 
-        var result = await executor.ExecuteAsync(rules, TestContext.Create());
+        var result = await executor.ExecuteAsync(rules, CurationContexts.Create());
 
-        Assert.Equal(["A"], result.Segments.Select(s => s.Name));
+        Assert.That(result.Segments.Select(s => s.Name), Is.EqualTo(["A"]));
     }
 
-    [Fact]
+    [Test]
     public async Task Unsorted_fallback_adds_unsorted_segment_and_continues()
     {
         var executor = Executor(FakeProvider.Unresolvable("p.exif"), FakeProvider.Fixed("p.alpha", "A"));
@@ -103,12 +103,12 @@ public class RuleChainExecutorTests
             },
         };
 
-        var result = await executor.ExecuteAsync(rules, TestContext.Create());
+        var result = await executor.ExecuteAsync(rules, CurationContexts.Create());
 
-        Assert.Equal(["Unsorted", "A"], result.Segments.Select(s => s.Name));
+        Assert.That(result.Segments.Select(s => s.Name), Is.EqualTo(["Unsorted", "A"]));
     }
 
-    [Fact]
+    [Test]
     public async Task Stop_fallback_aborts_the_chain()
     {
         var executor = Executor(FakeProvider.Unresolvable("p.exif"), FakeProvider.Fixed("p.alpha", "A"));
@@ -122,26 +122,26 @@ public class RuleChainExecutorTests
             },
         };
 
-        var result = await executor.ExecuteAsync(rules, TestContext.Create());
+        var result = await executor.ExecuteAsync(rules, CurationContexts.Create());
 
-        Assert.True(result.Stopped);
-        Assert.False(result.HasTarget);
-        Assert.Empty(result.Segments);
+        Assert.That(result.Stopped, Is.True);
+        Assert.That(result.HasTarget, Is.False);
+        Assert.That(result.Segments, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task Unknown_provider_is_noted_and_level_skipped()
     {
         var executor = Executor(FakeProvider.Fixed("p.known", "X"));
         var rules = new List<RuleNode> { new() { ProviderAlias = "p.missing" } };
 
-        var result = await executor.ExecuteAsync(rules, TestContext.Create());
+        var result = await executor.ExecuteAsync(rules, CurationContexts.Create());
 
-        Assert.False(result.HasTarget);
-        Assert.Contains(result.Notes, n => n.Contains("p.missing"));
+        Assert.That(result.HasTarget, Is.False);
+        Assert.That(result.Notes.Any(n => n.Contains("p.missing")), Is.True);
     }
 
-    [Fact]
+    [Test]
     public async Task Rule_settings_reach_the_provider()
     {
         string? seen = null;
@@ -153,20 +153,20 @@ public class RuleChainExecutorTests
         var executor = Executor(provider);
         var rules = new List<RuleNode>
         {
-            new() { ProviderAlias = "p.settings", Settings = TestContext.Settings(("flavor", "vanilla")) },
+            new() { ProviderAlias = "p.settings", Settings = CurationContexts.Settings(("flavor", "vanilla")) },
         };
 
-        await executor.ExecuteAsync(rules, TestContext.Create());
+        await executor.ExecuteAsync(rules, CurationContexts.Create());
 
-        Assert.Equal("vanilla", seen);
+        Assert.That(seen, Is.EqualTo("vanilla"));
     }
 
-    [Fact]
+    [Test]
     public async Task Records_which_rule_and_provider_segment_produced_each_folder_level()
     {
         var multi = new FakeProvider("p.date", _ => CurationResult.Resolved("2026/06", ["2026", "06"]));
         var executor = Executor(multi, FakeProvider.Unresolvable("p.color"), FakeProvider.Fixed("p.tag", "A"));
-        var dateSettings = TestContext.Settings(("format", "yyyy/MM"));
+        var dateSettings = CurationContexts.Settings(("format", "yyyy/MM"));
         var rules = new List<RuleNode>
         {
             new()
@@ -185,13 +185,13 @@ public class RuleChainExecutorTests
             },
         };
 
-        var result = await executor.ExecuteAsync(rules, TestContext.Create());
+        var result = await executor.ExecuteAsync(rules, CurationContexts.Create());
 
-        Assert.Equal(["2026", "06", RuleChainExecutor.UnsortedFolderName, "A"], result.Segments.Select(s => s.Name));
+        Assert.That(result.Segments.Select(s => s.Name), Is.EqualTo(["2026", "06", RuleChainExecutor.UnsortedFolderName, "A"]));
         var origins = result.SegmentOrigins!;
-        Assert.Equal(["p.date", "p.date", "p.color", "p.tag"], origins.Select(o => o.ProviderAlias));
+        Assert.That(origins.Select(o => o.ProviderAlias), Is.EqualTo(["p.date", "p.date", "p.color", "p.tag"]));
         // The Unsorted fallback stands in for the provider's first segment.
-        Assert.Equal([0, 1, 0, 0], origins.Select(o => o.SegmentIndex));
-        Assert.Same(dateSettings, origins[0].Settings);
+        Assert.That(origins.Select(o => o.SegmentIndex), Is.EqualTo([0, 1, 0, 0]));
+        Assert.That(origins[0].Settings, Is.SameAs(dateSettings));
     }
 }

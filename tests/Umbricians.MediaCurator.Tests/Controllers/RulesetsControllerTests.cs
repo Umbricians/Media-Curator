@@ -43,7 +43,7 @@ public class RulesetsControllerTests
         Rules = [new RuleNodeModel { ProviderAlias = "p.known" }],
     };
 
-    [Fact]
+    [Test]
     public async Task Save_rejects_missing_name()
     {
         var model = ValidModel();
@@ -51,10 +51,10 @@ public class RulesetsControllerTests
 
         var result = await Controller(new FakeRepository()).SaveRuleset(model, CancellationToken.None);
 
-        Assert.IsType<BadRequestObjectResult>(result);
+        Assert.That(result, Is.TypeOf<BadRequestObjectResult>());
     }
 
-    [Fact]
+    [Test]
     public async Task Save_rejects_empty_scope()
     {
         var model = ValidModel();
@@ -62,10 +62,10 @@ public class RulesetsControllerTests
 
         var result = await Controller(new FakeRepository()).SaveRuleset(model, CancellationToken.None);
 
-        Assert.IsType<BadRequestObjectResult>(result);
+        Assert.That(result, Is.TypeOf<BadRequestObjectResult>());
     }
 
-    [Fact]
+    [Test]
     public async Task Save_rejects_unknown_provider_aliases_including_children()
     {
         var model = ValidModel();
@@ -73,11 +73,11 @@ public class RulesetsControllerTests
 
         var result = await Controller(new FakeRepository()).SaveRuleset(model, CancellationToken.None);
 
-        var bad = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Contains("p.unknown", Assert.IsType<ProblemDetails>(bad.Value).Title);
+        var bad = TestAssert.IsType<BadRequestObjectResult>(result);
+        Assert.That(TestAssert.IsType<ProblemDetails>(bad.Value).Title, Does.Contain("p.unknown"));
     }
 
-    [Fact]
+    [Test]
     public async Task Save_persists_valid_ruleset()
     {
         var repo = new FakeRepository();
@@ -85,13 +85,13 @@ public class RulesetsControllerTests
 
         var result = await Controller(repo).SaveRuleset(model, CancellationToken.None);
 
-        Assert.IsType<OkObjectResult>(result);
-        var saved = Assert.Single(repo.Saved);
-        Assert.Equal(model.Name, saved.Name);
-        Assert.NotEqual(Guid.Empty, saved.Key);
+        Assert.That(result, Is.TypeOf<OkObjectResult>());
+        var saved = TestAssert.Single(repo.Saved);
+        Assert.That(saved.Name, Is.EqualTo(model.Name));
+        Assert.That(saved.Key, Is.Not.EqualTo(Guid.Empty));
     }
 
-    [Fact]
+    [Test]
     public async Task Save_updates_existing_ruleset_with_same_key()
     {
         var repo = new FakeRepository();
@@ -102,13 +102,13 @@ public class RulesetsControllerTests
 
         var result = await Controller(repo).SaveRuleset(model, CancellationToken.None);
 
-        Assert.IsType<OkObjectResult>(result);
-        var saved = Assert.Single(repo.Saved);
-        Assert.Equal(existing.Key, saved.Key);
-        Assert.Equal(model.Name, saved.Name);
+        Assert.That(result, Is.TypeOf<OkObjectResult>());
+        var saved = TestAssert.Single(repo.Saved);
+        Assert.That(saved.Key, Is.EqualTo(existing.Key));
+        Assert.That(saved.Name, Is.EqualTo(model.Name));
     }
 
-    [Fact]
+    [Test]
     public async Task Save_keeps_supplied_key_on_free_folder()
     {
         var repo = new FakeRepository();
@@ -117,11 +117,11 @@ public class RulesetsControllerTests
 
         var result = await Controller(repo).SaveRuleset(model, CancellationToken.None);
 
-        Assert.IsType<OkObjectResult>(result);
-        Assert.Equal(model.Key, Assert.Single(repo.Saved).Key);
+        Assert.That(result, Is.TypeOf<OkObjectResult>());
+        Assert.That(TestAssert.Single(repo.Saved).Key, Is.EqualTo(model.Key));
     }
 
-    [Fact]
+    [Test]
     public async Task Save_returns_conflict_when_folder_used_by_different_ruleset()
     {
         var repo = new FakeRepository();
@@ -132,15 +132,13 @@ public class RulesetsControllerTests
 
         var result = await Controller(repo).SaveRuleset(model, CancellationToken.None);
 
-        var conflict = Assert.IsType<ConflictObjectResult>(result);
-        Assert.Equal(
-            "The folder is already curated by the ruleset \"Existing\". Each folder can have only one ruleset.",
-            Assert.IsType<ProblemDetails>(conflict.Value).Title);
-        Assert.Empty(repo.Saved);
-        Assert.Equal("Existing", repo.ByScope[model.ScopeRootKey].Name);
+        var conflict = TestAssert.IsType<ConflictObjectResult>(result);
+        Assert.That(TestAssert.IsType<ProblemDetails>(conflict.Value).Title, Is.EqualTo("The folder is already curated by the ruleset \"Existing\". Each folder can have only one ruleset."));
+        Assert.That(repo.Saved, Is.Empty);
+        Assert.That(repo.ByScope[model.ScopeRootKey].Name, Is.EqualTo("Existing"));
     }
 
-    [Fact]
+    [Test]
     public async Task Save_returns_conflict_when_new_ruleset_has_no_key_and_folder_used()
     {
         var repo = new FakeRepository();
@@ -149,11 +147,11 @@ public class RulesetsControllerTests
 
         var result = await Controller(repo).SaveRuleset(model, CancellationToken.None);
 
-        Assert.IsType<ConflictObjectResult>(result);
-        Assert.Empty(repo.Saved);
+        Assert.That(result, Is.TypeOf<ConflictObjectResult>());
+        Assert.That(repo.Saved, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task Get_returns_ruleset_by_key()
     {
         var repo = new FakeRepository();
@@ -163,26 +161,43 @@ public class RulesetsControllerTests
 
         var result = await Controller(repo).GetRuleset(existing.Key, CancellationToken.None);
 
-        var ok = Assert.IsType<OkObjectResult>(result);
-        Assert.Equal("Found", Assert.IsType<RulesetModel>(ok.Value).Name);
+        var ok = TestAssert.IsType<OkObjectResult>(result);
+        Assert.That(TestAssert.IsType<RulesetModel>(ok.Value).Name, Is.EqualTo("Found"));
     }
 
-    [Fact]
+    [Test]
     public async Task Get_returns_not_found_for_unknown_key()
     {
         var result = await Controller(new FakeRepository()).GetRuleset(Guid.NewGuid(), CancellationToken.None);
 
-        Assert.IsType<NotFoundResult>(result);
+        Assert.That(result, Is.TypeOf<NotFoundResult>());
     }
 
-    [Fact]
+    [Test]
     public void Api_controllers_require_settings_section_access()
     {
-        var authorize = typeof(MediaCuratorApiControllerBase)
-            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
+        var controllers = typeof(MediaCuratorControllerBase).Assembly.GetTypes()
+            .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(MediaCuratorControllerBase).IsAssignableFrom(t))
+            .ToList();
+
+        Assert.That(controllers, Is.Not.Empty);
+        foreach (var controller in controllers)
+        {
+            var policies = controller.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
+                .Cast<AuthorizeAttribute>()
+                .Select(authorize => authorize.Policy);
+            Assert.That(policies, Does.Contain(AuthorizationPolicies.SectionAccessSettings), controller.Name);
+        }
+    }
+
+    [Test]
+    public void Api_controllers_require_a_signed_in_backoffice_user()
+    {
+        var authorize = typeof(MediaCuratorControllerBase)
+            .GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false)
             .Cast<AuthorizeAttribute>()
             .Single();
 
-        Assert.Equal(AuthorizationPolicies.SectionAccessSettings, authorize.Policy);
+        Assert.That(authorize.Policy, Is.EqualTo(AuthorizationPolicies.BackOfficeAccess));
     }
 }

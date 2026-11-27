@@ -8,7 +8,7 @@ namespace Umbricians.MediaCurator.Providers;
 /// tag-to-folder mapping, confidence threshold, and tie-break (highest confidence wins;
 /// mapping order breaks ties). Declares the tags cache property requirement (§7).
 /// </summary>
-public sealed class AiTagProvider : ICurationProvider
+internal sealed class AiTagProvider : ICurationProvider
 {
     public const string ProviderAlias = "Umbricians.MediaCurator.AiTag";
 

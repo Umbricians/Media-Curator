@@ -5,9 +5,9 @@ using Umbraco.Cms.Infrastructure.Scoping;
 namespace Umbricians.MediaCurator.Provisioning;
 
 /// <summary>A requirement mapped onto an existing property with a different alias (§7).</summary>
-public sealed record PropertyMap(string RequirementAlias, string MediaTypeAlias, string PropertyAlias);
+internal sealed record PropertyMap(string RequirementAlias, string MediaTypeAlias, string PropertyAlias);
 
-public interface IPropertyMapRepository
+internal interface IPropertyMapRepository
 {
     Task<IReadOnlyList<PropertyMap>> GetAllAsync(CancellationToken cancellationToken = default);
 

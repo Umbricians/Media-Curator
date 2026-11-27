@@ -4,7 +4,7 @@ using MetadataExtractor.Formats.Exif;
 namespace Umbricians.MediaCurator.Exif;
 
 /// <summary>Reads EXIF values from an image stream into a flat tag-name → value dictionary.</summary>
-public interface IExifReader
+internal interface IExifReader
 {
     IReadOnlyDictionary<string, string> Read(Stream imageStream);
 }

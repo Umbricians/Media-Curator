@@ -17,7 +17,7 @@ import { addChildAt, defaultSettings, moveSibling, removeAt, sampleSegment, upda
  * branch beneath their parent with labelled edges, and every leaf shows a live example
  * path so the nesting structure is legible before anything runs.
  */
-@customElement("mc-rule-tree")
+@customElement("umbricians-media-curator-rule-tree")
 export class McRuleTreeElement extends UmbElementMixin(LitElement) {
   @property({ attribute: false }) rules: RuleNodeModel[] = [];
   @property({ attribute: false }) providers: ProviderModel[] = [];
@@ -334,6 +334,6 @@ export default McRuleTreeElement;
 
 declare global {
   interface HTMLElementTagNameMap {
-    "mc-rule-tree": McRuleTreeElement;
+    "umbricians-media-curator-rule-tree": McRuleTreeElement;
   }
 }

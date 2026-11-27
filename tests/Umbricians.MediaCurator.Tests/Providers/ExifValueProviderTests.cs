@@ -9,70 +9,70 @@ public class ExifValueProviderTests
     private static Dictionary<string, string> Exif(params (string K, string V)[] pairs)
         => pairs.ToDictionary(p => p.K, p => p.V, StringComparer.OrdinalIgnoreCase);
 
-    [Fact]
+    [Test]
     public async Task Resolves_configured_tag_value_as_segment()
     {
-        var ctx = TestContext.Create(settings: TestContext.Settings(("tag", "Model")))
+        var ctx = CurationContexts.Create(settings: CurationContexts.Settings(("tag", "Model")))
             with { Exif = Exif(("Make", "Nikon"), ("Model", "Z 8")) };
 
         var result = await _sut.ResolveAsync(ctx);
 
-        Assert.True(result.IsResolved);
-        Assert.Equal("Z 8", result.ResolvedValue);
+        Assert.That(result.IsResolved, Is.True);
+        Assert.That(result.ResolvedValue, Is.EqualTo("Z 8"));
     }
 
-    [Fact]
+    [Test]
     public async Task Defaults_to_camera_make()
     {
-        var ctx = TestContext.Create() with { Exif = Exif(("Make", "Canon")) };
+        var ctx = CurationContexts.Create() with { Exif = Exif(("Make", "Canon")) };
 
         var result = await _sut.ResolveAsync(ctx);
 
-        Assert.Equal("Canon", result.ResolvedValue);
+        Assert.That(result.ResolvedValue, Is.EqualTo("Canon"));
     }
 
-    [Fact]
+    [Test]
     public async Task Applies_value_mappings()
     {
-        var ctx = TestContext.Create(settings: TestContext.Settings(
+        var ctx = CurationContexts.Create(settings: CurationContexts.Settings(
                 ("tag", "Make"),
                 ("mappings", "NIKON CORPORATION=Nikon\nCANON INC.=Canon")))
             with { Exif = Exif(("Make", "NIKON CORPORATION")) };
 
         var result = await _sut.ResolveAsync(ctx);
 
-        Assert.Equal("Nikon", result.ResolvedValue);
+        Assert.That(result.ResolvedValue, Is.EqualTo("Nikon"));
     }
 
-    [Fact]
+    [Test]
     public async Task Unmapped_values_pass_through_raw()
     {
-        var ctx = TestContext.Create(settings: TestContext.Settings(("mappings", "X=Y")))
+        var ctx = CurationContexts.Create(settings: CurationContexts.Settings(("mappings", "X=Y")))
             with { Exif = Exif(("Make", "Sony")) };
 
         var result = await _sut.ResolveAsync(ctx);
 
-        Assert.Equal("Sony", result.ResolvedValue);
+        Assert.That(result.ResolvedValue, Is.EqualTo("Sony"));
     }
 
-    [Fact]
+    [Test]
     public async Task Unresolved_when_tag_absent_or_no_exif()
     {
-        var noExif = await _sut.ResolveAsync(TestContext.Create());
+        var noExif = await _sut.ResolveAsync(CurationContexts.Create());
         var missingTag = await _sut.ResolveAsync(
-            TestContext.Create(settings: TestContext.Settings(("tag", "LensModel")))
+            CurationContexts.Create(settings: CurationContexts.Settings(("tag", "LensModel")))
                 with { Exif = Exif(("Make", "Nikon")) });
 
-        Assert.False(noExif.IsResolved);
-        Assert.False(missingTag.IsResolved);
+        Assert.That(noExif.IsResolved, Is.False);
+        Assert.That(missingTag.IsResolved, Is.False);
     }
 
-    [Fact]
+    [Test]
     public void Declares_optional_exif_cache_property_requirement()
     {
-        var requirement = Assert.Single(_sut.Requirements);
+        var requirement = TestAssert.Single(_sut.Requirements);
 
-        Assert.Equal(ExifValueProvider.ExifDataPropertyAlias, requirement.Alias);
-        Assert.False(requirement.Mandatory);
+        Assert.That(requirement.Alias, Is.EqualTo(ExifValueProvider.ExifDataPropertyAlias));
+        Assert.That(requirement.Mandatory, Is.False);
     }
 }

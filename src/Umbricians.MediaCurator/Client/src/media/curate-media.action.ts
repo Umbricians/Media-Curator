@@ -74,10 +74,10 @@ export class McCurateMediaEntityAction extends UmbEntityActionBase<never> {
                 <p>${emptyFoldersLine(emptyFolders)}</p>`
             : html`<p>${cleanupOnlyMessage(name, counts, emptyFolders)}</p>`}
           <p>You can undo the run from Settings › Media Curator › Activity log.</p>
-          <mc-empty-folders-option
+          <umbricians-media-curator-empty-folders-option
             @change=${(event: Event) =>
               (permanentlyDelete = (event.target as McEmptyFoldersOptionElement).permanentlyDelete)}
-          ></mc-empty-folders-option>`,
+          ></umbricians-media-curator-empty-folders-option>`,
         confirmLabel: confirmLabel(counts.moveCount, emptyFolders),
         color: "positive",
       });
@@ -105,10 +105,10 @@ export class McCurateMediaEntityAction extends UmbEntityActionBase<never> {
         headline: HEADLINE,
         content: html`<p>${backgroundConfirmMessage(name, imageCount, threshold)}</p>
           <p>You can undo the run from Settings › Media Curator › Activity log.</p>
-          <mc-empty-folders-option
+          <umbricians-media-curator-empty-folders-option
             @change=${(event: Event) =>
               (permanentlyDelete = (event.target as McEmptyFoldersOptionElement).permanentlyDelete)}
-          ></mc-empty-folders-option>`,
+          ></umbricians-media-curator-empty-folders-option>`,
         confirmLabel: "Curate in the background",
         color: "positive",
       });

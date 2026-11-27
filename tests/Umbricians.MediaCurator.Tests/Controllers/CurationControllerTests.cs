@@ -82,22 +82,22 @@ public class CurationControllerTests
         return (engine, key);
     }
 
-    [Fact]
+    [Test]
     public async Task Plan_returns_summed_counts_and_all_skipped_items()
     {
         var (engine, key) = TwoPlanEngine();
 
         var result = await Controller(engine).PlanMediaCuration(key, CancellationToken.None);
 
-        var model = Assert.IsType<MediaCurationPlanModel>(Assert.IsType<OkObjectResult>(result).Value);
-        Assert.Equal(key, model.MediaKey);
-        Assert.Equal(2, model.MoveCount);
-        Assert.Equal(1, model.AlreadyInPlaceCount);
-        Assert.Equal(2, model.Plans.Count);
-        Assert.Equal(3, model.SkippedItems.Count);
+        var model = TestAssert.IsType<MediaCurationPlanModel>(TestAssert.IsType<OkObjectResult>(result).Value);
+        Assert.That(model.MediaKey, Is.EqualTo(key));
+        Assert.That(model.MoveCount, Is.EqualTo(2));
+        Assert.That(model.AlreadyInPlaceCount, Is.EqualTo(1));
+        Assert.That(model.Plans.Count, Is.EqualTo(2));
+        Assert.That(model.SkippedItems.Count, Is.EqualTo(3));
     }
 
-    [Fact]
+    [Test]
     public async Task Execute_reports_the_folders_the_run_changed_so_the_tree_can_reload_them()
     {
         var (engine, key) = TwoPlanEngine();
@@ -110,76 +110,79 @@ public class CurationControllerTests
         var result = await new CurationController(engine, null!, null!, null!, null!, null!, changes)
             .ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: false, CancellationToken.None);
 
-        var model = Assert.IsType<MediaCurationSummaryModel>(Assert.IsType<OkObjectResult>(result).Value);
-        Assert.Equal(new[] { moved, Guid.Empty }.Order(), model.ChangedFolderKeys.Order());
+        var model = TestAssert.IsType<MediaCurationSummaryModel>(TestAssert.IsType<OkObjectResult>(result).Value);
+        Assert.That(model.ChangedFolderKeys.Order(), Is.EqualTo(new[] { moved, Guid.Empty }.Order()));
     }
 
-    [Fact]
+    [Test]
     public async Task Execute_runs_each_plan_manually_and_sums_the_results()
     {
         var (engine, key) = TwoPlanEngine();
 
         var result = await Controller(engine).ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: false, CancellationToken.None);
 
-        var model = Assert.IsType<MediaCurationSummaryModel>(Assert.IsType<OkObjectResult>(result).Value);
-        Assert.Equal(2, model.Moved);
-        Assert.Equal(1, model.AlreadyInPlace);
-        Assert.Equal(0, model.Failed);
-        Assert.Equal(2, model.RunKeys.Count);
-        Assert.All(engine.Executed, e => Assert.Equal("manual", e.Trigger));
+        var model = TestAssert.IsType<MediaCurationSummaryModel>(TestAssert.IsType<OkObjectResult>(result).Value);
+        Assert.That(model.Moved, Is.EqualTo(2));
+        Assert.That(model.AlreadyInPlace, Is.EqualTo(1));
+        Assert.That(model.Failed, Is.EqualTo(0));
+        Assert.That(model.RunKeys.Count, Is.EqualTo(2));
+        foreach (var e in engine.Executed)
+        {
+            Assert.That(e.Trigger, Is.EqualTo("manual"));
+        }
     }
 
-    [Fact]
+    [Test]
     public async Task More_images_than_the_threshold_are_queued_not_curated()
     {
         var (engine, key) = TwoPlanEngine();
         engine.Images = MediaCuratorDefaults.BackgroundCurationThreshold + 1;
-        var queue = new BulkCurationQueue();
+        var queue = new BulkCurationQueue(TimeProvider.System);
 
         var result = await new CurationController(engine, null!, queue, null!, null!, null!)
             .ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: true, CancellationToken.None);
 
-        var model = Assert.IsType<MediaCurationSummaryModel>(Assert.IsType<OkObjectResult>(result).Value);
-        Assert.True(model.Queued);
-        Assert.Equal(engine.Images, model.ImageCount);
-        Assert.Empty(engine.Executed);
-        Assert.True(queue.TryDequeue(out var request));
-        Assert.Equal(EmptyFolderRemoval.Delete, request!.EmptyFolders);
+        var model = TestAssert.IsType<MediaCurationSummaryModel>(TestAssert.IsType<OkObjectResult>(result).Value);
+        Assert.That(model.Queued, Is.True);
+        Assert.That(model.ImageCount, Is.EqualTo(engine.Images));
+        Assert.That(engine.Executed, Is.Empty);
+        Assert.That(queue.TryDequeue(out var request), Is.True);
+        Assert.That(request!.EmptyFolders, Is.EqualTo(EmptyFolderRemoval.Delete));
     }
 
-    [Fact]
+    [Test]
     public async Task A_folder_already_curating_in_the_background_is_refused()
     {
         var (engine, key) = TwoPlanEngine();
         engine.Images = MediaCuratorDefaults.BackgroundCurationThreshold + 1;
-        var controller = new CurationController(engine, null!, new BulkCurationQueue(), null!, null!, null!);
+        var controller = new CurationController(engine, null!, new BulkCurationQueue(TimeProvider.System), null!, null!, null!);
         await controller.ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: false, CancellationToken.None);
 
         var second = await controller.ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: false, CancellationToken.None);
 
-        Assert.IsType<ConflictObjectResult>(second);
+        Assert.That(second, Is.TypeOf<ConflictObjectResult>());
     }
 
-    [Fact]
+    [Test]
     public async Task A_ruleset_scope_with_more_images_than_the_threshold_is_queued()
     {
         var engine = new StubEngine { Images = MediaCuratorDefaults.BackgroundCurationThreshold + 1 };
-        var queue = new BulkCurationQueue();
+        var queue = new BulkCurationQueue(TimeProvider.System);
         var scope = Guid.NewGuid();
 
         var result = await new CurationController(engine, null!, queue, null!, null!, null!)
             .ExecuteCuration(new CurationRequestModel { ScopeFolderKey = scope, PermanentlyDeleteEmptyFolders = true }, CancellationToken.None);
 
-        var model = Assert.IsType<CurationRunSummaryModel>(Assert.IsType<OkObjectResult>(result).Value);
-        Assert.True(model.Queued);
-        Assert.Empty(engine.Executed);
-        Assert.True(queue.TryDequeue(out var request));
-        Assert.False(request!.MediaRun);
-        Assert.Equal(scope, request.ScopeFolderKey);
-        Assert.Equal(EmptyFolderRemoval.Delete, request.EmptyFolders);
+        var model = TestAssert.IsType<CurationRunSummaryModel>(TestAssert.IsType<OkObjectResult>(result).Value);
+        Assert.That(model.Queued, Is.True);
+        Assert.That(engine.Executed, Is.Empty);
+        Assert.That(queue.TryDequeue(out var request), Is.True);
+        Assert.That(request!.MediaRun, Is.False);
+        Assert.That(request.ScopeFolderKey, Is.EqualTo(scope));
+        Assert.That(request.EmptyFolders, Is.EqualTo(EmptyFolderRemoval.Delete));
     }
 
-    [Fact]
+    [Test]
     public async Task Up_to_the_threshold_curates_in_the_request()
     {
         var (engine, key) = TwoPlanEngine();
@@ -187,12 +190,12 @@ public class CurationControllerTests
 
         var result = await Controller(engine).ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: false, CancellationToken.None);
 
-        var model = Assert.IsType<MediaCurationSummaryModel>(Assert.IsType<OkObjectResult>(result).Value);
-        Assert.False(model.Queued);
-        Assert.Equal(2, engine.Executed.Count);
+        var model = TestAssert.IsType<MediaCurationSummaryModel>(TestAssert.IsType<OkObjectResult>(result).Value);
+        Assert.That(model.Queued, Is.False);
+        Assert.That(engine.Executed.Count, Is.EqualTo(2));
     }
 
-    [Fact]
+    [Test]
     public async Task Unknown_media_returns_404_with_a_problem_title()
     {
         var engine = new StubEngine();
@@ -202,15 +205,15 @@ public class CurationControllerTests
 
         foreach (var result in new[] { plan, execute })
         {
-            var problem = Assert.IsType<ProblemDetails>(Assert.IsType<NotFoundObjectResult>(result).Value);
-            Assert.Equal("Error", problem.Type);
-            Assert.False(string.IsNullOrEmpty(problem.Title));
+            var problem = TestAssert.IsType<ProblemDetails>(TestAssert.IsType<NotFoundObjectResult>(result).Value);
+            Assert.That(problem.Type, Is.EqualTo("Error"));
+            Assert.That(string.IsNullOrEmpty(problem.Title), Is.False);
         }
 
-        Assert.Empty(engine.Executed);
+        Assert.That(engine.Executed, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public async Task Execute_media_cleans_up_once_after_all_plans_and_returns_the_count()
     {
         var (engine, key) = TwoPlanEngine();
@@ -218,17 +221,20 @@ public class CurationControllerTests
 
         var result = await Controller(engine).ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: false, CancellationToken.None);
 
-        var model = Assert.IsType<MediaCurationSummaryModel>(Assert.IsType<OkObjectResult>(result).Value);
-        Assert.Equal(4, model.FoldersRemoved);
+        var model = TestAssert.IsType<MediaCurationSummaryModel>(TestAssert.IsType<OkObjectResult>(result).Value);
+        Assert.That(model.FoldersRemoved, Is.EqualTo(4));
         var cleanup = engine.MediaCleanup!.Value;
-        Assert.Equal(key, cleanup.MediaKey);
-        Assert.Equal(EmptyFolderRemoval.RecycleBin, cleanup.Removal);
-        Assert.Equal(2, cleanup.Executed.Count);
+        Assert.That(cleanup.MediaKey, Is.EqualTo(key));
+        Assert.That(cleanup.Removal, Is.EqualTo(EmptyFolderRemoval.RecycleBin));
+        Assert.That(cleanup.Executed.Count, Is.EqualTo(2));
         // Plans themselves run without cleanup; it happens once afterwards.
-        Assert.All(engine.Executed, e => Assert.Equal(EmptyFolderRemoval.None, e.Removal));
+        foreach (var e in engine.Executed)
+        {
+            Assert.That(e.Removal, Is.EqualTo(EmptyFolderRemoval.None));
+        }
     }
 
-    [Fact]
+    [Test]
     public async Task Execute_media_sorts_once_after_cleanup_with_every_executed_plan()
     {
         var (engine, key) = TwoPlanEngine();
@@ -236,26 +242,28 @@ public class CurationControllerTests
         await Controller(engine).ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: false, CancellationToken.None);
 
         // Plans run without sorting; the clicked tree is sorted once, after the cleanup.
-        Assert.All(engine.Executed, e => Assert.Equal(FolderSorting.None, e.Sorting));
-        Assert.Equal(["execute", "execute", "cleanup", "sort"], engine.Calls);
+        foreach (var e in engine.Executed)
+        {
+            Assert.That(e.Sorting, Is.EqualTo(FolderSorting.None));
+        }
+        Assert.That(engine.Calls, Is.EqualTo(["execute", "execute", "cleanup", "sort"]));
         var sort = engine.MediaSort!.Value;
-        Assert.Equal(key, sort.MediaKey);
-        Assert.Equal(2, sort.Executed.Count);
+        Assert.That(sort.MediaKey, Is.EqualTo(key));
+        Assert.That(sort.Executed.Count, Is.EqualTo(2));
     }
 
-    [Fact]
+    [Test]
     public async Task Execute_media_honours_the_permanent_delete_flag()
     {
         var (engine, key) = TwoPlanEngine();
 
         await Controller(engine).ExecuteMediaCuration(key, permanentlyDeleteEmptyFolders: true, CancellationToken.None);
 
-        Assert.Equal(EmptyFolderRemoval.Delete, engine.MediaCleanup!.Value.Removal);
+        Assert.That(engine.MediaCleanup!.Value.Removal, Is.EqualTo(EmptyFolderRemoval.Delete));
     }
 
-    [Theory]
-    [InlineData(false, EmptyFolderRemoval.RecycleBin)]
-    [InlineData(true, EmptyFolderRemoval.Delete)]
+    [TestCase(false, EmptyFolderRemoval.RecycleBin)]
+    [TestCase(true, EmptyFolderRemoval.Delete)]
     public async Task Execute_scope_passes_the_removal_mode_and_returns_folders_removed(bool permanent, EmptyFolderRemoval expected)
     {
         var engine = new StubEngine { ScopePlan = PlanOf("A"), FoldersRemovedPerRun = 3 };
@@ -263,14 +271,14 @@ public class CurationControllerTests
 
         var result = await Controller(engine).ExecuteCuration(request, CancellationToken.None);
 
-        var model = Assert.IsType<CurationRunSummaryModel>(Assert.IsType<OkObjectResult>(result).Value);
-        Assert.Equal(3, model.FoldersRemoved);
-        var executed = Assert.Single(engine.Executed);
-        Assert.Equal(expected, executed.Removal);
-        Assert.Equal(FolderSorting.Subtree, executed.Sorting);
+        var model = TestAssert.IsType<CurationRunSummaryModel>(TestAssert.IsType<OkObjectResult>(result).Value);
+        Assert.That(model.FoldersRemoved, Is.EqualTo(3));
+        var executed = TestAssert.Single(engine.Executed);
+        Assert.That(executed.Removal, Is.EqualTo(expected));
+        Assert.That(executed.Sorting, Is.EqualTo(FolderSorting.Subtree));
     }
 
-    [Fact]
+    [Test]
     public async Task Plan_scope_never_executes_or_cleans_up()
     {
         var engine = new StubEngine { ScopePlan = PlanOf("A") };
@@ -278,34 +286,32 @@ public class CurationControllerTests
 
         await Controller(engine).PlanCuration(request, CancellationToken.None);
 
-        Assert.Empty(engine.Executed);
-        Assert.Null(engine.MediaCleanup);
-        Assert.Null(engine.MediaSort);
+        Assert.That(engine.Executed, Is.Empty);
+        Assert.That(engine.MediaCleanup, Is.Null);
+        Assert.That(engine.MediaSort, Is.Null);
     }
 
-    [Fact]
+    [Test]
     public async Task Media_plan_reports_empty_folders_below_the_clicked_folder()
     {
         var (engine, key) = TwoPlanEngine();
         engine.EmptyFolders = 4;
 
-        var model = Assert.IsType<MediaCurationPlanModel>(
-            Assert.IsType<OkObjectResult>(await Controller(engine).PlanMediaCuration(key, CancellationToken.None)).Value);
+        var model = TestAssert.IsType<MediaCurationPlanModel>(TestAssert.IsType<OkObjectResult>(await Controller(engine).PlanMediaCuration(key, CancellationToken.None)).Value);
 
-        Assert.Equal(4, model.EmptyFolderCount);
-        Assert.Equal([key], engine.CountedFolders);
+        Assert.That(model.EmptyFolderCount, Is.EqualTo(4));
+        Assert.That(engine.CountedFolders, Is.EqualTo([key]));
     }
 
-    [Fact]
+    [Test]
     public async Task Scope_plan_reports_empty_folders_below_the_scope()
     {
         var scope = Guid.NewGuid();
         var engine = new StubEngine { ScopePlan = new CurationPlan(scope, Guid.NewGuid(), "A", [], []), EmptyFolders = 2 };
 
-        var model = Assert.IsType<CurationPlanModel>(Assert.IsType<OkObjectResult>(
-            await Controller(engine).PlanCuration(new CurationRequestModel { ScopeFolderKey = scope }, CancellationToken.None)).Value);
+        var model = TestAssert.IsType<CurationPlanModel>(TestAssert.IsType<OkObjectResult>(await Controller(engine).PlanCuration(new CurationRequestModel { ScopeFolderKey = scope }, CancellationToken.None)).Value);
 
-        Assert.Equal(2, model.EmptyFolderCount);
-        Assert.Equal([scope], engine.CountedFolders);
+        Assert.That(model.EmptyFolderCount, Is.EqualTo(2));
+        Assert.That(engine.CountedFolders, Is.EqualTo([scope]));
     }
 }

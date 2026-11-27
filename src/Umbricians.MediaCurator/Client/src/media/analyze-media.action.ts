@@ -44,12 +44,12 @@ export class McAnalyzeMediaEntityAction extends UmbEntityActionBase<never> {
     try {
       await umbConfirmModal(this, {
         headline: HEADLINE,
-        content: html`<mc-analyze-media-confirm
+        content: html`<umbricians-media-curator-analyze-media-confirm
           .folderName=${name}
           .total=${counted.count}
           .notAnalyzed=${counted.notAnalyzedCount}
           @change=${(event: Event) => (all = (event.target as McAnalyzeMediaConfirmElement).all)}
-        ></mc-analyze-media-confirm>`,
+        ></umbricians-media-curator-analyze-media-confirm>`,
         confirmLabel: "Analyze",
         color: "warning",
       });

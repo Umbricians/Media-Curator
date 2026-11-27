@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Umbricians Media Curator: a folder with a landscape picture inside it. One colour: black, for print and one-colour use. -->
+  <title>Umbricians Media Curator</title>
+  <g transform="translate(256 256) scale(1.22) translate(-256 -256)">
+    <path fill="none" stroke="#000000" stroke-width="32" stroke-linejoin="round"
+          d="M96 152 a24 24 0 0 1 24-24 h80 l32 32 h160 a24 24 0 0 1 24 24 v176 a24 24 0 0 1 -24 24 H120 a24 24 0 0 1 -24-24 Z"/>
+    <path fill="#000000" d="M148 336 L216 240 L262 296 L300 256 L364 336 Z"/>
+    <circle cx="340" cy="216" r="22" fill="#000000"/>
+  </g>
+</svg>
