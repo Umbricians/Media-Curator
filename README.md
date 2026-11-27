@@ -69,7 +69,7 @@ calling the API aren't affected.
 
 ## Built-in providers
 
-- [Date Folders](docs/providers/date-folders.md): builds nested folders from upload or update dates.
+- [Date Folders](docs/providers/date-folders.md): builds nested folders from the date a photo was taken, or its upload or update date.
 - [EXIF Value](docs/providers/exif-value.md): reads camera metadata and can map raw values to friendly folder names.
 - [AI Tag / Subject](docs/providers/ai-tag-subject.md): uses Umbraco.AI recognition tags with confidence thresholds and optional tag mappings.
 - [Color](docs/providers/color.md): extracts dominant or average color and snaps it to a named palette.
