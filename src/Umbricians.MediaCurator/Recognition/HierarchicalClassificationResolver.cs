@@ -199,7 +199,15 @@ internal static class HierarchicalClassificationResolver
     }
 
     private static ClassificationEntry? Match(IReadOnlyList<ClassificationEntry> candidates, string? picked)
-        => string.IsNullOrWhiteSpace(picked)
-            ? null
-            : candidates.FirstOrDefault(c => string.Equals(c.Code, picked.Trim(), StringComparison.OrdinalIgnoreCase));
+    {
+        if (string.IsNullOrWhiteSpace(picked))
+        {
+            return null;
+        }
+
+        return Find(picked.Trim()) ?? (ClassificationCodeValidator.CodeBeforeName(picked) is { } code ? Find(code) : null);
+
+        ClassificationEntry? Find(string code)
+            => candidates.FirstOrDefault(c => string.Equals(c.Code, code, StringComparison.OrdinalIgnoreCase));
+    }
 }
