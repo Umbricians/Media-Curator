@@ -75,6 +75,11 @@
          member without docs (CS1591), a parameter missing from a member's docs (CS1573), a doc comment C# ignores
          (CS1587) or one that names a parameter that doesn't exist (CS1572, CS1734). -->
     <WarningsAsErrors>$(WarningsAsErrors);CS1572;CS1573;CS1587;CS1591;CS1734</WarningsAsErrors>
+    <!-- In CI (GitHub Actions sets CI=true) every warning fails the build, so none reach a release. NuGet's
+         vulnerability audit stays a warning: an advisory against a package Umbraco brings in can't be fixed here, and
+         mustn't block a release that fixes something else. Dependabot reports those. -->
+    <TreatWarningsAsErrors Condition="'$(CI)' == 'true'">true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors Condition="'$(CI)' == 'true'">$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
   </PropertyGroup>
 
   <Target Name="CheckUmbracoMajor" BeforeTargets="Restore;Build" Condition="'$(UmbracoTargetFramework)' == ''">
