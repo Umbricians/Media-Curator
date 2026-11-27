@@ -74,8 +74,7 @@ test("a comment left by removing another is removed too", () => {
   const { status, stderr, readme } = run(`# Package\n\nBefore <!<!-- inner -->-- outer --> after\n`);
 
   assert.equal(status, 0, stderr);
-  assert.match(readme, /Before {2}after/);
-  assert.doesNotMatch(readme, /<!|-->/);
+  assert.match(readme, /^Before {2}after$/m);
 });
 
 const broken = [
