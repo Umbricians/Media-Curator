@@ -1,14 +1,16 @@
 // Starts the built demo site, checks it serves the backoffice, the package's bundle and the package's API document,
 // which only exists once the package's composer has run, then stops it. The document must have the given title, and
-// its operations must send the backoffice user's token, so "Try it out" in the backoffice's API docs works.
+// its operations must send the backoffice user's token, so "Try it out" in the backoffice's API docs works. Any further
+// bundle URL paths, such as an extension package's, must be served too.
 //
 //   node build/smoke-test.mjs <demo project folder> <bundle URL path> <API name> <Umbraco major> <API document title>
+//                             [<other bundle URL path>...]
 //
 // The API document is /umbraco/swagger/{API name}/swagger.json on Umbraco 17 and /umbraco/openapi/{API name}.json from
 // 18. Run it after `dotnet build -c Release -p:UmbracoMajor=…` for the same major. In Development the demo
-// installs itself, here on a fresh SQLite database of its own.
+// installs itself, here on fresh SQLite databases of its own.
 import { execFileSync, spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -19,9 +21,11 @@ const POLL_INTERVAL_MS = 2_000;
 // The security scheme Umbraco's backoffice API docs use for the backoffice user's token.
 const BACKOFFICE_SCHEME = "Backoffice-User";
 
-const [, , demoFolder, bundlePath, apiName, umbracoMajor, documentTitle] = process.argv;
+const [, , demoFolder, bundlePath, apiName, umbracoMajor, documentTitle, ...otherBundlePaths] = process.argv;
 if (!demoFolder || !bundlePath || !apiName || !/^[0-9]+$/.test(umbracoMajor ?? "") || !documentTitle) {
-  console.error("Usage: node smoke-test.mjs <demo project folder> <bundle URL path> <API name> <Umbraco major> <API document title>");
+  console.error(
+    "Usage: node smoke-test.mjs <demo project folder> <bundle URL path> <API name> <Umbraco major> <API document title> [<other bundle URL path>...]",
+  );
   process.exit(1);
 }
 
@@ -34,8 +38,9 @@ const assembly = execFileSync(
   { encoding: "utf8" },
 ).trim();
 console.log(`Starting ${assembly}`);
-// Each run installs on its own new database: the demo's own one belongs to whichever major ran it last, and Umbraco
-// won't start on a newer major's database.
+// Each run installs on new databases of its own: the demo's own ones belong to whichever major ran it last, and
+// Umbraco won't start on a newer major's database. Every SQLite database the demo's Development settings name, such as
+// one another product keeps apart from Umbraco's, moves to a new folder.
 const databaseDir = mkdtempSync(join(tmpdir(), "umbricians-smoke-"));
 const site = spawn("dotnet", [assembly, "--urls", SITE_URL], {
   cwd: projectDir,
@@ -43,17 +48,17 @@ const site = spawn("dotnet", [assembly, "--urls", SITE_URL], {
     ...process.env,
     ASPNETCORE_ENVIRONMENT: "Development",
     DOTNET_ENVIRONMENT: "Development",
-    ConnectionStrings__umbracoDbDSN: `Data Source=${join(databaseDir, "Umbraco.sqlite.db")};Foreign Keys=True;Pooling=True`,
-    ConnectionStrings__umbracoDbDSN_ProviderName: "Microsoft.Data.Sqlite",
+    ...sqliteConnectionStrings(join(projectDir, "appsettings.Development.json"), databaseDir),
   },
   stdio: "inherit",
 });
 
 try {
   await waitUntilOk(`${SITE_URL}/umbraco`);
-  await expectOk(`${SITE_URL}${bundlePath}`);
+  for (const path of [bundlePath, ...otherBundlePaths]) await expectOk(`${SITE_URL}${path}`);
   checkDocument(await fetchJson(`${SITE_URL}${documentPath}`));
-  console.log(`The Umbraco ${umbracoMajor} demo serves the backoffice, the package's bundle and its API document, which sends the backoffice token.`);
+  const bundles = otherBundlePaths.length > 0 ? "bundles" : "bundle";
+  console.log(`The Umbraco ${umbracoMajor} demo serves the backoffice, the package's ${bundles} and its API document, which sends the backoffice token.`);
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;
@@ -61,6 +66,18 @@ try {
   site.kill();
   await new Promise((done) => (site.exitCode === null ? site.once("exit", done) : done()));
   rmSync(databaseDir, { recursive: true, force: true });
+}
+
+// The settings file's SQLite connection strings, as environment variables that put their databases in databaseDir.
+function sqliteConnectionStrings(settingsFile, databaseDir) {
+  const { ConnectionStrings: connectionStrings = {} } = JSON.parse(readFileSync(settingsFile, "utf8"));
+  const variables = {};
+  for (const [name, value] of Object.entries(connectionStrings)) {
+    if (connectionStrings[`${name}_ProviderName`] !== "Microsoft.Data.Sqlite") continue;
+    variables[`ConnectionStrings__${name}`] = value.replace("|DataDirectory|", databaseDir);
+  }
+  if (!variables.ConnectionStrings__umbracoDbDSN) throw new Error(`${settingsFile} has no SQLite umbracoDbDSN connection string.`);
+  return variables;
 }
 
 async function waitUntilOk(url) {
