@@ -21,6 +21,8 @@ updates:
       - dependency-name: "Umbraco.Cms.Web.Common"
       - dependency-name: "Umbraco.AI"
       - dependency-name: "Umbraco.Automate.Core"
+      # The tests' Umbraco imaging package (tests/Directory.Packages.props) follows the same version.
+      - dependency-name: "Umbraco.Cms.Imaging.ImageSharp"
       # Supporting a new Umbraco major is a decision, made in Directory.Build.props and the workflows' plan jobs
       # (docs/RELEASING.md), not an update.
       - dependency-name: "Umbraco.*"
