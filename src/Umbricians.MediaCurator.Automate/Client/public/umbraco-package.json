@@ -5,7 +5,7 @@
   "allowTelemetry": false,
   "extensions": [
     {
-      "name": "MediaCurator Automate Bundle",
+      "name": "Media Curator Automate Bundle",
       "alias": "Umbricians.MediaCurator.Automate.Bundle",
       "type": "bundle",
       "js": "/App_Plugins/UmbriciansMediaCuratorAutomate/umbricians-media-curator-automate.js"

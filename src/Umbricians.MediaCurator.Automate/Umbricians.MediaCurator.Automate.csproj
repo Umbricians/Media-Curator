@@ -1,11 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
+  <!-- The Umbraco.Automate extension package. Its build and packaging follow the Media Curator project file, which
+       explains each setting; this file explains only what differs. Both packages are released together, with the same
+       version, from one tag. -->
   <PropertyGroup>
     <TargetFramework>$(UmbracoTargetFramework)</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
-    <!-- See the Media Curator project file: the Umbraco ranges' N.0.0-a upper bound always trips NU5104. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
     <NoWarn>$(NoWarn);NU5104</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -14,16 +22,28 @@
     <Title>Umbricians Media Curator Automate</Title>
     <Description>Adds Media Curator triggers and actions to Umbraco.Automate workflows.</Description>
     <Authors>Umbricians</Authors>
-    <!-- The major is the Umbraco major this build is for (Directory.Build.props). -->
     <Version>$(UmbracoMajor).0.0</Version>
     <PackageTags>umbraco;umbraco-marketplace;umbraco-v$(UmbracoMajor);media;media-library;automate;workflows</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>Copyright (c) 2026 FYIN LLC (trading as Umbricians)</Copyright>
     <PackageProjectUrl>https://github.com/Umbricians/Media-Curator</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Umbricians/Media-Curator</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!-- CI passes this package's own last release of the major as LastReleaseVersion. It has never been published, so
+         there is no baseline before that. -->
+    <PackageValidationBaselineVersion>$(LastReleaseVersion)</PackageValidationBaselineVersion>
+    <EnablePackageValidation Condition="'$(PackageValidationBaselineVersion)' != ''">true</EnablePackageValidation>
+    <ApiCompatPermitUnnecessarySuppressions>true</ApiCompatPermitUnnecessarySuppressions>
+    <CompatibilitySuppressionFilePath>CompatibilitySuppressions.$(UmbracoMajor).xml</CompatibilitySuppressionFilePath>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Umbricians.MediaCurator.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Umbricians.MediaCurator\Umbricians.MediaCurator.csproj" />
@@ -42,5 +62,29 @@
   <ItemGroup>
     <!-- Rendered from assets/logo.svg; NuGet recommends 128x128. -->
     <None Include="..\..\assets\logo-128.png" Pack="true" PackagePath="\icon.png" Visible="false" />
+    <!-- The package page's README. It has no repository-relative links or images, so unlike Media Curator's it isn't
+         generated. -->
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
+
+  <!--
+    A project reference packs as a dependency on this version of Media Curator or any later one, of any major. This
+    package was built and tested against this release of Media Curator, and Media Curator's package validation keeps
+    its public API, which this package uses, within a major. So the dependency gets the same kind of range as the
+    Umbraco ones (Directory.Build.props): this release or later, before the next major. build/check-package.mjs checks
+    the packed range.
+  -->
+  <Target Name="UseMediaCuratorRange" AfterTargets="_GetProjectReferenceVersions">
+    <ItemGroup>
+      <_ProjectReferencesWithVersions Update="@(_ProjectReferencesWithVersions)"
+                                      Condition="'%(Filename)' == 'Umbricians.MediaCurator'"
+                                      ProjectVersion="[%(ProjectVersion), $([MSBuild]::Add($(UmbracoMajor), 1)).0.0-a)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The bundle is built by npm and git-ignored, so never pack a package without it. -->
+  <Target Name="EnsureClientBundleBuilt" BeforeTargets="GenerateNuspec">
+    <Error Condition="!Exists('wwwroot\App_Plugins\UmbriciansMediaCuratorAutomate\umbricians-media-curator-automate.js')"
+           Text="The backoffice bundle is missing. Run 'npm ci' and 'npm run build' in src/Umbricians.MediaCurator.Automate/Client before packing." />
+  </Target>
 </Project>

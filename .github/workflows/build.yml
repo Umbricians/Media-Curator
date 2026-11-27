@@ -1,5 +1,5 @@
-# Builds one NuGet package per supported Umbraco major (17, 18, 19) from the same source, on every push to main and
-# develop and on every pull request. A version tag publishes to NuGet: v17.2.0 on main, or a pre-release such as
+# Builds the NuGet packages for each supported Umbraco major (17, 18, 19) from the same source, on every push to main and
+# develop and on every pull request: Media Curator and its Umbraco.Automate extension, with the same version. A version tag publishes to NuGet: v17.2.0 on main, or a pre-release such as
 # v19.0.0-rc.1 on a release branch. The tag's major picks which Umbraco major that run builds and publishes, so one
 # release is one tag per major on the same commit. Publishing uses NuGet Trusted Publishing: GitHub's OIDC token is
 # exchanged for a short-lived API key, so no NuGet API key is stored in the repository.
@@ -26,9 +26,11 @@ concurrency:
 env:
   PROJECT: src/Umbricians.MediaCurator/Umbricians.MediaCurator.csproj
   CLIENT_DIR: src/Umbricians.MediaCurator/Client
+  AUTOMATE_PROJECT: src/Umbricians.MediaCurator.Automate/Umbricians.MediaCurator.Automate.csproj
   AUTOMATE_CLIENT_DIR: src/Umbricians.MediaCurator.Automate/Client
   DEMO_DIR: demo/Umbricians.MediaCurator.Demo
   BUNDLE_PATH: /App_Plugins/UmbriciansMediaCurator/umbricians-media-curator.js
+  AUTOMATE_BUNDLE_PATH: /App_Plugins/UmbriciansMediaCuratorAutomate/umbricians-media-curator-automate.js
   API_NAME: umbricians-media-curator
   API_TITLE: Umbricians Media Curator
   DOTNET_NOLOGO: true
@@ -94,12 +96,13 @@ jobs:
           dotnet-version: ${{ matrix.sdk }}
 
       # The lowest Umbraco version of this major, from Directory.Build.props: the client is built against its backoffice.
-      # The package id is what nuget.org lists the published versions under.
+      # The package ids are what nuget.org lists the published versions under.
       - name: Find the Umbraco version
         run: |
           version=$(dotnet msbuild "$PROJECT" -getProperty:UmbracoVersion -p:UmbracoMajor="$UMBRACO_MAJOR")
           echo "UMBRACO_VERSION=$version" >> "$GITHUB_ENV"
           echo "PACKAGE_ID=$(dotnet msbuild "$PROJECT" -getProperty:PackageId -p:UmbracoMajor="$UMBRACO_MAJOR")" >> "$GITHUB_ENV"
+          echo "AUTOMATE_PACKAGE_ID=$(dotnet msbuild "$AUTOMATE_PROJECT" -getProperty:PackageId -p:UmbracoMajor="$UMBRACO_MAJOR")" >> "$GITHUB_ENV"
           echo "Umbraco $version"
 
       # Gitflow tags releases on main and pre-releases (v17.3.0-beta.1) on a release branch, so a tag anywhere else is
@@ -122,19 +125,25 @@ jobs:
       - name: Test build scripts
         run: node --test "build/*.test.mjs"
 
-      # A tag must be the next release of its major, and the pack checks the public API against the major's last
-      # version on nuget.org (the baseline).
+      # A tag must be the next release of its major, and each pack checks the public API against that package's last
+      # version of the major on nuget.org (its baseline). Both packages take Media Curator's version: one tag
+      # releases both, and the Automate package, which started later, has gaps in its versions.
       - name: Work out version
         id: version
         run: |
           version=$(node build/package-version.mjs "$PACKAGE_ID" "$UMBRACO_MAJOR" "$UMBRACO_VERSION")
           baseline=$(node build/package-version.mjs "$PACKAGE_ID" "$UMBRACO_MAJOR" "$UMBRACO_VERSION" --baseline)
+          automate_baseline=$(node build/package-version.mjs "$AUTOMATE_PACKAGE_ID" "$UMBRACO_MAJOR" "$UMBRACO_VERSION" --baseline)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "baseline=$baseline" >> "$GITHUB_OUTPUT"
+          echo "automate_baseline=$automate_baseline" >> "$GITHUB_OUTPUT"
           echo "Version: $version, checked against ${baseline:-the baseline in Directory.Build.props, if any}"
+          echo "Automate checked against ${automate_baseline:-nothing, before its first release of the major}"
 
       - name: Stamp version into umbraco-package.json
-        run: node build/stamp-version.mjs "$CLIENT_DIR/public/umbraco-package.json" "${{ steps.version.outputs.version }}"
+        run: |
+          node build/stamp-version.mjs "$CLIENT_DIR/public/umbraco-package.json" "${{ steps.version.outputs.version }}"
+          node build/stamp-version.mjs "$AUTOMATE_CLIENT_DIR/public/umbraco-package.json" "${{ steps.version.outputs.version }}"
 
       # package.json pins the lowest backoffice of the oldest major; each build swaps in its own major's.
       - name: Build client
@@ -161,16 +170,21 @@ jobs:
         run: dotnet test Umbricians.MediaCurator.slnx -c Release --no-build -p:UmbracoMajor="$UMBRACO_MAJOR"
 
       - name: Smoke-test the demo
-        run: node build/smoke-test.mjs "$DEMO_DIR" "$BUNDLE_PATH" "$API_NAME" "$UMBRACO_MAJOR" "$API_TITLE"
+        run: node build/smoke-test.mjs "$DEMO_DIR" "$BUNDLE_PATH" "$API_NAME" "$UMBRACO_MAJOR" "$API_TITLE" "$AUTOMATE_BUNDLE_PATH"
 
-      # Packs with a build, so the package always carries the static web assets of the bundle built above.
+      # Packs with a build, so each package always carries the static web assets of the bundle built above.
       - name: Pack
-        run: dotnet pack "$PROJECT" -c Release -p:UmbracoMajor="$UMBRACO_MAJOR" -p:Version=${{ steps.version.outputs.version }} -p:LastReleaseVersion=${{ steps.version.outputs.baseline }} -o artifacts
+        run: |
+          dotnet pack "$PROJECT" -c Release -p:UmbracoMajor="$UMBRACO_MAJOR" -p:Version=${{ steps.version.outputs.version }} -p:LastReleaseVersion=${{ steps.version.outputs.baseline }} -o artifacts
+          dotnet pack "$AUTOMATE_PROJECT" -c Release -p:UmbracoMajor="$UMBRACO_MAJOR" -p:Version=${{ steps.version.outputs.version }} -p:LastReleaseVersion=${{ steps.version.outputs.automate_baseline }} -o artifacts
 
       # A published version can't be withdrawn, so check what was packed: its version, that its Umbraco dependencies
-      # stop before the next major, and that it carries its README, icon and backoffice bundle.
-      - name: Check the package
-        run: node build/check-package.mjs "artifacts/$PACKAGE_ID.${{ steps.version.outputs.version }}.nupkg" "${{ steps.version.outputs.version }}" "$UMBRACO_VERSION" "$BUNDLE_PATH"
+      # stop before the next major (the Automate package's dependency on Media Curator too), and that it carries its
+      # README, icon and backoffice bundle.
+      - name: Check the packages
+        run: |
+          node build/check-package.mjs "artifacts/$PACKAGE_ID.${{ steps.version.outputs.version }}.nupkg" "${{ steps.version.outputs.version }}" "$UMBRACO_VERSION" "$BUNDLE_PATH"
+          node build/check-package.mjs "artifacts/$AUTOMATE_PACKAGE_ID.${{ steps.version.outputs.version }}.nupkg" "${{ steps.version.outputs.version }}" "$UMBRACO_VERSION" "$AUTOMATE_BUNDLE_PATH" "$PACKAGE_ID"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -222,7 +236,7 @@ jobs:
         with:
           user: ${{ secrets.NUGET_USER }}
 
-      # Pushes the .snupkg beside each .nupkg too.
+      # Pushes both packages, and the .snupkg beside each .nupkg.
       - name: Push to NuGet
         env:
           NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}

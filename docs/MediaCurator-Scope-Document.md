@@ -270,7 +270,7 @@ public interface ICurationProvider
 - **Multi-environment**: rulesets stored as configuration-friendly data (uSync-compatible serialization) so rules travel between environments; provisioned schema flows through uSync/Deploy as ordinary media type changes; activity log stays environment-local.
 - **Load-balanced setups**: background processing elects a single worker (main-dom / scheduling-server awareness).
 - **Classification data licensing**: embed only public-domain or license-free scheme data (public-domain Dewey levels, LCC outline); vet the license of every additional open taxonomy before inclusion; keep scheme data in replaceable resource files.
-- **Pre-release dependency risk**: `Umbricians.MediaCurator.Automate` tracks Umbraco.Automate's pre-release API and is versioned/released independently of the core so Automate API churn never blocks core releases.
+- **Automate dependency**: `Umbricians.MediaCurator.Automate` is a separate package, so the core never depends on Umbraco.Automate. Automate is released now, so both packages are released together with the same version (docs/RELEASING.md).
 - **Licensing/distribution**: open source (MIT), NuGet with `umbraco-marketplace` tag, dependency on `Umbraco.Cms.*` 17+ and the Umbraco.AI abstractions.
 
 ## 14. Phasing

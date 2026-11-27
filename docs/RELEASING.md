@@ -5,12 +5,17 @@ release and hotfix pull requests. [`.github/workflows/build.yml`](../.github/wor
 every push to `main` and `develop` and every pull request. A version tag on `main` publishes to NuGet, and so does a
 pre-release tag on a `release/*` branch.
 
-## One source, one package per Umbraco major
+## One source, one release per Umbraco major
 
-One source builds a separate NuGet package for each Umbraco major the package supports: 17, 18 and 19. The package's
+One source builds separate NuGet packages for each Umbraco major the package supports: 17, 18 and 19. The package's
 major is the Umbraco major, so `17.2.3` is for Umbraco 17 and `18.2.3` for Umbraco 18. `-p:UmbracoMajor=18` chooses
 the Umbraco version, the .NET version and the build folders (see [`Directory.Build.props`](../Directory.Build.props));
 the default is 17.
+
+Each release is two packages with the same version: `Umbricians.MediaCurator`, and `Umbricians.MediaCurator.Automate`,
+which adds Media Curator's triggers and actions to Umbraco.Automate. The Automate package depends on the same release
+of Media Curator or a later one of the same major. One tag releases both, and the version rules below go by Media
+Curator's releases, so the Automate package's versions start at whichever release first includes it.
 
 Umbricians supports the current Umbraco LTS (17) and every major after it. When the next LTS ships, we decide how long
 the older majors stay supported, and may drop the majors that aren't LTS then.
@@ -31,18 +36,18 @@ already has, unless the run is a re-run, and a stable tag fails on a commit that
 of its major, such as the previous release's merge commit when step 3 was skipped; a tag that never published doesn't
 count, so the next number can go on the same commit. A stable tag also fails while the major's Umbraco version in
 `Directory.Build.props` is a pre-release, since a stable package can't depend on an Umbraco release candidate. Only
-the package in `src/Umbricians.MediaCurator` is packed; the demo site is built and smoke-tested but never published, and
-each package is checked before it can be (`build/check-package.mjs`): its version, that its Umbraco dependencies stop
-before the next major, that a stable package depends on no pre-release, and that it carries its README, icon and
-backoffice bundle. Once a package is on NuGet, the run creates a matching GitHub release with generated notes and the
+the packages in `src/` are packed; the demo site is built and smoke-tested but never published, and each package is
+checked before it can be (`build/check-package.mjs`): its version, that its Umbraco dependencies stop before the next
+major (and the Automate package's dependency on Media Curator), that a stable package depends on no pre-release, and
+that it carries its README, icon and backoffice bundle. Once a package is on NuGet, the run creates a matching GitHub release with generated notes and the
 `.nupkg` and `.snupkg` attached. The notes start at the previous stable release of the same major, and only a
 release of the newest Umbraco major becomes the repository's Latest release, so a 17.x hotfix after 18.x doesn't take
 it.
 
-The pack checks each major's public API against that major's last version on nuget.org, and fails on a breaking change,
-so breaking changes wait for a new Umbraco major. Before a major's first release there is nothing to check against.
-Differences a change is allowed to make go in that major's suppressions file,
-`src/Umbricians.MediaCurator/CompatibilitySuppressions.<major>.xml`.
+The pack checks each package's public API against that package's last version of the major on nuget.org, and fails
+on a breaking change, so breaking changes wait for a new Umbraco major. Before a package's first release of a major
+there is nothing to check against. Differences a change is allowed to make go in that package's suppressions file for
+the major, `CompatibilitySuppressions.<major>.xml` in its project folder.
 
 The weekly [Umbraco minors](../.github/workflows/umbraco-minors.yml) workflow builds each major against the newest
 Umbraco release of that major, since a minor can still break backoffice code. It never publishes. When it fails, fix
@@ -202,11 +207,12 @@ can't publish.
 Make the repository public before the first release, unless the Umbricians organization is on GitHub Team or
 higher. On GitHub Free a private repository has no rulesets and silently ignores the environment rules below, so
 nothing would stop a branch from publishing. The package page also needs it public: the NuGet README's images and
-links point at this repository, and the Umbraco Marketplace reads `umbraco-marketplace.json` from it. Check the
-GitHub settings below again after making it public.
+links point at this repository, and the Umbraco Marketplace reads `umbraco-marketplace.json` from it, and the
+Automate package's listing from `umbraco-marketplace-umbricians.mediacurator.automate.json`. Check the GitHub settings
+below again after making it public.
 
 **On nuget.org**, signed in as a member of the `umbricians` organization, create a trusted publishing policy with
-owner `umbricians`, repository owner `Umbricians`, repository `Media-Curator`, workflow `build.yml` and environment
+owner `umbricians` (the owner of both packages), repository owner `Umbricians`, repository `Media-Curator`, workflow `build.yml` and environment
 `production`. Owner and repository are matched without regard to case.
 
 **In the GitHub repository**, every item is required:

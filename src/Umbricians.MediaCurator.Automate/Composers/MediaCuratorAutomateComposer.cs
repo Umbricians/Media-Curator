@@ -3,14 +3,16 @@ using Umbraco.Automate.Extensions;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbricians.MediaCurator.Automate.Actions;
+using Umbricians.MediaCurator.Automate.Execution;
 using Umbricians.MediaCurator.Automate.Triggers;
-using Engine = Umbricians.MediaCurator.Engine;
+using Umbricians.MediaCurator.Engine;
 
-namespace Umbricians.MediaCurator.Automate;
+namespace Umbricians.MediaCurator.Automate.Composers;
 
-/// <summary>Contributes MediaCurator triggers and actions to Umbraco.Automate workflows (§9).</summary>
+/// <summary>Adds Media Curator's triggers and actions to Umbraco.Automate workflows.</summary>
 public class MediaCuratorAutomateComposer : IComposer
 {
+    /// <inheritdoc />
     public void Compose(IUmbracoBuilder builder)
     {
         builder.AutomateTriggers()
@@ -22,6 +24,6 @@ public class MediaCuratorAutomateComposer : IComposer
             .Add<CategorizeMediaAction>()
             .Add<CurateFolderAction>();
 
-        builder.Services.AddSingleton<Engine.IParallelContextFlow, Execution.AutomationOriginContextFlow>();
+        builder.Services.AddSingleton<IParallelContextFlow, AutomationOriginContextFlow>();
     }
 }

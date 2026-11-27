@@ -29,6 +29,14 @@ dotnet add package Umbricians.MediaCurator
 
 Restart the site. No configuration is needed to get started; Media Curator's database tables are created on startup.
 
+On a site with [Umbraco.Automate](https://www.nuget.org/packages/Umbraco.Automate),
+[Umbricians.MediaCurator.Automate](https://www.nuget.org/packages/Umbricians.MediaCurator.Automate) adds Media Curator
+triggers and actions to workflows, such as curating each image as it is uploaded:
+
+```bash
+dotnet add package Umbricians.MediaCurator.Automate
+```
+
 ## Features
 
 - **Scoped rulesets**: attach a ruleset to any media folder; the nearest one above an image applies.
@@ -128,7 +136,8 @@ they are saved: `builder.AddMediaCuratorRecognitionEnricher<MyEnricher>();`
 `MediaCuratedNotification` and `MediaCurationFailedNotification` report the outcome.
 
 The extension points above are what a site can rely on. Other public types, such as `ICurationEngine` and
-`IRecognitionService`, exist for the Umbraco.Automate companion package and may change before 1.0.
+`IRecognitionService`, exist for the Umbraco.Automate package. They don't break within a major, but they aren't meant
+for sites.
 
 ## API
 
@@ -153,7 +162,7 @@ the Settings section. It exists for the backoffice and may change between versio
 
 ```
 src/Umbricians.MediaCurator           the package (Razor class library + Client/ TypeScript)
-src/Umbricians.MediaCurator.Automate  Umbraco.Automate triggers and actions; not published yet
+src/Umbricians.MediaCurator.Automate  Umbraco.Automate triggers and actions, its own package
 demo/Umbricians.MediaCurator.Demo     Umbraco 17.7.0 site on SQLite that references the package
 tests/Umbricians.MediaCurator.Tests   xUnit tests, run with `dotnet test`
 tests/Umbricians.MediaCurator.E2E     Playwright tests against the demo site

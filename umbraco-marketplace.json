@@ -8,6 +8,9 @@
   "DocumentationUrl": "https://github.com/Umbricians/Media-Curator/blob/main/docs/getting-started.md",
   "IssueTrackerUrl": "https://github.com/Umbricians/Media-Curator/issues",
   "Screenshots": [],
+  "RelatedPackages": [
+    { "PackageId": "Umbricians.MediaCurator.Automate", "Description": "Media Curator triggers and actions for Umbraco.Automate workflows." }
+  ],
   "AuthorDetails": {
     "Name": "Umbricians",
     "Url": "https://github.com/Umbricians",

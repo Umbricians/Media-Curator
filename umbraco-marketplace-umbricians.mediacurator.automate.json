@@ -1,0 +1,19 @@
+{
+  "$schema": "https://marketplace.umbraco.com/umbraco-marketplace-schema.json",
+  "Title": "Umbricians Media Curator Automate",
+  "Description": "Adds Media Curator triggers and actions to Umbraco.Automate workflows, so curation can run as part of a workflow, such as sorting each image as it is uploaded.",
+  "Category": "",
+  "Tags": [],
+  "LicenseTypes": ["Free"],
+  "DocumentationUrl": "https://github.com/Umbricians/Media-Curator/blob/main/src/Umbricians.MediaCurator.Automate/README.md",
+  "IssueTrackerUrl": "https://github.com/Umbricians/Media-Curator/issues",
+  "Screenshots": [],
+  "RelatedPackages": [
+    { "PackageId": "Umbricians.MediaCurator", "Description": "The package this one adds to Umbraco.Automate workflows." }
+  ],
+  "AuthorDetails": {
+    "Name": "Umbricians",
+    "Url": "https://github.com/Umbricians",
+    "SyncContributorsFromRepository": true
+  }
+}

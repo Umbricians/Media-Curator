@@ -12,14 +12,14 @@ test.describe('Umbricians.MediaCurator.Automate companion', () => {
     const actions = await umbracoApi.get(`${base()}/umbraco/automate/management/api/v1/catalogue/actions`);
     expect(actions.status()).toBe(200);
     const actionsBody = JSON.stringify(await actions.json());
-    expect(actionsBody).toContain('mediaCurator.analyzeImage');
-    expect(actionsBody).toContain('mediaCurator.categorizeMedia');
-    expect(actionsBody).toContain('mediaCurator.curateFolder');
+    expect(actionsBody).toContain('umbriciansMediaCurator.analyzeImage');
+    expect(actionsBody).toContain('umbriciansMediaCurator.categorizeMedia');
+    expect(actionsBody).toContain('umbriciansMediaCurator.curateFolder');
 
     const triggers = await umbracoApi.get(`${base()}/umbraco/automate/management/api/v1/catalogue/triggers`);
     expect(triggers.status()).toBe(200);
     const triggersBody = JSON.stringify(await triggers.json());
-    expect(triggersBody).toContain('mediaCurator.curated');
-    expect(triggersBody).toContain('mediaCurator.curationFailed');
+    expect(triggersBody).toContain('umbriciansMediaCurator.curated');
+    expect(triggersBody).toContain('umbriciansMediaCurator.curationFailed');
   });
 });
