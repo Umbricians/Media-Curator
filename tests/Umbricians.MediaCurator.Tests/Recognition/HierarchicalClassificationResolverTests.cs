@@ -125,6 +125,41 @@ public class HierarchicalClassificationResolverTests
         Assert.That(code, Is.EqualTo("G"));
     }
 
+    // The prompt lists choices as "CODE|Name", and models sometimes answer with the whole line ("PEOPLE|People").
+    [Test]
+    public async Task A_pick_that_repeats_the_whole_choice_is_matched_level_by_level()
+    {
+        var responses = new Queue<string>([
+            """{"classificationCode":"700|Fine Arts"}""",
+            """{"classificationCode":"770|Photography"}""",
+        ]);
+
+        var code = await HierarchicalClassificationResolver.ResolveAsync(
+            new DeweyPublicDomainScheme(),
+            "a camera photo",
+            [],
+            (_, _) => Task.FromResult(RecognitionResponseParser.ParseClassificationCode(responses.Dequeue())),
+            maxDepth: 2,
+            CancellationToken.None);
+
+        Assert.That(code, Is.EqualTo("770"));
+    }
+
+    [Test]
+    public async Task A_pick_that_repeats_the_whole_choice_is_matched_in_one_step()
+    {
+        var code = await HierarchicalClassificationResolver.ResolveAsync(
+            new WebAssetRoleScheme(),
+            "a company logo on white",
+            [],
+            (_, _) => Task.FromResult(RecognitionResponseParser.ParseClassificationCode("""{"classificationCode":"BRD1|Logo (Branding)"}""")),
+            maxDepth: 4,
+            CancellationToken.None,
+            oneStepLimit: 255);
+
+        Assert.That(code, Is.EqualTo("BRD1"));
+    }
+
     [Test]
     public void Final_codes_are_entries_without_sub_categories_or_at_the_depth_limit()
     {
