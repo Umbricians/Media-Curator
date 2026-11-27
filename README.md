@@ -5,14 +5,26 @@
 [![NuGet](https://img.shields.io/nuget/v/Umbricians.MediaCurator?label=NuGet)](https://www.nuget.org/packages/Umbricians.MediaCurator)
 [![Build](https://github.com/Umbricians/Media-Curator/actions/workflows/build.yml/badge.svg)](https://github.com/Umbricians/Media-Curator/actions/workflows/build.yml)
 
-Automatically sorts images in the Umbraco Media section into folders using date, EXIF, AI and classification rules.
-For Umbraco 17 and 18, with Umbraco 19 release candidates in pre-release packages.
+Media Curator keeps your Umbraco media library organised. Editors upload images wherever is quickest, and before long
+the Media section is one long list nobody can find anything in. Media Curator sorts those images into the folders
+you want: by date, by shape and size, by file type, by colour, by camera details, or by what the picture shows.
 
-Attach a ruleset to any media folder and Media Curator works out where each image in it belongs. You see a preview
-before anything moves, every run can be undone, and all moves go through Umbraco's media service, so links to your
-images keep working.
+You design the folder structure once, in a visual editor, and attach it to any media folder. Then Media Curator:
 
-![Media tree with people badges](docs/images/people-detection-tree-badges.png)
+- **shows you where every image will go** before anything moves, so there are no surprises;
+- **keeps every link working**, because it moves images the same way Umbraco does when an editor drags them;
+- **can undo any run** with one click, from a log of everything it has moved;
+- **can use AI to describe and tag images**, through [Umbraco.AI](https://www.nuget.org/packages/Umbraco.AI) and the
+  AI provider you already use, or work without AI at all;
+- **marks images that show people**, and the folders that contain them, so you can check consent or model releases.
+
+It suits teams with a large or growing image library, sites that brought thousands of images over from another
+system, and anyone who needs to know which of their images show people. Run it on a folder whenever you like, or add
+the Automate package to sort each image as it is uploaded.
+
+Works with Umbraco 17 and 18. Umbraco 19 support is in pre-release packages while Umbraco 19 is a release candidate.
+
+![Before: 55 photos in one Uploads folder. After: the same photos sorted into year, month, subject and colour folders](docs/images/media-curator-before-and-after.png)
 
 ## Documentation
 
@@ -66,6 +78,18 @@ calling the API aren't affected.
   use TypeSafe's Jev.
 - **People detection**: analysis can also decide, from the stored description and tags, whether each image shows
   people. The media tree marks those images and every folder above them, for privacy or model-release review.
+
+The rule designer, here sorting photos by the date they were taken, then what they show, then their colour:
+
+![The rule designer with Date Folders, Classification and Color rules](docs/images/media-curator-rule-designer.png)
+
+The preview, before anything moves:
+
+![The preview listing each photo and the folder it would move to](docs/images/media-curator-preview.png)
+
+What the AI said about three of the photos:
+
+![AI descriptions, tags and subject codes for a paella, a woodland path and a person on a beach](docs/images/media-curator-ai-analysis.png)
 
 ## Built-in providers
 
@@ -205,6 +229,18 @@ cd tests/Umbricians.MediaCurator.E2E && npm install && cp .env.example .env && n
 The test helpers are released per Umbraco major. Version 17 of them works with Umbraco 17 and 18; for an Umbraco 19 demo,
 install that major's first (`npm install --no-save @umbraco-cms/acceptance-test-helpers@19.0.0-rc2`), or the tests fail
 to authenticate their API calls.
+
+The screenshots in `docs/images` come from a script, so retake them after a UI change:
+
+```bash
+cd tests/Umbricians.MediaCurator.E2E && OPENAI_API_KEY=... npm run screenshots
+```
+
+It downloads 55 CC0 photos from Wikimedia Commons (listed, with their authors and licences, in
+`screenshots/photos.json`), starts a fresh Umbraco 18 demo, connects it to OpenAI, and sorts the photos by date taken,
+subject and colour, taking the shots on the way. The key can also go in the E2E folder's `.env`; it only reaches the demo,
+as configuration. A run makes about 200 AI calls (a few cents) and takes 5 to 15 minutes. `--keep` leaves the demo
+running afterwards.
 
 > The demo reads `appsettings.{environment}.json`. If your machine sets `DOTNET_ENVIRONMENT` (for example to
 > `Local`), that overrides the launch profile's `Development`, so the demo settings also live in
