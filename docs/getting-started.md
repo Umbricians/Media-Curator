@@ -25,19 +25,31 @@ Restart the site. Media Curator's database tables are created on startup.
    nearest ruleset above an image is the one that applies.
 3. Add rules in the designer, for example Date with the format `yyyy/MM`. Each rule adds one or more folder levels.
 
+![The rule designer: Date Folders by the date taken, then the photo's subject, then its colour](images/media-curator-rule-designer.png)
+
 ## 3. Approve any properties
 
 Open the ruleset's **Requirements** view. Some providers store values on media types, and Media Curator adds those
 properties only after you approve them.
 
+![The Requirements view listing three properties to add to the Image media type, each with an action to approve](images/media-curator-requirements.png)
+
 ## 4. Curate
 
 Open the ruleset's **Curate** view. The preview shows where each image would go, and nothing moves until you confirm.
-On a folder with more than 100 images, at any depth, **Curate images** skips the preview and runs in the background.
+
+![The preview: each photo with the folder it would move to, such as 2013/March/Food/Brown](images/media-curator-preview.png)
+
+Editors can also curate a folder from the media tree, with **Curate images** in the folder's menu. On a folder with
+more than 100 images, at any depth, it skips the preview and runs in the background.
+
+![A media folder's menu with Curate images and Analyze images](images/media-curator-curate-action.png)
 
 ## 5. Undo if you need to
 
 **Settings › Media Curator › Activity log** lists every run and can undo one.
+
+![The activity log with a run that moved 55 images and an Undo button](images/media-curator-activity-log.png)
 
 ## Using AI
 

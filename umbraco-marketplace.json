@@ -10,8 +10,28 @@
   "IssueTrackerUrl": "https://github.com/Umbricians/Media-Curator/issues",
   "Screenshots": [
     {
-      "ImageUrl": "https://raw.githubusercontent.com/Umbricians/Media-Curator/main/docs/images/people-detection-tree-badges.png",
-      "Caption": "The media tree, sorted by Media Curator, with badges on images that show people"
+      "ImageUrl": "https://raw.githubusercontent.com/Umbricians/Media-Curator/main/docs/images/media-curator-before-and-after.png",
+      "Caption": "Before and after: 55 photos from one Uploads folder, sorted into year, month, subject and colour folders"
+    },
+    {
+      "ImageUrl": "https://raw.githubusercontent.com/Umbricians/Media-Curator/main/docs/images/media-curator-rule-designer.png",
+      "Caption": "The rule designer: each rule adds a folder level"
+    },
+    {
+      "ImageUrl": "https://raw.githubusercontent.com/Umbricians/Media-Curator/main/docs/images/media-curator-preview.png",
+      "Caption": "A preview of where every image will go, before anything moves"
+    },
+    {
+      "ImageUrl": "https://raw.githubusercontent.com/Umbricians/Media-Curator/main/docs/images/media-curator-ai-analysis.png",
+      "Caption": "AI descriptions, tags and subjects, through Umbraco.AI"
+    },
+    {
+      "ImageUrl": "https://raw.githubusercontent.com/Umbricians/Media-Curator/main/docs/images/media-curator-people-in-tree.png",
+      "Caption": "Photos of people, and the folders that hold them, marked in the media tree"
+    },
+    {
+      "ImageUrl": "https://raw.githubusercontent.com/Umbricians/Media-Curator/main/docs/images/media-curator-activity-log.png",
+      "Caption": "Every run in the activity log, with one-click undo"
     }
   ],
   "RelatedPackages": [

@@ -2,13 +2,12 @@
 
 Media Curator can decide whether each image shows people and mark those images in the backoffice media tree, so
 editors can find them for privacy or model-release review. Every folder with such an image anywhere below it gets a
-lighter mark, so the images can be found from the top of the tree down.
+mark of its own, so the images can be found from the top of the tree down.
 
-![Media tree with people badges](images/people-detection-tree-badges.png)
+![The media tree with red marks on the year, month and subject folders that hold photos of people, and a person sign on the photo itself](images/media-curator-people-in-tree.png)
 
-- Images that show people: a blue person sign (`icon-user`), labelled "Contains people".
-- Folders with such images at any depth below them: a light blue people sign (`icon-users`), labelled "Contains images
-  with people".
+- Images that show people: a red person sign, labelled "Contains people".
+- Folders with such images at any depth below them: a red dot, labelled "Contains images with people".
 
 The signs appear only in the media tree. Umbraco's media grid and table views do not render entity signs.
 
