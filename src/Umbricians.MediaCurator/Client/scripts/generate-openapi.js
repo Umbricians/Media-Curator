@@ -13,8 +13,8 @@ if (swaggerUrl === undefined) {
   process.exit();
 }
 
-// Needed to ignore self-signed certificates from running Umbraco on https on localhost
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+// The demo serves plain http on localhost. For a site on https with a development certificate, trust that
+// certificate with NODE_EXTRA_CA_CERTS rather than turning certificate checks off.
 
 // Start checking to see if we can connect to the OpenAPI spec
 console.log("Ensure your Umbraco instance is running");
