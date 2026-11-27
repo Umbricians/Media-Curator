@@ -60,4 +60,66 @@ public class DateFolderProviderTests
 
         Assert.That(result.IsResolved, Is.False);
     }
+
+    [TestCase("2019:08:12 14:30:05")]
+    [TestCase("2019-08-12 14:30:05")]
+    [TestCase(" 2019:08:12 14:30:05 ")]
+    [TestCase("2019:08:12")]
+    public async Task Uses_the_date_the_photo_was_taken(string dateTimeOriginal)
+    {
+        var result = await _sut.ResolveAsync(DateTakenContext(dateTimeOriginal));
+
+        Assert.That(result.Segments.Select(s => s.Name), Is.EqualTo(["2019", "08", "12"]));
+    }
+
+    // Cameras without a set clock write zeros, and some software writes blanks or text.
+    [TestCase(null)]
+    [TestCase("")]
+    [TestCase("0000:00:00 00:00:00")]
+    [TestCase("    :  :     :  :  ")]
+    [TestCase("not a date")]
+    [TestCase("2019:13:45 25:61:00")]
+    public async Task Falls_back_to_the_upload_date_without_a_date_taken(string? dateTimeOriginal)
+    {
+        var result = await _sut.ResolveAsync(DateTakenContext(dateTimeOriginal));
+
+        Assert.That(result.Segments.Select(s => s.Name), Is.EqualTo(["2026", "06", "10"]));
+    }
+
+    [Test]
+    public async Task Falls_back_to_the_upload_date_when_EXIF_could_not_be_read()
+    {
+        var ctx = CurationContexts.Create(settings: CurationContexts.Settings(("format", "yyyy/MM/dd"), ("source", "dateTaken")))
+            with { Exif = null };
+
+        var result = await _sut.ResolveAsync(ctx);
+
+        Assert.That(result.Segments.Select(s => s.Name), Is.EqualTo(["2026", "06", "10"]));
+    }
+
+    // The camera's local time is used as recorded, so a photo taken late on New Year's Eve stays in that year.
+    [Test]
+    public async Task Keeps_the_time_the_camera_recorded()
+    {
+        var result = await _sut.ResolveAsync(DateTakenContext("2019:12:31 23:59:59"));
+
+        Assert.That(result.Segments.Select(s => s.Name), Is.EqualTo(["2019", "12", "31"]));
+    }
+
+    [Test]
+    public void Offers_date_taken_as_a_source()
+    {
+        var source = _sut.SettingsSchema.Fields.Single(field => field.Alias == "source");
+
+        Assert.That(source.Options!.Select(option => option.Value), Does.Contain(DateFolderProvider.DateTakenSource));
+    }
+
+    private static Umbricians.MediaCurator.Core.CurationContext DateTakenContext(string? dateTimeOriginal)
+        => CurationContexts.Create(settings: CurationContexts.Settings(("format", "yyyy/MM/dd"), ("source", "dateTaken")))
+            with
+            {
+                Exif = dateTimeOriginal is null
+                    ? new Dictionary<string, string>()
+                    : new Dictionary<string, string> { ["DateTimeOriginal"] = dateTimeOriginal },
+            };
 }
