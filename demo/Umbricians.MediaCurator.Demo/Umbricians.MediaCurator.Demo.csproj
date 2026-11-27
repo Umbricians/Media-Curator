@@ -14,7 +14,7 @@
     <PackageReference Include="Umbraco.AI.OpenAI" Version="$(UmbracoAiOpenAIVersion)" />
     <PackageReference Include="Umbraco.AI.Anthropic" Version="$(UmbracoAiAnthropicVersion)" />
     <!-- Override WorkflowCore 3.9.0's vulnerable transitive OpenTelemetry.Api dependency. -->
-    <PackageReference Include="OpenTelemetry.Api" Version="1.15.3" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.21.0" />
     <PackageReference Include="Umbraco.Automate" Version="$(UmbracoAutomateVersion)" />
     <PackageReference Include="Umbraco.Cms" Version="$(UmbracoVersion)" />
     <PackageReference Include="Umbraco.Cms.DevelopmentMode.Backoffice" Version="$(UmbracoVersion)" />
